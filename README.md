@@ -229,7 +229,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
 - **Mental map** — a graph of interconnected topics used to navigate and activate
   memory.
 - **Node** — a vertex in the graph (a topic or a memory).
-- **Edge** — a connection between two nodes (an association).
+- **Edge** — a connection between two nodes (an association). 
 - **Spreading activation** — energy propagating from an activated node to its
   neighbors, decaying at each hop.
 - **Decay factor** — the multiplier (< 1) applied at each hop; guarantees the

@@ -9,7 +9,7 @@ MVP plan in [README.md](README.md).
 ## Phase 0 — Spec (blocking, do not implement before this)
 
 - [ ] **0.1 — Run a `grill-me` session to produce the spec.**
-  - Move Taulukko dependences for OESC tree
+  - Move Taulukko dependences for OESC tree.
   - Document or recreate external dependences like graphfy or opencode-mem
   - Decision tree to resolve:
     - **Tiers** — exact short/medium/long boundaries; the scopes/tags used; the
