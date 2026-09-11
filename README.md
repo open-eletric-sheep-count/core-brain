@@ -5,47 +5,97 @@
 > Sheep?*) — the agent/artificial-mind imagery; "Count" = counting sheep to fall
 > asleep, i.e. the **sleep/consolidation ("dreams")** at the heart of the project.
 
-A parallel project implementing a **hierarchical memory system for LLM agents** —
-short/medium/long-term memory, **consolidation ("dreams")**, and a **mental map**
-(spreading activation). It reuses substrates that already exist in the Taulukko OpenCode
-Config instead of building new storage from scratch.
+**OESC** aims to provide an **open-source AI framework for OpenCode**: a growing
+set of **skills**, **plugins**, and an **enhanced memory** for LLM agents —
+shipped as a complete suite and **prepared for OpenCode V2**
+([`opencode2`](https://opencode.ai/v2/docs/)).
 
-> Status: **Draft — spec not yet written.** See [TASKS.md](TASKS.md).
+Today the suite ships the two plugins below — **todo** (§1) and
+**context-inject** (§2); the **memory system** (§3) is the next chapter.
 
 ---
 
-## Plugins & install (OpenCode suite)
+## Getting started
 
-This repository also ships the **OESC plugin suite for OpenCode** — installed as a complete set, with **all plugins enabled by default**:
+1. **Install OpenCode V2** — it runs as `opencode2`, side by side with V1's
+   `opencode` binary:
+   
+   ```bash
+   curl -fsSL https://opencode.ai/v2/install | bash
+   # or: npm install -g @opencode/cli@beta
+   ```
+   
+   Full instructions: <https://opencode.ai/v2/docs/>.
 
-| Plugin | What it does |
-|--------|--------------|
-| [`plugins/todo-list/`](global/opencode/plugins/todo-list/) — `@oesc/todo-list` | Session todo tool + live sidebar panel |
-| [`plugins/context-inject/`](global/opencode/plugins/context-inject/) — `@oesc/context-inject` | Injects configured files into sessions (first prompt + after compaction), per agent |
+2. **Install the OESC suite** (brings the whole set):
+   
+   ```bash
+   git clone https://github.com/open-eletric-sheep-count/core-brain.git
+   bash core-brain/global/opencode/install-global.sh
+   ```
+   
+   The script copies the suite into `~/.config/opencode/` — no config-file
+   editing needed: plugins are **auto-discovered** from `plugins/`. Re-run it
+   anytime to update. Then restart OpenCode and confirm:
+   
+   ```bash
+   opencode2 plugin list
+   ```
 
-Each plugin is **self-contained** under `global/opencode/plugins/<name>/` — source, distribution artifact and npm package root in the same folder (`check.sh` validates in place; no build/copy step).
+Each plugin is **self-contained** — `global/opencode/plugins/<name>/` holds the
+whole thing (source, docs, npm manifest); the installer ships it as-is.
+Optional configuration lives in each plugin's README.
 
-**Install — recommended (brings everything):**
-
-```bash
-git clone https://github.com/open-eletric-sheep-count/core-brain.git
-bash core-brain/global/opencode/install-global.sh
-```
-
-The script copies `global/opencode/.` into `~/.config/opencode/` (plugins are auto-discovered). Restart OpenCode afterwards; `opencode2 plugin list` shows the installed plugins.
-
-**Single plugin (npm), if you only want one:**
+**Single plugin via npm** (publication pending — until then, use the installer above):
 
 ```bash
 opencode2 plugin add @oesc/todo-list
 opencode2 plugin add @oesc/context-inject
 ```
 
-See each plugin's README for configuration (e.g. `context-inject` needs a `configPath` when installed standalone).
+---
+
+## 1. Todo List — `@oesc/todo-list`
+
+A **session todo list** the assistant maintains and the user watches live:
+
+- the `todo` tool — one tool, granular ops (`read` / `write` / `add` / `update` /
+  `remove` / `clear`), stable ids, hierarchical items;
+- a **live sidebar panel** showing the current session's list (hidden when the
+  list is empty);
+- one list per session, stored locally at `~/.local/share/opencode-todo/` —
+  OpenCode's DB is never touched.
+
+Contract, details and configuration: [`global/opencode/plugins/todo-list/`](global/opencode/plugins/todo-list/).
 
 ---
 
-## 1. Intent
+## 2. Context Inject — `@oesc/context-inject`
+
+Injects **configured files into sessions**, per agent:
+
+- at the **true start** of a session (its first admitted prompt), and
+- **after a completed compaction** (re-injection).
+
+Config-driven (`injections.agents.<AGENT>`, with the reserved `ALL` key for
+every session); **stateless** — both decisions derive from the durable session
+log, so behavior survives service restarts. Relative file paths resolve against
+the plugin directory.
+
+Contract, details and configuration: [`global/opencode/plugins/context-inject/`](global/opencode/plugins/context-inject/).
+
+---
+
+## 3. Memory — the OESC memory system
+
+The original core of OESC: a **hierarchical memory system for LLM agents** —
+short/medium/long-term memory, **consolidation ("dreams")**, and a **mental
+map** (spreading activation). It reuses substrates that already exist in the
+Taulukko OpenCode Config instead of building new storage from scratch.
+
+> Status: **Draft — spec not yet written.** See [TASKS.md](TASKS.md).
+
+### 3.1 Intent
 
 Give an LLM agent a memory that is closer to a human's:
 
@@ -59,11 +109,11 @@ Give an LLM agent a memory that is closer to a human's:
    associated memories. The spread is guaranteed to terminate.
 
 The whole thing is designed to be **quick to implement** because the heavy
-substrate already exists (see §4).
+substrate already exists (see §3.4).
 
 ---
 
-## 2. Problem
+### 3.2 Problem
 
 An LLM's **context window** is finite and volatile — it is the agent's *RAM*.
 Real agents need *long-term* memory (facts, decisions, history) that does not fit
@@ -85,14 +135,14 @@ medium and long term memory, with dreams."*
 
 ---
 
-## 3. Core concepts (the three pieces)
+### 3.3 Core concepts (the three pieces)
 
-### 3.1 Tiers — promotion by evidence of reuse, not recency
+#### Tiers — promotion by evidence of reuse, not recency
 
-| Tier | What it is | Where it lives today |
-|------|-----------|----------------------|
-| **Short-term** (working) | The current session's working memory | The context window (not persisted) |
-| **Medium-term** (project) | Facts/decisions for *this* project | `opencode-mem`, scope `project` |
+| Tier                          | What it is                                   | Where it lives today                          |
+| ----------------------------- | -------------------------------------------- | --------------------------------------------- |
+| **Short-term** (working)      | The current session's working memory         | The context window (not persisted)            |
+| **Medium-term** (project)     | Facts/decisions for *this* project           | `opencode-mem`, scope `project`               |
 | **Long-term** (cross-project) | Stable preferences, rules, durable knowledge | `opencode-mem`, scope `global` + user profile |
 
 Movement rules:
@@ -102,7 +152,7 @@ Movement rules:
 - **Decay / demotion** — a memory never retrieved for X days loses weight; below a
   threshold it is pruned or demoted.
 
-### 3.2 Dreams — consolidation
+#### Dreams — consolidation
 
 A periodic pass (trigger: N sessions elapsed, an explicit `sleep` command, or
 right before compaction fires). Four operations, in order:
@@ -125,7 +175,7 @@ Anti-loop / convergence guarantees (mandatory):
   grows. If it grows, something is wrong.
 - A dream is **idempotent**: running it twice changes almost nothing.
 
-### 3.3 Mental map — spreading activation
+#### Mental map — spreading activation
 
 - **Nodes** = topics/memories; **edges** = association strength.
 - An activated topic fires with activation `A`; it spreads to neighbors, each hop
@@ -143,16 +193,16 @@ top-k cosine search misses, and it terminates by construction.
 
 ---
 
-## 4. Existing substrate (what we using for now — maybe we need remake something better)
+### 3.4 Existing substrate (what we using for now — maybe we need remake something better)
 
-| Substrate | Role in this project | Status |
-|-----------|----------------------|--------|
-| `opencode-mem` | Archival memory: vector store + auto-capture + injection + compaction + user profile | ✅ already present |
-| `grill-me` | Design validation: relentless interview on plans/decisions until shared understanding is reached | ✅ already present |
-| `grill-with-docs` | Decision grounding: challenge against the domain model + update CONTEXT.md/ADRs inline as decisions crystallise | ✅ already present |
-| `taulukko-journal` | Episodic memory: append-only timestamped log | ✅ already present |
-| `context-inject` | Plugin with hooks to inject content in start session event or after compact session | ✅ already present |
-| `AGENTS.md` / `CONTEXT.md` / `[MEMORY]` block | Core memory: small, always-in-context rules (injected by inject plugin) | ✅ already present |
+| Substrate                                     | Role in this project                                                                                            | Status            |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `opencode-mem`                                | Archival memory: vector store + auto-capture + injection + compaction + user profile                            | ✅ already present |
+| `grill-me`                                    | Design validation: relentless interview on plans/decisions until shared understanding is reached                | ✅ already present |
+| `grill-with-docs`                             | Decision grounding: challenge against the domain model + update CONTEXT.md/ADRs inline as decisions crystallise | ✅ already present |
+| `taulukko-journal`                            | Episodic memory: append-only timestamped log                                                                    | ✅ already present |
+| `context-inject`                              | Plugin with hooks to inject content in start session event or after compact session                             | ✅ already present |
+| `AGENTS.md` / `CONTEXT.md` / `[MEMORY]` block | Core memory: small, always-in-context rules (injected by inject plugin)                                         | ✅ already present |
 
 `opencode-mem` already does **vectorized semantic search** (nomic-embed-text,
 768 dims) and already runs a primitive consolidation (`userProfileAnalysisInterval`).
@@ -160,7 +210,7 @@ The point of this project is to **extend** these, not to create them.
 
 ---
 
-## 5. MVP plan (cuts)
+### 3.5 MVP plan (cuts)
 
 - **Cut 1 (first, low risk, high value)** — tiers by tags/scopes + promotion rule;
   a `sleep` skill that runs dedupe/merge/synthesize on top of `opencode-mem`
@@ -173,7 +223,7 @@ The point of this project is to **extend** these, not to create them.
 
 ---
 
-## 6. Known risks
+### 3.6 Known risks
 
 1. **Dreams can pollute** — a wrong synthesis becomes a false "insight" injected
    into context. Mitigation: synthesized memories carry *low* injection weight +
@@ -186,11 +236,11 @@ The point of this project is to **extend** these, not to create them.
 
 ---
 
-## 7. Dictionary of jargon
+### 3.7 Dictionary of jargon
 
 Assumes no prior knowledge. Terms are grouped by theme.
 
-### Memory fundamentals
+#### Memory fundamentals
 
 - **Context window** — the fixed amount of text a model can attend to at once.
   Analogous to RAM: finite, expensive, volatile.
@@ -207,7 +257,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
   did"), e.g. the journal.
 - **Procedural memory** — "how to do things", e.g. skills.
 
-### Tiers and movement
+#### Tiers and movement
 
 - **Tier** — a level in the memory hierarchy (short / medium / long).
 - **Short-term memory** — the current session's working memory; lives in the
@@ -221,7 +271,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
 - **Demotion** — moving a memory to a *less durable* tier.
 - **Decay** — a memory's weight decreasing over time when it is not retrieved.
 
-### Vector search
+#### Vector search
 
 - **Embedding** — a vector (list of numbers) that represents the *meaning* of a
   piece of text.
@@ -231,7 +281,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
 - **Cosine similarity** — a measure of how alike two vectors are (1 = same
   direction, 0 = orthogonal). Used to rank "how similar".
 
-### Consolidation ("dreams")
+#### Consolidation ("dreams")
 
 - **Consolidation** — the process of reorganizing memory: deduplicate, merge, and
   abstract. Turns raw memory into *more useful* memory.
@@ -254,7 +304,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
 - **Idempotent** — an operation that gives the same result when run twice (a dream
   must be idempotent).
 
-### Mental map
+#### Mental map
 
 - **Mental map** — a graph of interconnected topics used to navigate and activate
   memory.
@@ -273,7 +323,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
 
 ---
 
-## 8. Relationship to project-generator
+### 3.8 Relationship to project-generator
 
 This is a **parallel** project. It starts standalone, then gets integrated back
 into `project-generator`'s OpenCode config (`global/opencode/`) once it is
