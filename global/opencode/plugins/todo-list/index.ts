@@ -533,7 +533,10 @@ export default {
           "an item; stable integer ids are assigned and reported); update — " +
           "change content/status/priority/depth of items addressed by `id`; " +
           "remove — delete items by `id`; clear — delete the entire list. " +
-          "Structure: set `depth` (0 = top level, 1 = child, …); do NOT " +
+          "Structure: before adding an item, check the existing list for a " +
+          "fitting parent — sub-steps should be nested (add with `after: " +
+          "<parent id>` and `depth: <parent depth + 1>`), not added as new " +
+          "roots. Set `depth` (0 = top level, 1 = child, …); do NOT " +
           "write numbers like `1)` in content — the hierarchical numbering " +
           "(1, 1.1, 1.1.1…) is generated automatically and renumbers itself " +
           "on insert/remove; a level jump is clamped and reported. Statuses: " +

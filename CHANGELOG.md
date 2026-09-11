@@ -3,6 +3,15 @@
 All notable changes to this repository are documented here.
 Newest on top.
 
+## [0.2.1] — 2026-09-11
+
+### Changed
+
+- Guidance (tool description + injected how-to): before adding an item, check
+  the existing list for a fitting **parent** and nest sub-steps
+  (`after: <parent id>` + `depth: <parent depth + 1>`) instead of defaulting
+  everything to the root.
+
 ## [0.2.0] — 2026-09-11
 
 ### Changed

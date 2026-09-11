@@ -1,6 +1,6 @@
 {
   "name": "@oesc/todo-list",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "OpenCode V2 plugin: session todo tool (`todo`) + live TUI sidebar panel",
