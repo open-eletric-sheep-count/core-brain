@@ -119,7 +119,6 @@ top-k cosine search misses, and it terminates by construction.
 | `opencode-mem` | Archival memory: vector store + auto-capture + injection + compaction + user profile | ✅ already present |
 | `grill-me` | Design validation: relentless interview on plans/decisions until shared understanding is reached | ✅ already present |
 | `grill-with-docs` | Decision grounding: challenge against the domain model + update CONTEXT.md/ADRs inline as decisions crystallise | ✅ already present |
-| `graphify` | The mental-map graph: persistent nodes/edges + communities + `query`/`path`/`explain` | ✅ already present |
 | `taulukko-journal` | Episodic memory: append-only timestamped log | ✅ already present |
 | `taulukko-inject` | Plugin with hooks to inject content in start session event or after compact session | ✅ already present |
 | `AGENTS.md` / `CONTEXT.md` / `[MEMORY]` block | Core memory: small, always-in-context rules (injected by inject plugin) | ✅ already present |
@@ -134,10 +133,10 @@ The point of this project is to **extend** these, not to create them.
 
 - **Cut 1 (first, low risk, high value)** — tiers by tags/scopes + promotion rule;
   a `sleep` skill that runs dedupe/merge/synthesize on top of `opencode-mem`
-  (scripting what the dashboard already does) and updates `graphify`. No
+  (scripting what the dashboard already does) and updates the mental map. No
   spreading activation yet.
 - **Cut 2** — the Go tool: spreading activation with decay + visited set +
-  threshold, wired on top of `graphify`; plus a CLI to access it.
+  threshold, wired on top of the mental-map store; plus a CLI to access it.
 - **Cut 3** — A/B test "with vs. without dreams"; tune thresholds; (then) read the
   LM Studio `persistent-memory` article and fold in anything applicable.
 

@@ -8,9 +8,12 @@ MVP plan in [README.md](README.md).
 
 ## Phase 0 — Spec (blocking, do not implement before this)
 
+- [ ] **0.0 — Evaluate [`troca-ferramenta.md`](docs/troca-ferramenta.md)** (memory-tool swap: `opencode-mem` → PLUR).
+  - Confirm what carries over and what is now stale (README §3.1/§4, Phase 1 references to `opencode-mem`).
+  - Decide which challenges (C1–C7: triggers, sleep/dreams, tiers, mental map, integration gaps, hygiene, doc sync) become **requirements** for the Phase 0 spec.
 - [ ] **0.1 — Run a `grill-me` session to produce the spec.**
   - Move Taulukko dependences for OESC tree.
-  - Document or recreate external dependences like graphfy or opencode-mem
+  - Document or recreate external dependences like opencode-mem
   - Decision tree to resolve:
     - **Tiers** — exact short/medium/long boundaries; the scopes/tags used; the
       promotion rule (N retrievals across M sessions) and the decay/demotion rule
@@ -39,7 +42,7 @@ MVP plan in [README.md](README.md).
   spec (evidence of reuse → promote; stale → decay/demote).
 - [ ] **1.3 — `sleep` skill.** Create `sleep` as an OpenCode skill that runs the
   four consolidation operations (dedupe/merge → synthesize → promote/demote →
-  reconcile `graphify`), with the termination and idempotency guards.
+  reconcile the mental map), with the termination and idempotency guards.
   - Reuse the existing dashboard operations (`Cleanup`, `AI Profile Cleanup`)
     but make them semantic and agent-driven.
 - [ ] **1.4 — Tests.** Acceptance criteria from the spec, plus: convergence
@@ -52,8 +55,8 @@ MVP plan in [README.md](README.md).
 
 - [ ] **2.1 — Go tool: spreading activation.** Deterministic BFS with decay
   factor, visited set, and activation threshold (no new database — operate on
-  top of `graphify`).
-- [ ] **2.2 — Wire to `graphify`.** Build/update nodes and edges from memory;
+  top of the chosen map store).
+- [ ] **2.2 — Wire the mental map.** Build/update nodes and edges from memory;
   expose `query`/`path`/`explain` for the map.
 - [ ] **2.3 — CLI.** A CLI to access the map and the memory from the agent/tools
   in a controlled way (per the `project-generator` TASKS note about a Go tool
