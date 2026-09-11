@@ -9,7 +9,7 @@ MVP plan in [README.md](README.md).
 ## Phase 0 — Spec (blocking, do not implement before this)
 
 - [ ] **0.0 — Evaluate [`troca-ferramenta.md`](docs/troca-ferramenta.md)** (memory-tool swap: `opencode-mem` → PLUR).
-  - Confirm what carries over and what is now stale (README §3.1/§4, Phase 1 references to `opencode-mem`).
+  - Confirm what carries over and what is now stale (README §3.3/§3.4, Phase 1 references to `opencode-mem`).
   - Decide which challenges (C1–C7: triggers, sleep/dreams, tiers, mental map, integration gaps, hygiene, doc sync) become **requirements** for the Phase 0 spec.
 - [ ] **0.1 — Run a `grill-me` session to produce the spec.**
   - Move Taulukko dependences for OESC tree.

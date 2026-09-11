@@ -1,0 +1,13 @@
+{
+  "logging": {
+    "enabled": true
+  },
+  "injections": {
+    "agents": {
+      "ORACLE": {
+        "session.created": ["TODO_TOOL_HOWTO.md"],
+        "session.compacted": ["TODO_TOOL_HOWTO.md"]
+      }
+    }
+  }
+}

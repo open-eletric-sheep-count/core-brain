@@ -1,12 +1,25 @@
 {
   "name": "@oesc/todo-list",
   "version": "0.2.1",
-  "private": true,
   "type": "module",
   "description": "OpenCode V2 plugin: session todo tool (`todo`) + live TUI sidebar panel",
+  "license": "MIT",
+  "keywords": ["opencode", "opencode-plugin", "todo", "tui"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-eletric-sheep-count/core-brain.git",
+    "directory": "global/opencode/plugins/todo-list"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./index.ts",
   "exports": {
     ".": "./index.ts",
     "./tui": "./tui.tsx"
+  },
+  "files": ["index.ts", "store.ts", "types.ts", "format.ts", "tui.tsx", "README.md"],
+  "scripts": {
+    "prepublishOnly": "node --input-type=module -e \"await import('./index.ts')\""
   }
 }

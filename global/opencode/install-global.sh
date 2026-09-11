@@ -56,8 +56,8 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
-if [ ! -d "$SRC/plugins/todo-list" ]; then
-  echo "AVISO: $SRC/plugins/todo-list não encontrado — rode todo-list/build.sh primeiro." >&2
+if [ ! -d "$SRC/plugins" ]; then
+  echo "AVISO: $SRC/plugins não encontrado — repositório incompleto?" >&2
 fi
 
 mkdir -p "$DST"

@@ -3,6 +3,29 @@
 All notable changes to this repository are documented here.
 Newest on top.
 
+## [0.3.0] — 2026-09-11
+
+### Changed
+
+- Plugin layout is now **single-folder**: each plugin lives entirely at
+  `global/opencode/plugins/<name>/` — source, distribution artifact and npm
+  package root in one folder; `check.sh` (import smoke check + typecheck)
+  replaces the old `build.sh` copy step. Applies to `todo-list` and
+  `context-inject`; the former top-level project folders are removed.
+
+### Added
+
+- `global/opencode/plugins/context-inject/` — `@oesc/context-inject` OpenCode
+  V2 plugin: injects
+  configured files into sessions at the true start (first admitted prompt) and
+  after a completed compaction, per agent (`injections.agents.<AGENT>`,
+  reserved `ALL` key); stateless semantics derived from the durable session
+  log; config via `options.configPath` or `<pluginDir>/config.json`.
+  Migrated from the internal `taulukko-inject-context` plugin (renamed;
+  site-specific defaults removed: neutral default log path, cleaned identity
+  strings, V1 legacy files dropped); npm-ready manifest
+  (`@oesc/context-inject`, `publishConfig` public, `files`).
+
 ## [0.2.1] — 2026-09-11
 
 ### Changed

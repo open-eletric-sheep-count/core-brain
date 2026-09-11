@@ -4,7 +4,7 @@
 // and a prompt hook that prepends at most ONE line per round when this
 // session's list is non-empty (spec Q6/Q15).
 //
-// Module shape (deliberate, same rationale as taulukko-inject-context): the
+// Module shape (deliberate, same rationale as context-inject): the
 // default export is a PLAIN OBJECT { id, setup } and NO runtime package is
 // imported — the V2 loader validates only the module shape, and a runtime
 // import could resolve up to a stale V1 package (a V1 `@opencode-ai/plugin`
@@ -588,7 +588,7 @@ export default {
     });
 
     // One line per round, only when the list is non-empty (spec Q6/Q15). The
-    // static API how-to lives in taulukko-inject-context, not here.
+    // static API how-to lives in context-inject, not here.
     const hookRegistration = await ctx.session.hook("prompt", async (event) => {
       const sessionID = event?.sessionID;
       if (typeof sessionID !== "string" || !sessionID) return;
