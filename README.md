@@ -6,12 +6,13 @@
 > asleep, i.e. the **sleep/consolidation ("dreams")** at the heart of the project.
 
 **OESC** aims to provide an **open-source AI framework for OpenCode**: a growing
-set of **skills**, **plugins**, and an **enhanced memory** for LLM agents —
-shipped as a complete suite and **prepared for OpenCode V2**
+set of **agents**, **skills**, **plugins**, and an **enhanced memory** for LLM
+agents — shipped as a complete suite and **prepared for OpenCode V2**
 ([`opencode2`](https://opencode.ai/v2/docs/)).
 
 Today the suite ships the two plugins below — **todo** (§1) and
-**context-inject** (§2); the **memory system** (§3) is the next chapter.
+**context-inject** (§2) — plus the **agent team** that runs the flows (§4); the
+**memory system** (§3) is the next chapter.
 
 ---
 
@@ -328,3 +329,34 @@ Assumes no prior knowledge. Terms are grouped by theme.
 This is a **parallel** project. It starts standalone, then gets integrated back
 into `project-generator`'s OpenCode config (`global/opencode/`) once it is
 proven. The origin is `project-generator/docs/TASKS.md` line ~145.
+
+---
+
+## 4. Agents — the OESC team
+
+The suite also ships the **agent definitions** (`global/opencode/agent/`) — the
+team that develops this project and runs its delivery flows. `ORACLE` is the
+**primary** agent; every other role is a **subagent**:
+
+| Agent | What it is for |
+|-------|----------------|
+| `ORACLE` | Writing assistant + task orchestrator and delivery coordinator — owns the flow menu, coordinates the delivery, the single channel to the USER |
+| `ARCHITECT` | Plans the task, produces the active spec, and validates final adherence |
+| `DEVELOPER` | Implements the task from the active spec and approved tests |
+| `TESTER` | Defines automated validation for the task from the active spec |
+| `DOCUMENTATION_WRITER` | Updates README, changelog, and documentation affected by the delivery |
+| `SECRETARY` | Email and scheduling assistant (via the Jarvis MCP tools) |
+| `BRAIN_STORM_PERSONA_BAD_GUY` | A New Brain Storm persona — the red-teamer who attacks assumptions and hunts failure modes |
+| `BRAIN_STORM_PERSONA_MARKETER` | A New Brain Storm persona — the marketer who sells value and defines the audience |
+| `BRAIN_STORM_PERSONA_MINIMALIST` | A New Brain Storm persona — the UX minimalist who strips screens to the essentials |
+| `BRAIN_STORM_PERSONA_NAME_MAKER` | A New Brain Storm persona — the identity poet who names and polishes every label |
+
+Most roles have an **`_EXTENDED` twin**: a thin pointer that loads the same
+definition at runtime and has **no fixed model** — it inherits the parent
+session's model (for environments where the default model is not available).
+
+The **flow helpers** (`global/opencode/helpers/`) carry the protocols: the ORACLE
+loads the matching `METHODOLOGY_*` file when a methodology is chosen (Tico and
+Teco Think, scrum team, ORACLE does it all, A New Brain Storm, Batman e Robin);
+the `SUBAGENT-*` files carry the mandatory subagent rules (e.g. the ORACLE is the
+single channel to the USER).

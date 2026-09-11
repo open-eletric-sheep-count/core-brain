@@ -25,6 +25,11 @@ Newest on top.
   site-specific defaults removed: neutral default log path, cleaned identity
   strings, V1 legacy files dropped); npm-ready manifest
   (`@oesc/context-inject`, `publishConfig` public, `files`).
+- `global/opencode/agent/` + `global/opencode/helpers/` — the OESC **agent
+  team** (ORACLE, ARCHITECT, DEVELOPER, TESTER, DOCUMENTATION_WRITER,
+  SECRETARY, the four Brain Storm personas, plus the `_EXTENDED` pointer
+  variants) and the flow/subagent helpers, migrated from the internal taulukko
+  config; README §4 documents each role.
 
 ## [0.2.1] — 2026-09-11
 
