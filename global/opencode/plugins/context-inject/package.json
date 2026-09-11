@@ -1,0 +1,27 @@
+{
+  "name": "@oesc/context-inject",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenCode V2 plugin: inject configured files into sessions (first prompt + after compaction), per agent",
+  "license": "MIT",
+  "keywords": ["opencode", "opencode-plugin", "context", "injection"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-eletric-sheep-count/core-brain.git",
+    "directory": "global/opencode/plugins/context-inject"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": ["index.ts", "README.md"],
+  "scripts": {
+    "prepublishOnly": "node --input-type=module -e \"await import('./index.ts')\""
+  },
+  "dependencies": {
+    "@opencode/plugin": "latest"
+  }
+}
