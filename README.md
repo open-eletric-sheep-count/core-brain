@@ -14,6 +14,37 @@ Config instead of building new storage from scratch.
 
 ---
 
+## Plugins & install (OpenCode suite)
+
+This repository also ships the **OESC plugin suite for OpenCode** — installed as a complete set, with **all plugins enabled by default**:
+
+| Plugin | What it does |
+|--------|--------------|
+| [`plugins/todo-list/`](global/opencode/plugins/todo-list/) — `@oesc/todo-list` | Session todo tool + live sidebar panel |
+| [`plugins/context-inject/`](global/opencode/plugins/context-inject/) — `@oesc/context-inject` | Injects configured files into sessions (first prompt + after compaction), per agent |
+
+Each plugin is **self-contained** under `global/opencode/plugins/<name>/` — source, distribution artifact and npm package root in the same folder (`check.sh` validates in place; no build/copy step).
+
+**Install — recommended (brings everything):**
+
+```bash
+git clone https://github.com/open-eletric-sheep-count/core-brain.git
+bash core-brain/global/opencode/install-global.sh
+```
+
+The script copies `global/opencode/.` into `~/.config/opencode/` (plugins are auto-discovered). Restart OpenCode afterwards; `opencode2 plugin list` shows the installed plugins.
+
+**Single plugin (npm), if you only want one:**
+
+```bash
+opencode2 plugin add @oesc/todo-list
+opencode2 plugin add @oesc/context-inject
+```
+
+See each plugin's README for configuration (e.g. `context-inject` needs a `configPath` when installed standalone).
+
+---
+
 ## 1. Intent
 
 Give an LLM agent a memory that is closer to a human's:
@@ -120,7 +151,7 @@ top-k cosine search misses, and it terminates by construction.
 | `grill-me` | Design validation: relentless interview on plans/decisions until shared understanding is reached | ✅ already present |
 | `grill-with-docs` | Decision grounding: challenge against the domain model + update CONTEXT.md/ADRs inline as decisions crystallise | ✅ already present |
 | `taulukko-journal` | Episodic memory: append-only timestamped log | ✅ already present |
-| `taulukko-inject` | Plugin with hooks to inject content in start session event or after compact session | ✅ already present |
+| `context-inject` | Plugin with hooks to inject content in start session event or after compact session | ✅ already present |
 | `AGENTS.md` / `CONTEXT.md` / `[MEMORY]` block | Core memory: small, always-in-context rules (injected by inject plugin) | ✅ already present |
 
 `opencode-mem` already does **vectorized semantic search** (nomic-embed-text,

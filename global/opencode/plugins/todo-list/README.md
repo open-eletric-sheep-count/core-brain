@@ -1,5 +1,7 @@
 # @oesc/todo-list
 
+> Part of the **OESC OpenCode plugin suite** (hub: [`core-brain`](https://github.com/open-eletric-sheep-count/core-brain) — installs everything). Standalone: `opencode2 plugin add @oesc/todo-list`.
+
 OpenCode V2 plugin: a real todo list the assistant maintains and the user
 watches live.
 
@@ -30,10 +32,10 @@ Single tool, `op` field (ids are stable integers, never reused):
 | -------- | ------------------------------------------------------------- |
 | `read`   | return the current list                                       |
 | `write`  | replace the whole list (`items`; empty array clears)           |
-| `add`    | append items (new ids assigned and reported)                   |
+| `add`    | append items (new ids assigned and reported)                  |
 | `update` | change `content`/`status`/`priority`/`depth` of items addressed by id |
 | `remove` | delete items by id                                             |
-| `clear`  | delete the entire list (storage file removed)                  |
+| `clear`  | delete the entire list (storage file removed)                 |
 
 Statuses: `pending` `[ ]` · `in_progress` `[~]` · `completed` `[x]` `(struck)` ·
 `cancelled` `[!]` `(struck)`. Priorities: `high` `medium` `low`.
@@ -44,15 +46,18 @@ never stored nor written in content (legacy prefixes are stripped); it
 renumbers automatically on add/remove, and `add` accepts **`after: <id>`** to
 insert right after an existing item.
 
-## Build
+## Check
 
 ```bash
-cd todo-list && ./build.sh
+cd global/opencode/plugins/todo-list && ./check.sh
 ```
 
-Typechecks (when `tsc` is available) and copies the artifact into
-`global/opencode/plugins/todo-list/` (in-place TS, no bundling — the loader
-loads TS directly; the host supplies OpenTUI and solid-js; zero runtime deps).
+Import smoke check (node native TS) + typecheck (uses `tsc` when available,
+else `npx typescript@5.9.2`). **Single-folder layout**: this directory is
+both the source and the distribution artifact — the installer copies it
+as-is (in-place TS, no bundling — the loader loads TS directly; the host
+supplies OpenTUI and solid-js; zero runtime deps). `npm publish` also runs
+from here (`files`: the flat `.ts`/`.tsx` entries + `README.md`).
 
 ## Install
 
@@ -65,28 +70,28 @@ Copies `global/opencode/.` into `~/.config/opencode/` (auto-discovery; no
 permission entries exist in the host `opencode.json` (global deny + ORACLE
 allow).
 
-## How-to injection (`taulukko-inject-context`)
+## How-to injection (`context-inject`)
 
 A static **how-to** (`TODO_TOOL_HOWTO.md`) is injected into sessions by the
-`taulukko-inject-context` plugin, so agents know the tool contract before the
-first call. (The dynamic one-line `TODO: …` reminder stays owned by this
-plugin's own prompt hook — spec §7/Q15. The sidebar panel and that reminder
-are agent-agnostic; scope applies to the static how-to and the tool
-permission.)
+`context-inject` plugin (core-brain `global/opencode/plugins/context-inject/`),
+so agents know the tool contract before the first call. (The dynamic one-line
+`TODO: …` reminder stays owned by this plugin's own prompt hook — spec §7/Q15.
+The sidebar panel and that reminder are agent-agnostic; scope applies to the
+static how-to and the tool permission.)
 
 **Current scope: `ORACLE` only** — matching the tool's permission model
 (global `todo` deny + ORACLE allow). It fires on `session.created` and
 `session.compacted`.
 
-Files (source of truth: the taulukko repo):
+Files (source of truth: `global/opencode/plugins/context-inject/` in this
+repo; shipped to the mirror by the installers):
 
-- `global/opencode/plugins/taulukko-inject-context/TODO_TOOL_HOWTO.md`
-- `global/opencode/plugins/taulukko-inject-context/config.json`:
+- `global/opencode/plugins/context-inject/TODO_TOOL_HOWTO.md`
+- `global/opencode/plugins/context-inject/config.json`:
 
 ```jsonc
 "injections": {
   "agents": {
-    "ALL": { "session.created": ["GOLDEN_RULES.md"], "session.compacted": [] },
     "ORACLE": {
       "session.created": ["TODO_TOOL_HOWTO.md"],
       "session.compacted": ["TODO_TOOL_HOWTO.md"]
@@ -96,7 +101,7 @@ Files (source of truth: the taulukko repo):
 ```
 
 After install, the file lives at
-`~/.config/opencode/plugins/taulukko-inject-context/TODO_TOOL_HOWTO.md`.
+`~/.config/opencode/plugins/context-inject/TODO_TOOL_HOWTO.md`.
 
 ### Expanding to other agents
 
@@ -121,7 +126,6 @@ Example — also enabling `DEVELOPER`:
 
 ```jsonc
 "agents": {
-  "ALL": { "session.created": ["GOLDEN_RULES.md"], "session.compacted": [] },
   "ORACLE": {
     "session.created": ["TODO_TOOL_HOWTO.md"],
     "session.compacted": ["TODO_TOOL_HOWTO.md"]
@@ -138,9 +142,9 @@ Example — also enabling `DEVELOPER`:
 1. **Execute context**: the shape of `execute(input, tool)`'s second argument
    is undocumented; the plugin resolves `sessionID` defensively and writes the
    observed keys once to `~/.local/share/opencode-todo/debug.log`. If the
-   resolved id is wrong, adjust `resolveSessionID` in `src/index.ts`.
+   resolved id is wrong, adjust `resolveSessionID` in `index.ts`.
 2. **Slot placement**: if the panel does not land below the MCP block, switch
-   `append: "sidebar.content"` to `append: "sidebar.footer"` in `src/tui.tsx`.
+   `append: "sidebar.content"` to `append: "sidebar.footer"` in `tui.tsx`.
 3. **Layout**: the panel root uses `flexShrink={0}`/`flexGrow={0}` and NO
    `scrollbox` — an inner scrollbox squeezed the MCP block above it (garbled
    rows) whenever the list existed (bug found 2026-09-11). Bounded scrolling

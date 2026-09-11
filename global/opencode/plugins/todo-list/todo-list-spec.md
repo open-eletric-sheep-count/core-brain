@@ -27,7 +27,7 @@ user can watch:
    Persistence is ours (plugin storage or our own JSON/SQLite).
 2. **`AGENTS.md` stays lean (SRP)** — it is re-injected every session, so it
    must not carry plugin contracts. The plugin's usage contract is injected
-   **separately** via the `taulukko-inject-context` plugin.
+   **separately** via the `context-inject` plugin.
 3. **Only the ORACLE operator** uses the list. Enforced by permissions
    (global deny + ORACLE allow), not by trusting the model.
 4. **One list per session** (keyed by `sessionID`), not per project.
@@ -62,7 +62,7 @@ Verified 2026-09-10 (see `../../docs/`… note: findings memo was first written 
 - **Local precedent (proven on this machine):** the loader validates only the
   module shape; a **plain-object default export** `{ id, setup(ctx) }` with
   **no runtime import** of the plugin package is what works (used by
-  `graphify`, `opencode-anti-loop`, `taulukko-inject-context`).
+  `graphify`, `opencode-anti-loop`, `context-inject`).
 
 ## 4. Decisions taken (grill 2026-09-10)
 
@@ -73,33 +73,34 @@ Verified 2026-09-10 (see `../../docs/`… note: findings memo was first written 
 | Q3 | Storage | **Our own JSON**, atomic write (`tmp` + rename). OC DB untouched |
 | Q4 | Tool surface | **Single tool `todo`** with an `op` field (context economy) |
 | Q5 | Data model | **Stable, never-reused numeric ids**; ops `write/add/update/remove/read` (+ complete clear); statuses `pending`/`in_progress`/`completed`/`cancelled` |
-| Q6 | Injection | **Minimum**: at most **one line per round**, only when the list **exists and is non-empty**. The API usage contract is injected via `taulukko-inject-context`, not per message. API supports **complete removal** |
+| Q6 | Injection | **Minimum**: at most **one line per round**, only when the list **exists and is non-empty**. The API usage contract is injected via `context-inject`, not per message. API supports **complete removal** |
 | Q7 | Ownership | **Only the ORACLE** operates the list; **one list per session** (by `sessionID`), not per project |
 | Q7b | Maintenance | New skill **`cleanup-todo-list`** — dry-run by default; deletes only *our* todo files whose session no longer exists (reads the session list from the V2 API) |
 | Q8 | Shape | **0.2 (2026-09-11), supersedes the original "flat list, enumeration in the text":** items carry an optional **`depth`** (0 = root, children +1); the hierarchical numbering `1)`, `1.1)`, `1.2)` is **derived** from order + depth at display time (tool dump + panel) — never stored, never written by the agent; legacy text prefixes are stripped on input and display. `add` accepts **`after: <id>`** to insert right after an item; level jumps are clamped and reported as issues |
 | Q9 | AGENTS.md | The whole `## Todo tracking (fixed standard)` section is **removed**. Nothing about the plugin goes in AGENTS.md |
-| Q9b | Plugin identity | `@oesc/todo-list`, folder `/media/gandb/workspace/oesc/core-brain/todo-list`, in **TypeScript** |
+| Q9b | Plugin identity | `@oesc/todo-list`, folder `/media/gandb/workspace/oesc/core-brain/global/opencode/plugins/todo-list`, in **TypeScript** |
 | Q10 | Module shape | **(b)** plain-object default export + **local structural types**, **zero runtime dependencies** |
-| Q11 | Source vs distribution | Plugin **source** at `core-brain/todo-list/` with a **`build.sh`** that typechecks and copies the artifact into **`../global`** (`global/opencode/plugins/todo-list/`). `install-global.sh` ships it → plugin is **auto-discovered** (no path in `opencode.json`). **In-place TS, no bundling** (`main` → `index.ts`; the loader loads TS in place — local precedent); **no `@opentui/*` peers** — the host bundles OpenTUI and supplies it to the TUI entry |
+| Q11 | Source vs distribution | **Single-folder**: the plugin lives entirely at **`global/opencode/plugins/todo-list/`** — source, distribution artifact and npm package root in one folder (one `package.json`; `main`/`exports` → `./index.ts`, `./tui` → `./tui.tsx`). **`check.sh`** validates in place (import smoke check + typecheck; no copy step). `install-global.sh` ships the tree → plugin is **auto-discovered** (no path in `opencode.json`). **In-place TS, no bundling** (the loader loads TS in place — local precedent); **no `@opentui/*` peers** — the host bundles OpenTUI and supplies it to the TUI entry |
 
 ## 5. Architecture (proposed)
 
 ```
 core-brain/
-  todo-list/                     # SOURCE project (TypeScript) — never installed directly
-    build.sh                     # typecheck + copy TS source into ../global (in-place TS, no bundling)
-    package.json                 # name "@oesc/todo-list"
-    src/index.ts                 # server: plain-object default { id, setup(ctx) }
-    src/tui.tsx                  # TUI: sidebar panel (JSX/Solid + OpenTUI)
-    src/store.ts                 # JSON persistence (atomic write) — our own storage only
-    src/types.ts                 # local structural types (no runtime deps)
-    README.md
   global/                        # DISTRIBUTION tree (shipped by install-global)
     opencode/
       install-global.sh          # copies global/opencode/. -> ~/.config/opencode/ (same as taulukko)
       install-vars.sh            # writes the migration env vars into the standard Linux user env
       plugins/
-        todo-list/               # TS artifact (typechecked + copied by todo-list/build.sh) -> auto-discovered
+        todo-list/               # SINGLE-FOLDER plugin (source + artifact + npm package root) -> auto-discovered
+          check.sh               # import smoke check + typecheck (in place; no copy — in-place TS, no bundling)
+          package.json           # name "@oesc/todo-list" (main/exports → ./index.ts, ./tui → ./tui.tsx)
+          index.ts               # server: plain-object default { id, setup(ctx) }
+          tui.tsx                # TUI: sidebar panel (JSX/Solid + OpenTUI)
+          store.ts               # JSON persistence (atomic write) — our own storage only
+          types.ts               # local structural types (no runtime deps)
+          format.ts              # display helpers (derived numbering)
+          README.md              # usage + tool contract summary
+          todo-list-spec.md      # this contract (Q1–Q15 decisions)
 ```
 
 ### 5.1 Server plugin (tools + injection)
@@ -159,7 +160,7 @@ Item:
   `TODO: 4 items, 1 in progress — update it if something changed.`
   (final wording to be improved).
 - Empty/removed list → nothing per round; the **API usage how-to** is injected
-  separately by `taulukko-inject-context` (a file), not in the message stream.
+  separately by `context-inject` (a file), not in the message stream.
 
 ## 8. AGENTS.md changes
 
@@ -198,13 +199,15 @@ Item:
 
 ## 11. Open questions — all resolved (grill 2026-09-10)
 
-- **Q11 — RESOLVED (grill follow-up)**: **in-place TS, no bundling** —
-  `build.sh` = typecheck + copy TS source into
-  `core-brain/global/opencode/plugins/todo-list/` (`main` → `index.ts`; the
-  loader loads TS in place, proven by local precedent); **no `@opentui/*`
-  peers** — the host bundles OpenTUI and supplies it to the TUI entry. The
-  spike must still validate: (a) in-place loading of `tui.tsx` JSX; (b) that
-  the host actually supplies OpenTUI to the TUI entry.
+- **Q11 — RESOLVED (grill follow-up; layout updated 2026-09-11)**: **in-place
+  TS, no bundling** — the plugin lives entirely at
+  `core-brain/global/opencode/plugins/todo-list/` (single-folder: source +
+  artifact + npm package root; `check.sh` = import smoke check + typecheck, no
+  copy; `main`/`exports` → `./index.ts`, `./tui` → `./tui.tsx`; the loader
+  loads TS in place, proven by local precedent); **no `@opentui/*` peers** —
+  the host bundles OpenTUI and supplies it to the TUI entry. The spike must
+  still validate: (a) in-place loading of `tui.tsx` JSX; (b) that the host
+  actually supplies OpenTUI to the TUI entry.
 - **Q12 — RESOLVED**: glyphs `[ ]` pending, `[~]` in progress, `[x]`
   completed, `[!]` cancelled; `completed` + `cancelled` struck through
   (OpenTUI strikethrough support confirmed in the host binary); all items
@@ -219,8 +222,8 @@ Item:
   Fallback slot: `sidebar.footer`.
 - **Q15 — RESOLVED**: split by content — the **dynamic one-line-per-round**
   injection is owned by the plugin's own `ctx.session.hook('prompt')`
-  (prepending, the same mechanism `taulukko-inject-context` uses); the
-  **static API how-to file** is injected via `taulukko-inject-context`
+  (prepending, the same mechanism `context-inject` uses); the
+  **static API how-to file** is injected via `context-inject`
   config. Each owner handles one content kind → no duplication.
 
 ## 12. Next steps
@@ -232,7 +235,7 @@ Item:
 4. Add the `plugins[]` entry and the `todo` permissions in the taulukko
    `global/opencode/opencode.json`.
 5. Remove the AGENTS.md section and fix the two skills.
-6. Add the `taulukko-inject-context` contract file.
+6. Add the `context-inject` contract file.
 7. Create the `cleanup-todo-list` skill.
 8. Create `core-brain/global/opencode/install-global.sh` + `install-vars.sh`;
    wire taulukko's `install-global.sh` to call core-brain's.

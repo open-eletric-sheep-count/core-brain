@@ -1,8 +1,9 @@
 // shims.d.ts — type-only ambient shims so `tsc -p .` passes without
-// @types/node and without the host's runtime packages. This file is NEVER
-// copied to the distribution folder (not in build.sh's copy list); the real
-// contracts belong to the host — these declarations exist purely for local
-// type checking and are intentionally permissive.
+// @types/node and without the host's runtime packages. Dev-time metadata:
+// the installer copies this folder as-is, and `npm publish` excludes it via
+// package.json `files`; the real contracts belong to the host — these
+// declarations exist purely for local type checking and are intentionally
+// permissive.
 
 declare module "node:fs" {
   export function readFileSync(path: string, encoding: string): string;
