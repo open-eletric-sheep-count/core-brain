@@ -6,6 +6,12 @@ MVP plan in [README.md](README.md).
 
 ---
 
+## Suite — agents & templates
+
+- [ ] **1 — Template markers + user templates folder** — add a template mechanism for the agent surface: template markers (placeholders) in `AGENTS.md` and in the agent definitions (`agent/*.md`), plus a **templates folder** where the user can change **what gets injected into the agents and into `AGENTS.md`**. Goal: personalizations (e.g. a personalized `SECRETARY`) live in the user's templates — **without editing the git-shipped templates**, surviving reinstalls/updates.
+
+---
+
 ## Phase 0 — Spec (blocking, do not implement before this)
 
 - [ ] **0.0 — Evaluate [`troca-ferramenta.md`](docs/troca-ferramenta.md)** (memory-tool swap: `opencode-mem` → PLUR).
@@ -72,4 +78,4 @@ MVP plan in [README.md](README.md).
   injection weight) from the A/B results.
 - [ ] **3.3 — Integrate back.** Port the proven pieces into
   `project-generator`'s `global/opencode/` config and update its documentation
-  and CHANGELOG.
+  and CHANGELOG. 

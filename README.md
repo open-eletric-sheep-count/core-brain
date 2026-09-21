@@ -345,7 +345,6 @@ team that develops this project and runs its delivery flows. `ORACLE` is the
 | `DEVELOPER` | Implements the task from the active spec and approved tests |
 | `TESTER` | Defines automated validation for the task from the active spec |
 | `DOCUMENTATION_WRITER` | Updates README, changelog, and documentation affected by the delivery |
-| `SECRETARY` | Email and scheduling assistant (via the Jarvis MCP tools) |
 | `BRAIN_STORM_PERSONA_BAD_GUY` | A New Brain Storm persona — the red-teamer who attacks assumptions and hunts failure modes |
 | `BRAIN_STORM_PERSONA_MARKETER` | A New Brain Storm persona — the marketer who sells value and defines the audience |
 | `BRAIN_STORM_PERSONA_MINIMALIST` | A New Brain Storm persona — the UX minimalist who strips screens to the essentials |
