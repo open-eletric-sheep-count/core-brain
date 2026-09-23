@@ -1,8 +1,17 @@
 // todo-list — OpenCode V2 plugin, server entry (spec: todo-list-spec.md).
 //
 // Registers the single `todo` tool (incremental ops over one list per session)
-// and a prompt hook that prepends at most ONE line per round when this
-// session's list is non-empty (spec Q6/Q15).
+// and a context hook that adds at most ONE reminder line to the system block
+// while this session's list is non-empty (spec Q6/Q15).
+//
+// 0.2.2: the reminder is delivered through `ctx.session.hook("context")` and
+// `event.system` — NEVER by editing `event.prompt.text`. The prompt hook's text
+// edits "become the canonical persisted user input" (host docs, quoted in
+// context-inject), so prepending the line there glued it to the USER's own
+// message and the transcript read as if the USER had typed
+// "TODO: 12 items — update it if something changed." (measured in the live
+// sessions of 2026-09-23). The system block is rebuilt by the host for every
+// model request, so the reminder can never accumulate in the history.
 //
 // Module shape (deliberate, same rationale as context-inject): the
 // default export is a PLAIN OBJECT { id, setup } and NO runtime package is
@@ -56,9 +65,9 @@ interface ToolEditorLike {
   add(tool: ToolInfoLike): void;
 }
 
-interface PromptHookEvent {
+interface ContextHookEvent {
   readonly sessionID: string;
-  prompt: { text?: unknown };
+  system: Array<{ type: "text"; text: string }>;
 }
 
 interface TodoPluginContext {
@@ -69,8 +78,8 @@ interface TodoPluginContext {
   };
   session: {
     hook(
-      name: "prompt",
-      callback: (event: PromptHookEvent) => void | Promise<void>,
+      name: "context",
+      callback: (event: ContextHookEvent) => void | Promise<void>,
     ): Promise<Registration>;
   };
 }
@@ -587,9 +596,10 @@ export default {
       });
     });
 
-    // One line per round, only when the list is non-empty (spec Q6/Q15). The
-    // static API how-to lives in context-inject, not here.
-    const hookRegistration = await ctx.session.hook("prompt", async (event) => {
+    // ONE reminder line while the list is non-empty (spec Q6/Q15), delivered as
+    // system context — never by editing the USER's prompt text (0.2.2, see the
+    // module header). The static API how-to lives in context-inject, not here.
+    const hookRegistration = await ctx.session.hook("context", async (event) => {
       const sessionID = event?.sessionID;
       if (typeof sessionID !== "string" || !sessionID) return;
       // Remember for tool calls whose second argument does not carry the id.
@@ -605,12 +615,15 @@ export default {
         const line =
           `TODO: ${total} item${total === 1 ? "" : "s"}${suffix} — ` +
           `update it if something changed.`;
-        const base = typeof event.prompt?.text === "string" ? event.prompt.text : "";
-        const separator = base.trim() ? "\n\n" : "";
-        event.prompt.text = `${line}${separator}${base}`;
+        // The host rebuilds `system` for every model request, so pushing here
+        // never accumulates in the history; a runtime that hands over no array
+        // is simply skipped.
+        if (Array.isArray(event?.system)) {
+          event.system.push({ type: "text", text: line });
+        }
       } catch (e) {
         // The hook must never break prompt admission.
-        console.error(`${LOG_TAG} prompt hook failed:`, e);
+        console.error(`${LOG_TAG} context hook failed:`, e);
       }
     });
 

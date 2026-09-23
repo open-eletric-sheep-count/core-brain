@@ -49,6 +49,25 @@ Newest on top.
   the SGLang abort semantics (no session scope; an abort returns an empty body,
   so it confirms nothing).
 
+### Fixed
+
+- **`@oesc/todo-list` 0.2.2 — o lembrete `TODO: …` deixa de falar na voz do USER**
+  (USER, 2026-09-23; `global/opencode/plugins/todo-list/index.ts`, `todo-list-spec.md`
+  Q6/§5.1/§7/Q15, `README.md`): o plugin entregava o lembrete editando
+  `event.prompt.text` no hook `prompt` — e a documentação do host diz, textualmente,
+  que as edições desse hook **"become the canonical persisted user input"**. Resultado
+  medido nas sessões reais: a linha `TODO: 12 items — update it if something changed.`
+  ficava **colada à mensagem do USER**, e o transcript lia-se como se o USER a tivesse
+  escrito. A entrega passa a ser **contexto de sistema**: `ctx.session.hook("context")`
+  → `event.system.push({type:"text", text: linha})` (o bloco `system` é reconstruído
+  pelo host a cada pedido ao modelo, portanto **nunca acumula** no histórico). A linha
+  que dispara o aviso mantém-se intacta (uma só, apenas com lista não vazia; guarda
+  `Array.isArray(event?.system)` para runtimes degradados, e o hook continua a nunca
+  quebrar a admissão do prompt). É o mesmo defeito de família do
+  `opencode-anti-loop` 0.3.6 (que usava `ctx.session.prompt`) — corrigido no mesmo dia.
+  **Falta a activação no espelho** (`./src/install-global.sh` + `opencode service restart`),
+  que é passo do USER.
+
 ### Changed
 
 - **Tico&Teco: o ARCHITECT entrega o plano ao ORACLE, e o debate passa a viver em `docs/forum.md`** (USER, 2026-09-20; `helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, passo 3): no motor local (SGLang) o ARCHITECT já não pode lançar o DEVELOPER — profundidade <= 1, imposta pelo plugin `sglang-guard` —, então o ORACLE lança o DEVELOPER com o plano do ARCHITECT, **um agente de cada vez**, e a conversa ARCHITECT ↔ DEVELOPER viaja por **`docs/forum.md`**: aberto NOVO no início de **cada tarefa** (o anterior é arquivado como `docs/forum-<AAAAMMDD-HHMM>.md`), com cabeçalho que identifica a tarefa, *append-only* daí em diante, uma entrada por agente com `## <AGENTE> — <AAAA-MM-DD HH:MM>`, e **entradas de duas tarefas no mesmo arquivo são um defeito**. O ORACLE relay só o caminho (nunca texto colado — regras 13/14) e o ARCHITECT mantém a autoridade (comanda, revê, reprova). Em provider remoto a chamada direta ARCHITECT → DEVELOPER mantém-se como estava; o forum continua a ser o registo.

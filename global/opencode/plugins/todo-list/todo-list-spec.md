@@ -73,7 +73,7 @@ Verified 2026-09-10 (see `../../docs/`… note: findings memo was first written 
 | Q3 | Storage | **Our own JSON**, atomic write (`tmp` + rename). OC DB untouched |
 | Q4 | Tool surface | **Single tool `todo`** with an `op` field (context economy) |
 | Q5 | Data model | **Stable, never-reused numeric ids**; ops `write/add/update/remove/read` (+ complete clear); statuses `pending`/`in_progress`/`completed`/`cancelled` |
-| Q6 | Injection | **Minimum**: at most **one line per round**, only when the list **exists and is non-empty**. The API usage contract is injected via `context-inject`, not per message. API supports **complete removal** |
+| Q6 | Injection | **Minimum**: at most **one reminder line**, only when the list **exists and is non-empty**, delivered as **system context** (`ctx.session.hook("context")` → `event.system`) — **never** by editing the USER's prompt text (0.2.2; that edit became the canonical user input and glued the reminder to the USER's own words). The API usage contract is injected via `context-inject`, not per message. API supports **complete removal** |
 | Q7 | Ownership | **Only the ORACLE** operates the list; **one list per session** (by `sessionID`), not per project |
 | Q7b | Maintenance | New skill **`cleanup-todo-list`** — dry-run by default; deletes only *our* todo files whose session no longer exists (reads the session list from the V2 API) |
 | Q8 | Shape | **0.2 (2026-09-11), supersedes the original "flat list, enumeration in the text":** items carry an optional **`depth`** (0 = root, children +1); the hierarchical numbering `1)`, `1.1)`, `1.2)` is **derived** from order + depth at display time (tool dump + panel) — never stored, never written by the agent; legacy text prefixes are stripped on input and display. `add` accepts **`after: <id>`** to insert right after an item; level jumps are clamped and reported as issues |
@@ -106,7 +106,10 @@ core-brain/
 ### 5.1 Server plugin (tools + injection)
 - Registers the single `todo` tool.
 - Persists per-session lists as JSON (Q3/Q7).
-- Injects at most one line per round when the list is non-empty (Q6).
+- Adds at most **one reminder line** to the **system context** while the list is
+  non-empty (Q6). 0.2.2 moved it off the prompt text: a `prompt`-hook edit
+  becomes the canonical persisted user input, so the reminder used to appear as
+  if the USER had typed it.
 
 ### 5.2 TUI plugin (panel)
 - Renders the current session's list in the sidebar via `context.ui.slot`
@@ -156,10 +159,11 @@ Item:
 
 ## 7. Injection contract (draft)
 
-- Non-empty list → **one line** per round, e.g.
-  `TODO: 4 items, 1 in progress — update it if something changed.`
-  (final wording to be improved).
-- Empty/removed list → nothing per round; the **API usage how-to** is injected
+- Non-empty list → **one reminder line**, e.g.
+  `TODO: 4 items, 1 in progress — update it if something changed.`, pushed into
+  the **system block** of the model request (`event.system`), not into the
+  message stream and never into the USER's prompt text.
+- Empty/removed list → nothing; the **API usage how-to** is injected
   separately by `context-inject` (a file), not in the message stream.
 
 ## 8. AGENTS.md changes
@@ -220,11 +224,15 @@ Item:
   screenshot the sidebar and verify by vision that the panel lands **below
   the MCP block**, that JSX renders in place, and that overflow scrolls.
   Fallback slot: `sidebar.footer`.
-- **Q15 — RESOLVED**: split by content — the **dynamic one-line-per-round**
-  injection is owned by the plugin's own `ctx.session.hook('prompt')`
-  (prepending, the same mechanism `context-inject` uses); the
-  **static API how-to file** is injected via `context-inject`
-  config. Each owner handles one content kind → no duplication.
+- **Q15 — RESOLVED (revised 2026-09-23, v0.2.2)**: split by content — the
+  **dynamic one-line reminder** is owned by the plugin's own
+  `ctx.session.hook('context')`, which pushes one line into `event.system`
+  (system block, rebuilt by the host per model request — never accumulates);
+  the **static API how-to file** is injected via `context-inject` config. Each
+  owner handles one content kind → no duplication. The earlier choice of
+  `ctx.session.hook('prompt')` was **withdrawn**: a prompt-hook edit becomes the
+  canonical persisted user input, so the reminder was glued to the USER's own
+  message in the transcript (defect measured 2026-09-23).
 
 ## 12. Next steps
 

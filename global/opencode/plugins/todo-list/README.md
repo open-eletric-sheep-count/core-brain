@@ -5,9 +5,9 @@
 OpenCode V2 plugin: a real todo list the assistant maintains and the user
 watches live.
 
-- **Server entry** (`index.ts`): registers the single `todo` tool and a prompt
-  hook that injects **at most one line per round**, only when the session's
-  list is non-empty.
+- **Server entry** (`index.ts`): registers the single `todo` tool and a context
+  hook that adds **at most one reminder line** to the **system block** while the
+  session's list is non-empty (never to the USER's prompt text, v0.2.2).
 - **TUI entry** (`tui.tsx`): live panel in the sidebar (`sidebar.content`,
   below the MCP block) showing the current session's list.
 
@@ -75,7 +75,9 @@ allow).
 A static **how-to** (`TODO_TOOL_HOWTO.md`) is injected into sessions by the
 `context-inject` plugin (core-brain `global/opencode/plugins/context-inject/`),
 so agents know the tool contract before the first call. (The dynamic one-line
-`TODO: …` reminder stays owned by this plugin's own prompt hook — spec §7/Q15.
+`TODO: …` reminder stays owned by this plugin's own **context hook**
+(`event.system`, v0.2.2 — it was moved off the prompt text so it can never look
+like the USER's own words) — spec §7/Q15.
 The sidebar panel and that reminder are agent-agnostic; scope applies to the
 static how-to and the tool permission.)
 
