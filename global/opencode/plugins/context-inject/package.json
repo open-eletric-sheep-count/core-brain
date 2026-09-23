@@ -1,6 +1,6 @@
 {
   "name": "@oesc/context-inject",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "OpenCode V2 plugin: inject configured files into sessions (first prompt + after compaction), per agent",
   "license": "MIT",

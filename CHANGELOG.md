@@ -51,6 +51,20 @@ Newest on top.
 
 ### Fixed
 
+- **`@oesc/context-inject` 0.1.1 — os HOWTOs deixam de ser prependidos à mensagem do USER**
+  (USER, 2026-09-23; `global/opencode/plugins/context-inject/index.ts`, `package.json`):
+  o plugin entregava o conteúdo de `TODO_TOOL_HOWTO.md` + `LAUNCH_LEDGER_HOWTO.md` (agente
+  ORACLE, eventos `session.created` e `session.compacted`) escrevendo no draft mutável
+  `event.prompt.text` — que a documentação do host descreve como o input canónico do USER —
+  e o conteúdo aparecia **colado à frente da mensagem do USER** numa sessão nova e, de novo,
+  após cada compactação. A entrega passa por **mensagem durável `synthetic`**
+  (`ctx.session.synthetic({ sessionID, text })`, o mesmo mecanismo do `opencode-anti-loop`
+  0.3.6): fora da voz do USER, persistida no log e sobrevivente à compactação. O prepend
+  fica como **fallback legado** para um runtime sem essa superfície (logado como
+  `prompt prepend fallback`), e o passo stateless mantém-se — `synthetic` não conta como
+  user activity no scan da janela pós-compactação, logo as duas regras (`isFirstPrompt`,
+  `pendingCompactionWindow`) não mudam. Verificação: `bash check.sh` (import smoke nativo
+  TS + typecheck `tsc`) → **All checks passed for: context-inject**.
 - **`@oesc/todo-list` 0.2.2 — o lembrete `TODO: …` deixa de falar na voz do USER**
   (USER, 2026-09-23; `global/opencode/plugins/todo-list/index.ts`, `todo-list-spec.md`
   Q6/§5.1/§7/Q15, `README.md`): o plugin entregava o lembrete editando

@@ -13,10 +13,13 @@
 // runtime import could resolve up to a stale V1 package and fail every load.
 // The ctx surface used is declared structurally below.
 //
-// V2 semantics: ctx.session.hook("prompt") runs once per admitted user prompt,
-// with a mutable draft (event.prompt.text). File contents are PREPENDED to
-// the prompt text (content first, user text after), instead of being pushed
-// as a separate prompt message.
+// V2 semantics: ctx.session.hook("prompt") runs once per admitted user prompt.
+// Delivery (0.1.1): the file contents are sent as a DURABLE SYNTHETIC message
+// (ctx.session.synthetic -> transcript type "synthetic"), NOT prepended to the
+// prompt text. The prompt draft is never touched, so the injection can no
+// longer appear inside the USER's own message; the content still persists in
+// the durable log and survives compaction. Fallback for a runtime without
+// session.synthetic: the legacy prepend to event.prompt.text.
 //
 // STATELESS SEMANTICS (fix 2026-09-06): every decision is derived from the
 // DURABLE session log (ctx.session.context) — never from in-memory
@@ -32,6 +35,9 @@
 //     the in-flight prompt is durably admitted, so the first post-compaction
 //     prompt sees exactly that state; once admitted, the condition can never
 //     hold again for the same compaction — across restarts too.
+// 0.1.1 note: the synthetic delivery does not change either rule — a synthetic
+// message is NOT user activity in the scan below, so the open post-compaction
+// window still closes on the next admitted prompt exactly as before.
 // Both checks run on ONE session-log read per prompt; the agent lookup adds
 // one session read, and only when an injection decision is actually possible.
 //
@@ -77,6 +83,10 @@ interface InjectContextPluginContext {
       name: "prompt",
       callback: (event: PromptHookEvent) => void | Promise<void>,
     ): Promise<HookRegistration>;
+    // Deliver a message in the transcript as type "synthetic" (V2 native
+    // surface; same call the anti-loop 0.3.6 uses). Optional: older runtimes
+    // may not expose it — the caller falls back to prepending the prompt text.
+    synthetic?(input: { sessionID: string; text: string }): Promise<unknown>;
     context(input: { sessionID: string }): Promise<unknown>;
     // "Read a session" (V2 plugin docs: ctx.session.get). Used to resolve the
     // session's agent for per-agent file selection; the result shape is
@@ -299,7 +309,40 @@ function buildInjectionBlock(
   return blocks.join("\n\n");
 }
 
-/** Prepend `prefix` to the user prompt text; returns the new text. */
+/**
+ * Deliver an injection block (0.1.1 — preferred): as a DURABLE SYNTHETIC
+ * message (transcript type "synthetic"), so the content never appears inside
+ * the USER's own message. Falls back to the legacy prompt prepend when the
+ * runtime does not expose session.synthetic, or when the call fails.
+ */
+async function deliverInjection(
+  ctx: InjectContextPluginContext,
+  event: PromptHookEvent,
+  block: string,
+  what: string,
+  sessionID: string,
+  println: (m: string) => void,
+): Promise<void> {
+  if (!block) return;
+  if (typeof ctx.session.synthetic === "function") {
+    try {
+      await ctx.session.synthetic({ sessionID, text: block });
+      println(`${what}: delivered as synthetic message in session ${sessionID}`);
+      return;
+    } catch (e) {
+      println(
+        `${what}: synthetic delivery failed (${JSON.stringify(e)}) — falling back to prompt prepend`,
+      );
+    }
+  } else {
+    println(
+      `${what}: ctx.session.synthetic unavailable — falling back to prompt prepend`,
+    );
+  }
+  prependToPromptText(event, block, what, sessionID, println);
+}
+
+/** LEGACY (0.1.0 fallback): prepend `prefix` to the user prompt text. */
 function prependToPromptText(
   event: PromptHookEvent,
   prefix: string,
@@ -311,7 +354,7 @@ function prependToPromptText(
   const base = typeof event.prompt?.text === "string" ? event.prompt.text : "";
   const sep = base.trim() ? "\n\n" : "";
   event.prompt.text = `${prefix}${sep}${base}`;
-  println(`${what}: injected into session ${sessionID}`);
+  println(`${what}: injected into session ${sessionID} (prompt prepend fallback)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -500,7 +543,8 @@ export default {
             sessionID,
           );
           if (block) {
-            prependToPromptText(
+            await deliverInjection(
+              ctx,
               event,
               block,
               "Injected creation files",
@@ -530,7 +574,8 @@ export default {
             sessionID,
           );
           if (block) {
-            prependToPromptText(
+            await deliverInjection(
+              ctx,
               event,
               block,
               "Re-injected files after compaction",
