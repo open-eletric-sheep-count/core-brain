@@ -15,5 +15,6 @@ Batman (ORACLE) owns the **WHAT** — scope, contracts, allowed areas, acceptanc
 - Batman **re-executes** the acceptance verification with his own hands (AGENTS.md rule 17 — nobody certifies their own work).
 - On 3 failed attempts Batman **escalates to the USER** and does **not** take over — the take-over hatch of rule 5 is closed in this flow.
 - In this flow Robin is the **`DEVELOPER` agent in Mode B** — see the "Two operating modes" block in `agent/DEVELOPER.md`.
+- **O fórum (`bot-forum`):** no arranque, Batman abre `.bot-forum/forum-<o SEU session id>.md` (skill `bot-forum`) e escreve o caminho em **cada** brief. Robin não lança subagentes (regra 19) e só fala ao encerrar o turno — o que ele não conseguir correr vai para o fórum como `[REQ]` (**o quê · porque · output esperado**) e o Batman (ou outro agente capaz) responde `[ANS] ref <autor+hora>`; a entrega do Robin também se apensa ao fórum.
 
 **Nota de manutenção:** este arquivo está em `global/opencode/helpers/` (FONTE — edite sempre aqui) e é instalado em `~/.config/opencode/helpers/` pelo `./src/install-global.sh`; nunca edite o mirror (regra 8).
