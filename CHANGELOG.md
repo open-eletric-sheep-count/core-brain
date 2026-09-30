@@ -7,6 +7,31 @@ Newest on top.
 
 ### Added
 
+- **`DEVELOPER` gains Mode B (Batman e Robin) with precedence over the Scrum mode — the
+  low autonomy was not only the flow skill's fault** (`global/opencode/agent/DEVELOPER.md`,
+  `global/opencode/helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`,
+  `global/opencode/agent/ORACLE.md` item 5; USER, 2026-09-30, after the `batman-e-robin` v2
+  rewrite): the agent prompt carried Scrum absolutes that **contradicted** Batman e Robin
+  (*"Never contact the ORACLE directly"*, a TESTER that does not exist in this flow, a handoff
+  to the USER) — while the flow forbids all three. `DEVELOPER` now resolves its **operating
+  mode BEFORE anything else** (unknown mode → STOP and report, never guess): **Mode A = Scrum
+  (default)** with the pre-existing rules now explicitly scoped `(Mode A)`, and **Mode B =
+  Batman e Robin**, which **takes precedence and REPLACES** them — the brief is a contract from
+  the ORACLE/Batman; the ORACLE is the only interlocutor (the "never contact the ORACLE" rule is
+  **Mode A ONLY**); there is no TESTER and no ARCHITECT ("start by validating that tests fail"
+  does not apply); the developer never hands off to the USER; he **owns the HOW** and stops
+  **only** to cross the WHAT, on an ambiguous/impossible criterion, or on an unpredicted
+  destructive action — any other HOW doubt he decides and records; the report carries files
+  touched · HOW decisions · commands + digest · self-check per criterion · the visual line; he
+  loads the `batman-e-robin` skill and states `SKILL LOADED: batman-e-robin`. Governance in
+  Mode B reads only the generic `SUBAGENT-HELPER.md` (the SCRUM helper does not apply). The
+  persona keeps arguing with evidence, now with ARCHITECT → Batman. `DEVELOPER_EXTENDED`
+  inherits automatically (it is a pointer to the canonical file). The helper states the WHAT/HOW
+  split, serial dispatch, Batman's re-execution of the acceptance criteria and the closed
+  takeover. The ORACLE menu line dropped *"executes the precise mechanical brief"* for **"owns
+  the WHAT … does NOT implement; the DEVELOPER (Robin, Mode B) owns the HOW"**. Executed
+  evidence: none — config/prompt change; proof is the mirror apply (below) plus a real run of
+  the flow. Activation: mirror via `./src/install-global.sh` (USER).
 - **ORACLE: "Skill duty" — uma skill nomeada pelo USER é obrigatória, e é carregada
   antes de qualquer outro trabalho** (`global/opencode/agent/ORACLE.md`, bloco
   `<IMPORTANT>` no **topo** do prompt + bullet nas `Rules`; USER, 2026-09-20): em
