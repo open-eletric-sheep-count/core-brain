@@ -90,11 +90,16 @@ Legend — **Host:** `P` = plugin tool `core_memory` (identity from the session)
 | 8 | `plur_doctor` | `core_doctor` **(new, G3)** | **M** | `{}` | `{ ok, checks: [{ id, ok, detail }] }` | see AC6 for the check list |
 | 9 | `plur_receipt` | `core_receipt` **(new, G3)** | **M** | `{ ns?, days? }` | `{ stored, retrieved, hits, byNamespace[] }` | read-only counters |
 | 10 | `plur_admin` | `core_admin` **(new, G3)** | **M** | `{ action, args }` | dispatcher (one validation path, one error shape) | maintenance: `purge`, `reindex`, `export`, `import`, `compact` |
-| 11 | `plur_packs_*` | **out of scope** | — | — | — | PLUR-specific feature; no equivalent is promised (§14) |
-| 12 | `plur_tensions_purge` | `core_admin { action: "purge" }` | **M** | — | PLUR-specific concept → folded into the admin purge |
-| 13 | the 33 admin ops | **only the 5 named above** (`purge`, `reindex`, `export`, `import`, `compact`) | **M** | — | the rest are PLUR-store features (sync, remote stores, scopes, provenance, profiles) with no core-brain counterpart and no requirement |
+| 11 | `plur_capture` | `core_memory op:"episode"` **(new — the episodic timeline)** | **P** | `{ summary, tags?, sessionId? }` | `{ ok, id, ns }` | write matrix §6.2 |
+| 12 | `plur_timeline` | `core_memory op:"timeline"` / MCP `core_timeline` **(new — the episodic timeline)** | **P** (own view) · **M** (global, admin) | `{ query?, since?, until?, tags?, limit? }` | `{ results: Episode[], scanned[] }` | read matrix §6.1; the MCP view reads `global` only |
+| 13 | `plur_episode_to_engram` | `core_memory op:"promote"` **(new — the episodic timeline)** | **P** | `{ episodeId, text, tags? }` | `{ ok, episodeId, memoryId }` | the episode must be readable by the caller; the memory follows §6.2; the episode gains the id in `engramIds` |
+| 14 | `plur_packs_*` | **out of scope** | — | — | — | PLUR-specific feature; no equivalent is promised (§14) |
+| 15 | `plur_tensions_purge` | `core_admin { action: "purge" }` | **M** | — | PLUR-specific concept → folded into the admin purge |
+| 16 | the 33 admin ops | **only the named ones** (`purge`, `reindex`, `export`, `import`, `compact`, plus the three episodic ops above) | **M** | — | the rest are PLUR-store features (sync, remote stores, scopes, provenance, profiles) with no core-brain counterpart and no requirement |
 
-**Surface size:** 4 plugin ops (2 existing + 2 new) + 5 MCP tools. Deliberately smaller than PLUR's 12+33: every tool kept is one that closes a stated gap in §0.
+**The episodic timeline** (rows 11–13) is specified in full — object, storage, isolation, the migration of the existing 34, AC-TL1–AC-TL6 — in **`core-brain-v2.md` §12**. It is first-class, not a tag.
+
+**Surface size:** the plugin registers **one** tool (`core_memory`) with **8** ops (who, store, recall, forget, feedback, episode, timeline, promote); the MCP exposes **6** tools (recall, status, doctor, receipt, timeline, admin). Deliberately smaller than PLUR's 12+33: every tool kept closes a stated gap in §0.
 
 ---
 
