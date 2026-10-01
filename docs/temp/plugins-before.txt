@@ -1,0 +1,8 @@
+ID                     VERSION  SOURCE
+-                      local    /home/gandb/.config/opencode/plugins/dcp-guard
+context-inject         local    /home/gandb/.config/opencode/plugins/context-inject/index.ts
+obsidian-to-foundry    local    /home/gandb/.config/opencode/plugins/obsidian-to-foundry/index.ts
+opencode-anti-loop     local    /home/gandb/.config/opencode/plugins/opencode-anti-loop/index.ts
+opencode-sglang-guard  local    /home/gandb/.config/opencode/plugins/sglang-guard/index.ts
+plur-memory            local    /home/gandb/.config/opencode/plugins/plur-memory/index.ts
+todo-list              local    /home/gandb/.config/opencode/plugins/todo-list/index.ts

@@ -78,4 +78,31 @@ MVP plan in [README.md](README.md).
   injection weight) from the A/B results.
 - [ ] **3.3 — Integrate back.** Port the proven pieces into
   `project-generator`'s `global/opencode/` config and update its documentation
-  and CHANGELOG. 
+  and CHANGELOG.
+
+---
+
+## Plugin — core-brain (memory isolation)
+
+- [x] **core-brain v0.1.0 — per-agent memory isolation plugin (delivered, verified in the real environment).**
+  OpenCode V2 plugin at `global/opencode/plugins/core-brain/` (`index.ts` +
+  `store.ts` + `types.ts`, zero runtime dependency), one `core_memory` tool
+  (`who` / `store` / `recall`), the §4 access matrix of
+  `docs/core_brain_specification.md` implemented exactly (a private namespace per
+  agent, an optional shared `global` namespace, cross-agent writes refused,
+  unlisted agents fail-closed), atomic JSON persistence under `~/.core-brain/`
+  (override `CORE_BRAIN_HOME`) and a declared offline stub embedder
+  (`hash-ngram-v1`, 256 dims).
+  - Four dedicated test agents: `global/opencode/agent/CB_{ALPHA,BETA,GAMMA,DELTA}.md`
+    (`mode: all`, inherited model).
+  - Docs: the plugin's `README.md` and `INSTALACAO.md`; entry in `CHANGELOG.md`.
+  - Evidence (measured 2026-10-01, Node v24.15.0): `bash global/opencode/plugins/core-brain/check.sh`
+    → **8/8 matrix lines PASS**, exit code `0`; `opencode2 plugin list` → 8 plugins
+    including `core-brain`; `opencode2 debug agents` 23 → 27 with the 23
+    pre-existing agents byte-identical; three real headless smokes (`CB_BETA`,
+    `CB_GAMMA`, `CB_ALPHA`) returned the expected results and refusals;
+    `~/.plur/` untouched and the `plur` MCP still `connected`.
+  - Follow-ups (declared, non-blocking): production semantic embedder replacing
+    the stub; opt-in context injection (`inject: true`, off by default); a
+    `compaction` hook; optional multi-process file lock; automated Layer B smoke
+    in CI. 

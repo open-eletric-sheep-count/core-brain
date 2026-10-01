@@ -1,0 +1,32 @@
+{
+  "name": "@oesc/core-brain",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenCode V2 plugin: per-agent isolated memory namespaces plus an optional shared global space, driven by config.json — one `core_memory` tool (who/store/recall), real per-namespace vectors, deterministic offline embedder, zero runtime dependencies",
+  "license": "MIT",
+  "keywords": ["opencode", "opencode-plugin", "memory", "vectors", "isolation", "recall"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-eletric-sheep-count/core-brain.git",
+    "directory": "global/opencode/plugins/core-brain"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "index.ts",
+    "store.ts",
+    "types.ts",
+    "config.json",
+    "LICENSE",
+    "README.md",
+    "INSTALACAO.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "node --input-type=module -e \"await import('./index.ts')\""
+  }
+}

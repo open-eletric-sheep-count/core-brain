@@ -7,6 +7,35 @@ Newest on top.
 
 ### Added
 
+- **New plugin `core-brain` v0.1.0 — per-agent memory isolation for OpenCode V2**
+  (`global/opencode/plugins/core-brain/`: `index.ts`, `store.ts`, `types.ts`,
+  `package.json`, `tsconfig.json`, `shims.d.ts`, `config.json` seed, `LICENSE`,
+  `README.md`, `INSTALACAO.md`, `check.sh`, `test/`; plus the four dedicated test
+  agents `global/opencode/agent/CB_{ALPHA,BETA,GAMMA,DELTA}.md` with `mode: all`
+  and an inherited model): one `core_memory` tool (`who` / `store` / `recall`)
+  and the access matrix of `docs/core_brain_specification.md` §4 implemented
+  exactly — a private namespace per agent, an optional shared `global` namespace,
+  cross-agent writes always refused, unlisted agents fail-closed, and
+  `InvalidConfigurationError` at init for a `private:false` +
+  `hasGlobalAccess:false` row. Real per-namespace vectors with an in-process
+  cosine top-k, atomic JSON persistence under `~/.core-brain/` (override
+  `CORE_BRAIN_HOME`), and a **declared** offline stub embedder
+  (`hash-ngram-v1`, 256 dims; a production semantic embedder is a follow-up).
+  **Non-destructive:** nothing pre-existing was modified — the plugin is
+  auto-discovered from the `plugins/` directory (no `opencode.json` entry), the
+  `prompt` hook is inert (it never edits the user's prompt nor injects into the
+  system block), and it is a fork/substitute of PLUR Memory (MIT, with the PLUR
+  acknowledgment) sharing no dependency, data directory, env var, port, cache or
+  tool namespace with PLUR. Evidence, **executed 2026-10-01** (Node v24.15.0):
+  `opencode2 plugin list` → **8 plugins** including `core-brain`;
+  `opencode2 debug agents` **23 → 27**, none removed, the 23 pre-existing agents
+  byte-identical; `bash global/opencode/plugins/core-brain/check.sh` → **8/8
+  matrix lines PASS**, exit code `0`; three real headless smokes (`CB_BETA`,
+  `CB_GAMMA`, `CB_ALPHA`) returned the expected JSON and the expected refusals
+  (`no global access`; `target is private — cross-agent write not allowed`);
+  `~/.plur/` untouched and the `plur` MCP still `connected`. Activation: mirror
+  via `bash global/opencode/install-global.sh` (USER) plus `opencode2 reload`.
+  Docs: the plugin's `README.md` and `INSTALACAO.md`.
 - **O `bot-forum` chega aos ficheiros de config — o helper do Tico&Teco migrou e todos os helpers das metodologias referenciam o fórum** (`helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, `helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`, `helpers/METHODOLOGY_SCRUM_TEAM_HELPERS.md`, `helpers/METHODOLOGY_ORACLE_DOES_IT_ALL_HELPERS.md`, `agent/ARCHITECT.md`; USER, 2026-09-30, decisão D7 do grill do bot-forum): o canal partilhado de uma task passa a viver no skill `bot-forum` (repo project-generator) e **cada helper aponta para lá**. O Tico&Teco deixa de abrir `docs/forum.md` e abre `.bot-forum/forum-<session id>.md` — **um ficheiro por sessão** (o id do launcher), **sem arquivo** (o id já separa as tasks), o caminho a viajar em cada brief e o correio `[REQ]`/`[ANS]` por cima do formato append-only; o `agent/ARCHITECT.md` leva a mesma referência na sua regra "Authority over the DEVELOPER". O Batman e Robin ganha a regra do fórum (o Robin não tem shell nem subagentes — o `[REQ]` é como alcança o que não consegue correr), o scrum-team o mesmo, o `ORACLE does it all` abre no arranque (só registo); o A New Brain Storm mantém o fórum dele (exceção explícita no skill). Ativação: espelho via `./src/install-global.sh` do project-generator (USER, feito 2026-09-30). Evidência executada: o skill `batman-e-robin` recarregado **do espelho** traz a secção nova do fórum, e uma run real de Batman e Robin (sessão `ses_f1d182d30ffenzF1Cdr8cvXBtd`) produziu um par `[REQ]`/`[ANS]` verdadeiro em disco (`orchestrator/.bot-forum/`).
 - **`DEVELOPER` gains Mode B (Batman e Robin) with precedence over the Scrum mode — the
   low autonomy was not only the flow skill's fault** (`global/opencode/agent/DEVELOPER.md`,
