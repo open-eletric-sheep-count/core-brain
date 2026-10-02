@@ -1,6 +1,6 @@
-# SUBAGENT-SCRUM-HELPER.md — regras para subagentes do fluxo SCRUM
+# SUBAGENT-SCRUM-HELPER.md — rules for subagents of the SCRUM flow
 
-> **Quem carrega:** subagentes do **scrum-team** (e todos que participam do fluxo Scrum — ARCHITECT/DEVELOPER/TESTER/DOCUMENTATION_WRITER quando orquestrados pelo Scrum). Os demais subagentes carregam apenas `~/.config/opencode/helpers/SUBAGENT-HELPER.md`.
+> **Who loads it:** subagents of the **scrum-team** (and everyone who takes part in the Scrum flow — ARCHITECT/DEVELOPER/TESTER/DOCUMENTATION_WRITER when orchestrated by Scrum). All other subagents load only `~/.config/opencode/helpers/SUBAGENT-HELPER.md`.
 
 ## 2. Sole relay — to any agent other than the ARCHITECT
 
@@ -8,4 +8,4 @@ The ORACLE never speaks directly to any agent other than the ARCHITECT (DEVELOPE
 
 ---
 
-**Nota de manutenção:** este arquivo está em `global/opencode/helpers/` (FONTE — edite sempre aqui) e é instalado em `~/.config/opencode/helpers/` pelo `./src/install-global.sh`; nunca edite o mirror (regra 8).
+**Maintenance note:** this file lives in `global/opencode/helpers/` (SOURCE — always edit here) and is installed into `~/.config/opencode/helpers/` by `./src/install-global.sh`; never edit the mirror (rule 8).

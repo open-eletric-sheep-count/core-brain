@@ -1,4 +1,4 @@
-# SUBAGENT-HELPER.md — regras obrigatórias para subagentes
+# SUBAGENT-HELPER.md — mandatory rules for subagents
 
 ## 1. Only channel to the USER
 
@@ -10,4 +10,4 @@ report and every artifact you produce.
 
 ---
 
-**Nota de manutenção:** este arquivo está em `global/opencode/helpers/` (FONTE — edite sempre aqui) e é instalado em `~/.config/opencode/helpers/` pelo `./src/install-global.sh`; nunca edite o mirror (regra 8).
+**Maintenance note:** this file lives in `global/opencode/helpers/` (SOURCE — always edit here) and is installed into `~/.config/opencode/helpers/` by `./src/install-global.sh`; never edit the mirror (rule 8).

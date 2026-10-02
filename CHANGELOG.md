@@ -6,6 +6,7 @@ Newest on top.
 ## [Unreleased]
 
 ### Changed
+- **EN consistency sweep — repo prose to English** (USER request 2026-10-02, plan `docs/temp/pt-to-en-translation-plan.md`): translated the remaining in-scope pt-BR prose to English across docs markdown, agent/helper markdown, plugin markdown, shell-script comments + user-facing messages, code comments, and `package.json` `description` fields. The only user-visible behavior change: the TUI sidebar label `Todos (n)` renamed to **`All (n)`** (`global/opencode/plugins/todo-list/tui.tsx`). Preserved verbatim (not prose): the five evidence fixtures in `docs/temp/`, `.bot-forum/*`, file/identifier names (`INSTALACAO.md`, `troca-ferramenta.md`, `rca-metodologia-pergunta-3x.md`), the quoted USER triggers in `core-brain-mcp.md` / `core-brain-migration-plan.md`, the quoted USER rulings/choices in `core-brain-v2.md`, the quoted PT counter-example labels in `ORACLE.md` (incl. `PARAR SIMULAÇÃO` and `"com a skill <id>"`), and `docs/temp/core-brain-mcp-user-criteria.md` (verbatim PT USER task). Evidence executed 2026-10-02: accent-set + wide word-net `rg` scans → zero in-scope hits (all residual hits classified as the intentional preserve set or English identifier/URL false positives — `todo` inside `todo-list` identifiers, `.com` inside URLs); `bash -n` clean on all modified `.sh`; JSON parse clean on all `package.json`; `bash global/opencode/plugins/todo-list/check.sh` → import smoke check + `tsc` typecheck OK ("All checks passed for: todo-list").
 - **Removed the personal injection path from `context-inject/config.json` — the public repo no longer ships user-specific configuration** (`global/opencode/plugins/context-inject/config.json`; USER request 2026-10-02): the reserved `ALL` key carried the absolute personal path `/home/gandb/.config/opencode/PERSONAL_RULES.md` (added in commit `cf30642`), which does not belong in an opensource repository. The personal injection now lives in the private **project-generator** repository at the same relative path, which is copied **over** this tree at install time (that repo's `src/install-global.sh` installs core-brain first and project-generator last). This file keeps only the generic `ORACLE` HOWTO injections (`TODO_TOOL_HOWTO.md`, `LAUNCH_LEDGER_HOWTO.md`), which resolve relative to the plugin directory. **Exposure note:** the personal path remains in this repository's git history (`cf30642`, already pushed to `origin/main`) — rewriting it is a git write and was NOT performed; that is the USER's decision. Evidence executed 2026-10-02: `python3 -c json.load(...)` on both copies → valid JSON; `grep PERSONAL_RULES` over the tree → zero hits outside journal/temp files; the overlay test in the project-generator repo → 10/10 PASS.
 
 ### Added
@@ -72,7 +73,7 @@ Newest on top.
   `~/.plur/` untouched and the `plur` MCP still `connected`. Activation: mirror
   via `bash global/opencode/install-global.sh` (USER) plus `opencode2 reload`.
   Docs: the plugin's `README.md` and `INSTALACAO.md`.
-- **O `bot-forum` chega aos ficheiros de config — o helper do Tico&Teco migrou e todos os helpers das metodologias referenciam o fórum** (`helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, `helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`, `helpers/METHODOLOGY_SCRUM_TEAM_HELPERS.md`, `helpers/METHODOLOGY_ORACLE_DOES_IT_ALL_HELPERS.md`, `agent/ARCHITECT.md`; USER, 2026-09-30, decisão D7 do grill do bot-forum): o canal partilhado de uma task passa a viver no skill `bot-forum` (repo project-generator) e **cada helper aponta para lá**. O Tico&Teco deixa de abrir `docs/forum.md` e abre `.bot-forum/forum-<session id>.md` — **um ficheiro por sessão** (o id do launcher), **sem arquivo** (o id já separa as tasks), o caminho a viajar em cada brief e o correio `[REQ]`/`[ANS]` por cima do formato append-only; o `agent/ARCHITECT.md` leva a mesma referência na sua regra "Authority over the DEVELOPER". O Batman e Robin ganha a regra do fórum (o Robin não tem shell nem subagentes — o `[REQ]` é como alcança o que não consegue correr), o scrum-team o mesmo, o `ORACLE does it all` abre no arranque (só registo); o A New Brain Storm mantém o fórum dele (exceção explícita no skill). Ativação: espelho via `./src/install-global.sh` do project-generator (USER, feito 2026-09-30). Evidência executada: o skill `batman-e-robin` recarregado **do espelho** traz a secção nova do fórum, e uma run real de Batman e Robin (sessão `ses_f1d182d30ffenzF1Cdr8cvXBtd`) produziu um par `[REQ]`/`[ANS]` verdadeiro em disco (`orchestrator/.bot-forum/`).
+- **`bot-forum` reaches the config files — the Tico&Teco helper migrated and all the methodology helpers reference the forum** (`helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, `helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`, `helpers/METHODOLOGY_SCRUM_TEAM_HELPERS.md`, `helpers/METHODOLOGY_ORACLE_DOES_IT_ALL_HELPERS.md`, `agent/ARCHITECT.md`; USER, 2026-09-30, decision D7 of the bot-forum grill): the shared channel of a task now lives in the `bot-forum` skill (project-generator repo) and **each helper points there**. Tico&Teco stops opening `docs/forum.md` and opens `.bot-forum/forum-<session id>.md` — **one file per session** (the launcher's id), **no archive** (the id already separates the tasks), the path travels in every brief and the `[REQ]`/`[ANS]` mail rides on top of the append-only format; `agent/ARCHITECT.md` carries the same reference in its "Authority over the DEVELOPER" rule. Batman e Robin gains the forum rule (Robin has no shell nor subagents — `[REQ]` is how it reaches what it cannot run), scrum-team the same, `ORACLE does it all` opens at startup (record only); A New Brain Storm keeps its own forum (explicit exception in the skill). Activation: mirror via the project-generator `./src/install-global.sh` (USER, done 2026-09-30). Executed evidence: the `batman-e-robin` skill reloaded **from the mirror** carries the new forum section, and a real run of Batman e Robin (session `ses_f1d182d30ffenzF1Cdr8cvXBtd`) produced a true `[REQ]`/`[ANS]` pair on disk (`orchestrator/.bot-forum/`).
 - **`DEVELOPER` gains Mode B (Batman e Robin) with precedence over the Scrum mode — the
   low autonomy was not only the flow skill's fault** (`global/opencode/agent/DEVELOPER.md`,
   `global/opencode/helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`,
@@ -98,34 +99,35 @@ Newest on top.
   the WHAT … does NOT implement; the DEVELOPER (Robin, Mode B) owns the HOW"**. Executed
   evidence: none — config/prompt change; proof is the mirror apply (below) plus a real run of
   the flow. Activation: mirror via `./src/install-global.sh` (USER).
-- **ORACLE: "Skill duty" — uma skill nomeada pelo USER é obrigatória, e é carregada
-  antes de qualquer outro trabalho** (`global/opencode/agent/ORACLE.md`, bloco
-  `<IMPORTANT>` no **topo** do prompt + bullet nas `Rules`; USER, 2026-09-20): em
-  OpenCode V2 um `@nome` escrito no prompt é **texto simples** (a API não o expande
-  em link), por isso quem tem de o honrar é o agente. O bloco é a primeira coisa que
-  o agente lê e fixa: (1) varrer o pedido ANTES do portão de metodologia, nas formas
-  explícitas (`@<id>`, "use a skill <id>", "com a skill <id>", ID nu — o `@` nunca
-  faz parte do ID) e nas **formas indirectas** ("a skill do job #36", "a skill que
-  usámos no job N"), resolvidas pelo histórico (base do orchestrator / base do
-  OpenCode), nunca por adivinhação — sem certeza, pergunta-se ao USER; (2) carregar
-  a skill com o `skill` tool logo APÓS o portão e ANTES de ler ficheiros, planear,
-  responder ou delegar; (3) dizer em voz alta `SKILL LOADED: <id>` (ou
-  `SKILL NOT FOUND: <nome>` + pergunta ao USER — nunca seguir em silêncio); (4) o
-  fallback de ler `~/.config/opencode/skills/<id>/SKILL.md` quando o `skill` tool
-  não lista o nome; (5) passar o dever a quem se delega — o briefing a um subagente
-  que nomeia uma skill leva, textualmente, a ordem de a carregar e de declarar o
-  carregamento; (6) "já a usei noutro job" nunca é um carregamento, e declarar uma
-  skill aplicada sem a chamada ao `skill` tool nesta sessão é falso.
-  Motivo medido: nos Jobs #24, #27, #34, #36 (`use a skill @run-meter`) e **#42** o
-  prompt nomeava a skill e ela **nunca foi carregada** (2026-09-20).
-  Verificado depois da correcção: (a) sessão headless nova no formato do Job #36
+- **ORACLE: "Skill duty" — a skill named by the USER is mandatory, and it is loaded
+  before any other work** (`global/opencode/agent/ORACLE.md`, the `<IMPORTANT>` block
+  at the **top** of the prompt + a bullet in `Rules`; USER, 2026-09-20): in
+  OpenCode V2 an `@name` written in the prompt is **plain text** (the API does not
+  expand it into a link), so the one who must honour it is the agent. The block is the
+  first thing the agent reads and locks in: (1) scan the request BEFORE the
+  methodology gate, in the explicit forms (`@<id>`, "use a skill <id>", "with a skill
+  <id>", bare ID — the `@` is never part of the ID) and in the **indirect forms**
+  ("the skill from job #36", "the skill we used in job N"), resolved from history
+  (the orchestrator base / the OpenCode base), never by guessing — without certainty,
+  the USER is asked; (2) load the skill with the `skill` tool right AFTER the gate and
+  BEFORE reading files, planning, answering or delegating; (3) say out loud
+  `SKILL LOADED: <id>` (or `SKILL NOT FOUND: <name>` + a question to the USER — never
+  proceed in silence); (4) the fallback of reading `~/.config/opencode/skills/<id>/SKILL.md`
+  when the `skill` tool does not list the name; (5) passing the duty to whoever is
+  delegated to — a brief to a subagent that names a skill carries, verbatim, the order
+  to load it and to declare the load; (6) "I already used it in another job" is never
+  a load, and declaring a skill applied without the `skill` tool call in this session
+  is false.
+  Measured reason: in Jobs #24, #27, #34, #36 (`use a skill @run-meter`) and **#42** the
+  prompt named the skill and it was **never loaded** (2026-09-20).
+  Verified after the fix: (a) a fresh headless session in the shape of Job #36
   (`opencode run --agent ORACLE --model deepseek/deepseek-v4-flash-vision-exp`) —
-  o `skill` tool foi a **única e primeira** chamada, com `{"id":"run-meter"}`, e a
-  linha dita foi `SKILL LOADED: run-meter` (ses_f4083d6c9ffeZB8sMRjFl4Ts51); (b) a
-  própria sessão do Job #47, cujo pedido nomeia a skill **por referência indirecta**
-  ("a skill do job 36"), carregou `run-meter` e `be-a-master-developer` logo após o
-  portão de metodologia. O espelho `~/.config/opencode` foi refrescado pelo alias
-  `octu` (`src/install-global.sh`) e conferido idêntico à fonte.
+  the `skill` tool was the **only and first** call, with `{"id":"run-meter"}`, and the
+  line said was `SKILL LOADED: run-meter` (ses_f4083d6c9ffeZB8sMRjFl4Ts51); (b) the
+  very session of Job #47, whose request names the skill **by indirect reference**
+  ("the skill from job 36"), loaded `run-meter` and `be-a-master-developer` right after
+  the methodology gate. The `~/.config/opencode` mirror was refreshed by the alias
+  `octu` (`src/install-global.sh`) and confirmed identical to the source.
 - **Orchestrator subproject — spec accepted, construction deferred**
   (`docs/specs/orchestrator.md`, `orchestrator/CONTEXT.md`,
   `orchestrator/docs/adr/0001-pause-aborts-the-engine.md` (superseded) and
@@ -142,36 +144,35 @@ Newest on top.
 
 ### Fixed
 
-- **`@oesc/context-inject` 0.1.1 — os HOWTOs deixam de ser prependidos à mensagem do USER**
+- **`@oesc/context-inject` 0.1.1 — the HOWTOs are no longer prepended to the USER's message**
   (USER, 2026-09-23; `global/opencode/plugins/context-inject/index.ts`, `package.json`):
-  o plugin entregava o conteúdo de `TODO_TOOL_HOWTO.md` + `LAUNCH_LEDGER_HOWTO.md` (agente
-  ORACLE, eventos `session.created` e `session.compacted`) escrevendo no draft mutável
-  `event.prompt.text` — que a documentação do host descreve como o input canónico do USER —
-  e o conteúdo aparecia **colado à frente da mensagem do USER** numa sessão nova e, de novo,
-  após cada compactação. A entrega passa por **mensagem durável `synthetic`**
-  (`ctx.session.synthetic({ sessionID, text })`, o mesmo mecanismo do `opencode-anti-loop`
-  0.3.6): fora da voz do USER, persistida no log e sobrevivente à compactação. O prepend
-  fica como **fallback legado** para um runtime sem essa superfície (logado como
-  `prompt prepend fallback`), e o passo stateless mantém-se — `synthetic` não conta como
-  user activity no scan da janela pós-compactação, logo as duas regras (`isFirstPrompt`,
-  `pendingCompactionWindow`) não mudam. Verificação: `bash check.sh` (import smoke nativo
-  TS + typecheck `tsc`) → **All checks passed for: context-inject**.
-- **`@oesc/todo-list` 0.2.2 — o lembrete `TODO: …` deixa de falar na voz do USER**
+  the plugin delivered the content of `TODO_TOOL_HOWTO.md` + `LAUNCH_LEDGER_HOWTO.md`
+  (agent ORACLE, events `session.created` and `session.compacted`) by writing into the
+  mutable draft `event.prompt.text` — which the host documentation describes as the USER's
+  canonical input — and the content appeared **glued in front of the USER's message** in a
+  new session and, again, after each compaction. Delivery now goes through a **durable
+  `synthetic` message** (`ctx.session.synthetic({ sessionID, text })`, the same mechanism
+  as `opencode-anti-loop` 0.3.6): outside the USER's voice, persisted in the log and
+  surviving compaction. The prepend stays as a **legacy fallback** for a runtime without
+  that surface (logged as `prompt prepend fallback`), and the stateless step is kept —
+  `synthetic` does not count as user activity in the post-compaction window scan, so the
+  two rules (`isFirstPrompt`, `pendingCompactionWindow`) do not change. Verification:
+  `bash check.sh` (native TS import smoke + `tsc` typecheck) → **All checks passed for: context-inject**.
+- **`@oesc/todo-list` 0.2.2 — the `TODO: …` reminder no longer speaks in the USER's voice**
   (USER, 2026-09-23; `global/opencode/plugins/todo-list/index.ts`, `todo-list-spec.md`
-  Q6/§5.1/§7/Q15, `README.md`): o plugin entregava o lembrete editando
-  `event.prompt.text` no hook `prompt` — e a documentação do host diz, textualmente,
-  que as edições desse hook **"become the canonical persisted user input"**. Resultado
-  medido nas sessões reais: a linha `TODO: 12 items — update it if something changed.`
-  ficava **colada à mensagem do USER**, e o transcript lia-se como se o USER a tivesse
-  escrito. A entrega passa a ser **contexto de sistema**: `ctx.session.hook("context")`
-  → `event.system.push({type:"text", text: linha})` (o bloco `system` é reconstruído
-  pelo host a cada pedido ao modelo, portanto **nunca acumula** no histórico). A linha
-  que dispara o aviso mantém-se intacta (uma só, apenas com lista não vazia; guarda
-  `Array.isArray(event?.system)` para runtimes degradados, e o hook continua a nunca
-  quebrar a admissão do prompt). É o mesmo defeito de família do
-  `opencode-anti-loop` 0.3.6 (que usava `ctx.session.prompt`) — corrigido no mesmo dia.
-  **Falta a activação no espelho** (`./src/install-global.sh` + `opencode service restart`),
-  que é passo do USER.
+  Q6/§5.1/§7/Q15, `README.md`): the plugin delivered the reminder by editing
+  `event.prompt.text` in the `prompt` hook — and the host documentation says, verbatim,
+  that edits of that hook **"become the canonical persisted user input"**. Measured result
+  in real sessions: the line `TODO: 12 items — update it if something changed.` stayed
+  **glued to the USER's message**, and the transcript read as if the USER had written it.
+  Delivery now is **system context**: `ctx.session.hook("context")`
+  → `event.system.push({type:"text", text: line})` (the `system` block is rebuilt by the
+  host on every request to the model, so it **never accumulates** in history). The line
+  that fires the reminder is kept intact (a single one, only with a non-empty list; guards
+  `Array.isArray(event?.system)` for degraded runtimes, and the hook still never breaks
+  prompt admission). It is the same defect family as `opencode-anti-loop` 0.3.6 (which
+  used `ctx.session.prompt`) — fixed the same day. **Activation in the mirror is still
+  pending** (`./src/install-global.sh` + `opencode service restart`), which is the USER's step.
 
 ### Changed
 
@@ -191,8 +192,8 @@ Newest on top.
   (spec §4.3; rejected alternative: disk namespace discovery). The isolation matrix grew from 8 to
   **13 lines**; `bash global/opencode/plugins/core-brain/check.sh` → **13/13 matrix lines PASS**,
   exit code `0`.
-- **Tico&Teco: o ARCHITECT entrega o plano ao ORACLE, e o debate passa a viver em `docs/forum.md`** (USER, 2026-09-20; `helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, passo 3): no motor local (SGLang) o ARCHITECT já não pode lançar o DEVELOPER — profundidade <= 1, imposta pelo plugin `sglang-guard` —, então o ORACLE lança o DEVELOPER com o plano do ARCHITECT, **um agente de cada vez**, e a conversa ARCHITECT ↔ DEVELOPER viaja por **`docs/forum.md`**: aberto NOVO no início de **cada tarefa** (o anterior é arquivado como `docs/forum-<AAAAMMDD-HHMM>.md`), com cabeçalho que identifica a tarefa, *append-only* daí em diante, uma entrada por agente com `## <AGENTE> — <AAAA-MM-DD HH:MM>`, e **entradas de duas tarefas no mesmo arquivo são um defeito**. O ORACLE relay só o caminho (nunca texto colado — regras 13/14) e o ARCHITECT mantém a autoridade (comanda, revê, reprova). Em provider remoto a chamada direta ARCHITECT → DEVELOPER mantém-se como estava; o forum continua a ser o registo.
-- **`agent/ARCHITECT.md`: "sole relay" passa a autoridade sem launch** (USER, 2026-09-20; GOLDEN RULES): o bullet agora diz que o ARCHITECT é a única autoridade sobre o DEVELOPER mas **nunca o lança** — um subagente de nível 1 não lança nada (AGENTS.md regra 19) —, que o ORACLE lança e transporta, que o brief e os veredictos viajam como caminhos de arquivo, e que o DEVELOPER nunca discute com o ORACLE (os conflitos voltam pelo ARCHITECT).
+- **Tico&Teco: the ARCHITECT hands the plan to the ORACLE, and the debate now lives in `docs/forum.md`** (USER, 2026-09-20; `helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, step 3): on the local engine (SGLang) the ARCHITECT can no longer launch the DEVELOPER — depth <= 1, enforced by the `sglang-guard` plugin —, so the ORACLE launches the DEVELOPER with the ARCHITECT's plan, **one agent at a time**, and the ARCHITECT ↔ DEVELOPER conversation travels through **`docs/forum.md`**: opened FRESH at the start of **each task** (the previous one is archived as `docs/forum-<AAAAMMDD-HHMM>.md`), with a header identifying the task, *append-only* from then on, one entry per agent with `## <AGENT> — <YYYY-MM-DD HH:MM>`, and **entries of two tasks in the same file are a defect**. The ORACLE relays only the path (never glued text — rules 13/14) and the ARCHITECT keeps the authority (directs, reviews, rejects). On a remote provider the direct ARCHITECT → DEVELOPER call stays as it was; the forum remains the record.
+- **`agent/ARCHITECT.md`: "sole relay" becomes authority without launch** (USER, 2026-09-20; GOLDEN RULES): the bullet now says that the ARCHITECT is the sole authority over the DEVELOPER but **never launches it** — a level-1 subagent launches nothing (AGENTS.md rule 19) —, that the ORACLE launches and carries, that the brief and the verdicts travel as file paths, and that the DEVELOPER never argues with the ORACLE (conflicts come back through the ARCHITECT).
 - **Agent take-over rule: 3 informed attempts + USER permission**
   (`global/opencode/agent/ORACLE.md`, "Orchestrator Responsibilities"): a
   stalled/failed agent is now redispatched up to **3 attempts**, each retry

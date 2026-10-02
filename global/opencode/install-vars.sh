@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 #
-# install-vars.sh — grava no ambiente do usuário a variável que localiza este
-# checkout do core-brain (spec todo-list §10).
+# install-vars.sh — writes into the user's environment the variable that locates
+# this core-brain checkout (todo-list spec section 10).
 #
-#   OESC_CORE_BRAIN_HOME — caminho absoluto do repositório core-brain
+#   OESC_CORE_BRAIN_HOME — absolute path to the core-brain repository
 #
-# Valor padrão: detectado a partir da localização deste script
-# (<core-brain>/global/opencode/install-vars.sh → <core-brain>); pode ser
-# sobrescrito exportando OESC_CORE_BRAIN_HOME antes de rodar.
+# Default value: detected from the location of this script
+# (<core-brain>/global/opencode/install-vars.sh -> <core-brain>); can be
+# overridden by exporting OESC_CORE_BRAIN_HOME before running.
 #
-# Grava em:
-#   - /etc/environment (quando gravável; âmbito do sistema)
-#   - ~/.bashrc (bloco com marcador; fallback do usuário, reexecutável sem
-#     duplicar — o bloco antigo é substituído)
+# Writes to:
+#   - /etc/environment (when writable; system scope)
+#   - ~/.bashrc (block with a marker; user fallback, re-runnable without
+#     duplicating — the old block is replaced)
 #
-# O install-global.sh do taulukko usa OESC_CORE_BRAIN_HOME para chamar o
-# install-global.sh deste repositório.
+# Taulukko's install-global.sh uses OESC_CORE_BRAIN_HOME to call this
+# repository's install-global.sh.
 
 set -euo pipefail
 
@@ -38,12 +38,12 @@ write_env_file() {
 
 if [ -w /etc/environment ]; then
   if write_env_file /etc/environment; then
-    echo "Gravado em /etc/environment: $VAR=$VALUE"
+    echo "Written to /etc/environment: $VAR=$VALUE"
   else
-    echo "AVISO: falha ao gravar /etc/environment — usando apenas ~/.bashrc" >&2
+    echo "WARNING: failed to write /etc/environment — using only ~/.bashrc" >&2
   fi
 else
-  echo "AVISO: /etc/environment não gravável — usando apenas ~/.bashrc" >&2
+  echo "WARNING: /etc/environment not writable — using only ~/.bashrc" >&2
 fi
 
 BASHRC="$HOME/.bashrc"
@@ -60,5 +60,5 @@ fi
 
 printf '\n%s\nexport %s=%s\n%s\n' "$BEGIN" "$VAR" "$VALUE" "$END" >> "$BASHRC"
 
-echo "Gravado em $BASHRC: export $VAR=$VALUE"
-echo "Concluído com sucesso."
+echo "Written to $BASHRC: export $VAR=$VALUE"
+echo "Completed successfully."

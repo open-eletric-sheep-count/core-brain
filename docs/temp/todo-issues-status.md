@@ -1,19 +1,19 @@
-# Todo oficial V2 — situação conhecida (sem verificação nova)
+# Official V2 todo — known state (no new verification)
 
-Data: 2026-09-29. Metodologia: 3 (ORACLE does it all).
+Date: 2026-09-29. Methodology: 3 (ORACLE does it all).
 
-## O que já está apurado no repo local
-- OpenCode V2 não tem ferramenta todo nativa. Catálogo V2: read, write, shell, edit, etc. Sem ação `todo`, sem endpoint `/api/todo`.
-- V1 tinha: `todowrite` (148 hits no binário V1) + `todoread`, mais `GET /session/{id}/todo` e evento `todo.updated`.
-- V2 ainda tem a tabela legada `todo` no DB, sem escritor atual — intocada pelo plugin.
-- Issue citada na spec: aberta em 2026-08-13 com título aproximado "runtime: todowrite/todoread TODO tools missing in V2, model cannot update its todo list" — fechada como **not planned**.
-- Fonte: `global/opencode/plugins/todo-list/todo-list-spec.md` (§ contexto, Q1–Q15) em `oesc/core-brain`.
-- O bloqueio global que existe (`global deny + ORACLE allow` para `action: todo`) é do plugin `@oesc/todo-list` (o que o Gand construiu), não do oficial. Escopo atual: só ORACLE.
+## What is already established in the local repo
+- OpenCode V2 has no native todo tool. V2 catalog: read, write, shell, edit, etc. No `todo` action, no `/api/todo` endpoint.
+- V1 had: `todowrite` (148 hits in the V1 binary) + `todoread`, plus `GET /session/{id}/todo` and the `todo.updated` event.
+- V2 still has the legacy `todo` table in the DB, with no current writer — untouched by the plugin.
+- The issue cited in the spec: opened on 2026-08-13 with the approximate title "runtime: todowrite/todoread TODO tools missing in V2, model cannot update its todo list" — closed as **not planned**.
+- Source: `global/opencode/plugins/todo-list/todo-list-spec.md` (§ context, Q1–Q15) in `oesc/core-brain`.
+- The existing global block (`global deny + ORACLE allow` for `action: todo`) belongs to the `@oesc/todo-list` plugin (the one Gand built), not the official one. Current scope: ORACLE only.
 
-## O que ficou pendente (não verificado nesta tentativa)
-- Busca nova nas issues do canal oficial para confirmar se a decisão "not planned" continua valendo ou se reabriram/discutem algo novo.
-- Delegação ao SECRETARY (sessão ses_f10dfc6fcffeaAPsqg5cRXWL3z) voltou `cancelled` — o filho pode ter continuado. Verificação do ledger/artigo ficou bloqueada por chamada shell travada (302s, limite 300s, run interrompido).
-- Próximo passo quando destravar: checar `launch-ledger.sh` com `timeout 20`, procurar artefato recente do SECRETARY em disco, e só então re-despachar em background se nada foi produzido. Não reenviar às cegas.
+## What is still pending (not verified in this attempt)
+- A new search in the official channel's issues to confirm whether the "not planned" decision still stands or whether they reopened/are discussing something new.
+- The delegation to SECRETARY (session ses_f10dfc6fcffeaAPsqg5cRXWL3z) came back `cancelled` — the child may have kept running. The ledger/report verification was blocked by a wedged shell call (302s, 300s limit, run interrupted).
+- Next step once unblocked: check `launch-ledger.sh` with `timeout 20`, look for a recent SECRETARY artifact on disk, and only then re-dispatch in background if nothing was produced. Do not resend blindly.
 
-## Resposta honesta ao Gand
-Sem a busca nova, a situação continua a da spec: oficial ausente na V2 por decisão dos mantenedores (not planned), e o plugin local é o único `todo` funcional. Nada indica mudança até que a verificação no canal oficial seja concluída.
+## Honest answer to Gand
+Without the new search, the situation remains as in the spec: the official tool is absent in V2 by the maintainers' decision (not planned), and the local plugin is the only functional `todo`. Nothing indicates a change until the official channel verification is done.

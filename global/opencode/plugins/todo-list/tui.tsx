@@ -56,8 +56,8 @@ function TodoPanel(props: { sessionID?: string }) {
   const headerFg = themeText?.muted ?? themeText?.default;
   const itemFg = themeText?.default;
 
-  // 0.2.1 — cores por estado: "em andamento" em âmbar (destaque) e "cancelado"
-  // apagado/acinzentado. Empírico: hex direto; ajuste fino após o teste visual.
+  // 0.2.1 — colors per status: "in progress" in amber (highlight) and "cancelled"
+  // dimmed/greyed. Empirical: direct hex; fine-tune after the visual test.
   const itemFgFor = (item: TodoItem): string | undefined =>
     item.status === "in_progress"
       ? "#e0af68"
@@ -65,9 +65,9 @@ function TodoPanel(props: { sessionID?: string }) {
         ? (themeText?.muted ?? "#565f89")
         : itemFg;
 
-  // 0.2.1 — atributos de texto (bitmask do host): ITALIC=4, STRIKETHROUGH=128.
-  // SÓ o cancelado é riscado (sem itálico — pedido do Master: "era só pra
-  // riscar os cancelados"); concluídos voltam a ficar sem atributo.
+  // 0.2.1 — text attributes (host bitmask): ITALIC=4, STRIKETHROUGH=128.
+  // ONLY cancelled is struck through (no italic — the Master's request: "it was
+  // just to strike the cancelled ones"); completed go back to no attribute.
   const itemAttrsFor = (item: TodoItem): number | undefined =>
     item.status === "cancelled" ? 128 : undefined;
 
@@ -76,7 +76,7 @@ function TodoPanel(props: { sessionID?: string }) {
   return (
     <Show when={items().length > 0}>
       <box flexShrink={0} flexGrow={0}>
-        <text fg={headerFg}>Todos ({items().length})</text>
+        <text fg={headerFg}>All ({items().length})</text>
         <For each={items()}>
           {(item: TodoItem, index: () => number) => (
             <text

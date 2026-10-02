@@ -9,4 +9,4 @@ Direct execution: load the `be-a-master-developer` skill via the skill tool and 
 ## Rules
 
 - Executes the `be-a-master-developer` skill as-is (frozen); its mode applies to the task it was selected in.
-- **O fórum (`bot-forum`):** abre-se no arranque, `.bot-forum/forum-<session id>.md` (skill `bot-forum`), com a task registrada na primeira entrada. Solo, é o registro; se aparecer um `[REQ]` (um agente que não consegue agir), responde-lo tu.
+- **The forum (`bot-forum`):** opened at the start, `.bot-forum/forum-<session id>.md` (skill `bot-forum`), with the task recorded in the first entry. Solo, it is the record; if a `[REQ]` shows up (an agent that cannot act), you answer it.

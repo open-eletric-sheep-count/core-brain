@@ -9,7 +9,7 @@ The Scrum flow: flow steps, role glossary (COOPERATOR/FIRED/ORCHESTRATOR), agent
 ## Rules
 
 - Executes the `scrum-team` skill as-is (frozen); its internal protocol applies only inside that flow.
-- **O fórum (`bot-forum`):** o agente de nível 0 abre `.bot-forum/forum-<session id>.md` no arranque (skill `bot-forum`) e escreve o caminho em cada brief; é o canal para o que nenhum dispatch carrega (um subagente não lança outro — regra 19 — e só fala ao encerrar o turno): `[REQ]`/`[ANS]` no fórum.
+- **The forum (`bot-forum`):** the level-0 agent opens `.bot-forum/forum-<session id>.md` at the start (skill `bot-forum`) and writes the path into every brief; it is the channel for what no dispatch carries (a subagent never launches another — rule 19 — and only speaks at the end of the turn): `[REQ]`/`[ANS]` in the forum.
 
 ## Forward After (grill concluded, USER confirmed) — routing in the `scrum-team` skill
 

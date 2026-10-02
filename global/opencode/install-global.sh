@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 #
-# install-global.sh — Instala a configuração global do OpenCode a partir do
-# repositório core-brain (equivalente ao src/install-global.sh do taulukko;
-# este repositório é a fonte open source dos plugins, incluindo o todo-list).
+# install-global.sh — Installs the OpenCode global configuration from the
+# core-brain repository (equivalent to taulukko's src/install-global.sh;
+# this repository is the open-source home of the plugins, including todo-list).
 #
-# Uso:
-#   global/opencode/install-global.sh [-s ORIGEM] [-d DESTINO]
+# Usage:
+#   global/opencode/install-global.sh [-s SOURCE] [-d DESTINATION]
 #
-# Padrões:
-#   ORIGEM  = <core-brain>/global/opencode
-#   DESTINO = ~/.config/opencode
+# Defaults:
+#   SOURCE  = <core-brain>/global/opencode
+#   DESTINATION = ~/.config/opencode
 #
-# Comportamento:
-#   - Copia todo o conteúdo de ORIGEM para DESTINO (recursivamente)
-#   - Preserva estrutura de diretórios
-#   - Sobrescreve arquivos existentes silenciosamente
-#   - Cria DESTINO se não existir
-#   - Se ORIGEM não existir, exibe erro e sai imediatamente
+# Behavior:
+#   - Copies the entire content of SOURCE to DESTINATION (recursively)
+#   - Preserves the directory structure
+#   - Silently overwrites existing files
+#   - Creates DESTINATION if it does not exist
+#   - If SOURCE does not exist, prints an error and exits immediately
 #
-# Nota: chamado pelo install-global.sh do taulukko quando a variável
-# OESC_CORE_BRAIN_HOME aponta para este checkout (spec todo-list §10).
+# Note: called by taulukko's install-global.sh when the OESC_CORE_BRAIN_HOME
+# variable points at this checkout (todo-list spec section 10).
 
 set -euo pipefail
 
@@ -36,15 +36,15 @@ while getopts "s:d:h" opt; do
     s) SRC="$OPTARG" ;;
     d) DST="$OPTARG" ;;
     h)
-      echo "Uso: $0 [-s ORIGEM] [-d DESTINO]"
+      echo "Usage: $0 [-s SOURCE] [-d DESTINATION]"
       echo ""
-      echo "Instala configuração global do OpenCode a partir do core-brain."
+      echo "Installs the OpenCode global configuration from core-brain."
       echo ""
-      echo "Padrões:"
-      echo "  ORIGEM  = $DEFAULT_SRC"
-      echo "  DESTINO = $DEFAULT_DST"
+      echo "Defaults:"
+      echo "  SOURCE  = $DEFAULT_SRC"
+      echo "  DESTINATION = $DEFAULT_DST"
       echo ""
-      echo "Nota: ORIGEM deve existir; caso contrário o script aborta com erro."
+      echo "Note: SOURCE must exist; otherwise the script aborts with an error."
       exit 0
       ;;
     *) exit 1 ;;
@@ -52,18 +52,18 @@ while getopts "s:d:h" opt; do
 done
 
 if [ ! -d "$SRC" ]; then
-  echo "ERRO: Diretório de origem não encontrado: $SRC" >&2
+  echo "ERROR: Source directory not found: $SRC" >&2
   exit 1
 fi
 
 if [ ! -d "$SRC/plugins" ]; then
-  echo "AVISO: $SRC/plugins não encontrado — repositório incompleto?" >&2
+  echo "WARNING: $SRC/plugins not found — incomplete repository?" >&2
 fi
 
 mkdir -p "$DST"
 
 cp -r "$SRC/." "$DST/"
 
-echo "Copiado de:  $SRC"
-echo "Copiado para: $DST"
-echo "Concluído com sucesso."
+echo "Copied from:  $SRC"
+echo "Copied to: $DST"
+echo "Completed successfully."

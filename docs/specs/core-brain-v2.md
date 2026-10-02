@@ -193,13 +193,13 @@ interface Episode {
 | `core_timeline` | **P** (own view) · **M** (global view, admin) | `{ query?, since?, until?, tags?, limit? }` | `{ results: Episode[], scanned[] }` | read matrix §6.1 — identical to recall; the MCP view reads `global` only |
 | `core_promote` | **P** | `{ episodeId, text, tags? }` | `{ ok, episodeId, memoryId }` | the episode must be readable by the caller; the memory follows §6.2; the episode gains the id in `engramIds` |
 
-`core_promote` is PLUR's `plur_episode_to_engram` — it closes the *"aconteceu → virou memória"* path the timeline exists for. Nothing is copied: it writes a normal memory record carrying `meta.derivedFrom = <episode id>`.
+`core_promote` is PLUR's `plur_episode_to_engram` — it closes the *"happened → became a memory"* path the timeline exists for. Nothing is copied: it writes a normal memory record carrying `meta.derivedFrom = <episode id>`.
 
 **Naming on the plugin host:** these three are **ops of the existing tool `core_memory`** (`op: "episode" | "timeline" | "promote"`), so the plugin keeps registering exactly **one** tool — no second tool, no second identity path. The MCP host exposes `core_timeline` as its own tool (§`core-brain-mcp.md` §3), because there the caller has no session identity and the op is a global read.
 
 ### 12.3 Retrieval — searchable by meaning, not by spelling
 
-`core_timeline { query }` ranks with **the v2 engine** (§2–§5): the same embeddings + hybrid. *"o que fizemos sobre SGLang"* must find the episode that says *"server 'mystery shutdowns' caused by `timeout 9999`"* — no shared word. Without the engine this op would only match spelling, which is why §8 puts the engine first.
+`core_timeline { query }` ranks with **the v2 engine** (§2–§5): the same embeddings + hybrid. *"what we did about SGLang"* must find the episode that says *"server 'mystery shutdowns' caused by `timeout 9999`"* — no shared word. Without the engine this op would only match spelling, which is why §8 puts the engine first.
 
 ### 12.4 Migration of the existing 34 — nothing lost, nothing invented
 
