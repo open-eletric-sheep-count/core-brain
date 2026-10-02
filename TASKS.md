@@ -106,4 +106,15 @@ MVP plan in [README.md](README.md).
   - Follow-ups (declared, non-blocking): production semantic embedder replacing
     the stub; opt-in context injection (`inject: true`, off by default); a
     `compaction` hook; optional multi-process file lock; automated Layer B smoke
-    in CI. 
+    in CI.
+
+---
+
+## core-brain plugin — MCP slice
+
+- [x] **MCP server + new plugin ops** (2026-10-02) — `core-brain` MCP server
+  (`mcp/server.js` + `mcp/jsonrpc.js`, stdio, zero runtime deps) with the five
+  tools `core_recall`/`core_status`/`core_doctor`/`core_receipt`/`core_admin`;
+  plugin ops `forget`/`feedback`; additive store fields. Spec:
+  `docs/specs/core-brain-mcp.md`. Evidence: `mcp/check.sh` 18/18, `check.sh`
+  13/13, `opencode2 mcp list` core-brain + plur connected. 

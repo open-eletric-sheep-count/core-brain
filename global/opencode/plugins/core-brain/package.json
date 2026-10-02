@@ -24,7 +24,8 @@
     "config.json",
     "LICENSE",
     "README.md",
-    "INSTALACAO.md"
+    "INSTALACAO.md",
+    "mcp"
   ],
   "scripts": {
     "prepublishOnly": "node --input-type=module -e \"await import('./index.ts')\""

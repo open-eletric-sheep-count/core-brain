@@ -90,8 +90,14 @@ interface CoreBrainPluginContext {
 
 const LOG_TAG = "[core-brain]";
 
-type CoreMemoryOp = "who" | "store" | "recall";
-const OPS: readonly CoreMemoryOp[] = ["who", "store", "recall"];
+type CoreMemoryOp = "who" | "store" | "recall" | "forget" | "feedback";
+const OPS: readonly CoreMemoryOp[] = [
+  "who",
+  "store",
+  "recall",
+  "forget",
+  "feedback",
+];
 
 const DEBUG_ENV = "CORE_BRAIN_DEBUG";
 const HOME_ENV = "CORE_BRAIN_HOME";
@@ -206,8 +212,11 @@ const TOOL_DESCRIPTION =
   "recall — search the spaces this agent may read (its own space always, the " +
   "global space when it has global access, another agent's space only while " +
   "that agent is public) ranked by cosine similarity, and report which spaces " +
-  "were scanned. The calling agent's identity is taken from the running " +
-  "session — it is NOT an input field and cannot be supplied or impersonated.";
+  "were scanned; forget — retire a record without deleting it (by 'id' or " +
+  "by 'query'); feedback — record whether a readable record was useful, " +
+  "which feeds the ranking tie-break. The calling agent's identity is " +
+  "taken from the running session — it is NOT an input field and cannot " +
+  "be supplied or impersonated.";
 
 const TOOL_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -220,7 +229,19 @@ const TOOL_SCHEMA: Record<string, unknown> = {
       enum: [...OPS],
       description:
         "who — report this agent's policy; store — persist `text`; " +
-        "recall — search the spaces this agent may read.",
+        "recall — search the spaces this agent may read; forget — retire " +
+        "a record without deleting it; feedback — record whether a " +
+        "readable record was useful.",
+    },
+    id: {
+      type: "string",
+      description:
+        "feedback: the record id (required). forget: optional exact " +
+        "record id to retire.",
+    },
+    useful: {
+      type: "boolean",
+      description: "feedback: true = useful, false = not useful (required).",
     },
     text: {
       type: "string",
@@ -230,7 +251,9 @@ const TOOL_SCHEMA: Record<string, unknown> = {
       type: "string",
       description:
         "store: where to write — 'self' (default), 'global' (requires " +
-        "global access), or 'agent:<name>' (always refused for another agent).",
+        "global access), or 'agent:<name>' (always refused for another " +
+        "agent); forget: which space to retire from — 'self' (default) or " +
+        "'global' (requires global access).",
     },
     meta: {
       type: "object",
@@ -240,7 +263,9 @@ const TOOL_SCHEMA: Record<string, unknown> = {
       type: "string",
       description:
         "recall: optional text to rank stored records against (cosine " +
-        "similarity). Omit to list the most recently updated records.",
+        "similarity). Omit to list the most recently updated records; " +
+        "forget: retire every record whose cosine to this text is at/above " +
+        "the match threshold (omit when using 'id').",
     },
     limit: {
       type: "integer",
@@ -299,6 +324,53 @@ function buildRequest(input: unknown): RequestParse {
         ...(meta ? { meta } : {}),
       },
     };
+  }
+
+  if (op === "forget") {
+    const id =
+      typeof record.id === "string" && record.id.trim()
+        ? record.id.trim()
+        : undefined;
+    const q =
+      typeof record.query === "string" && record.query.trim()
+        ? record.query.trim()
+        : undefined;
+    if (!id && !q) {
+      return { ok: false, error: "forget requires 'id' or 'query'." };
+    }
+    const t =
+      typeof record.target === "string" && record.target.trim()
+        ? record.target.trim()
+        : undefined;
+    if (t !== undefined && t !== "self" && t !== "global") {
+      return { ok: false, error: "forget 'target' must be 'self' or 'global'." };
+    }
+    return {
+      ok: true,
+      request: {
+        op: "forget",
+        ...(id ? { id } : {}),
+        ...(q ? { query: q } : {}),
+        ...(t ? { target: t as "self" | "global" } : {}),
+      },
+    };
+  }
+
+  if (op === "feedback") {
+    const id =
+      typeof record.id === "string" && record.id.trim()
+        ? record.id.trim()
+        : undefined;
+    if (!id) {
+      return {
+        ok: false,
+        error: "feedback requires a non-empty string 'id'.",
+      };
+    }
+    if (typeof record.useful !== "boolean") {
+      return { ok: false, error: "feedback requires a boolean 'useful'." };
+    }
+    return { ok: true, request: { op: "feedback", id, useful: record.useful } };
   }
 
   const query =

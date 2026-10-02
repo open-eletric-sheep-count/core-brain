@@ -12,7 +12,7 @@ runtime dependencies** (Node builtins only).
 | npm name | `@oesc/core-brain` |
 | Version | `0.1.0` |
 | Data root | `~/.core-brain/` (override with `CORE_BRAIN_HOME`) |
-| Tool | `core_memory` (`who` \| `store` \| `recall`) |
+| Tool | `core_memory` (`who` \| `store` \| `recall` \| `forget` \| `feedback`) |
 | Runtime deps | **none** — `node:fs`, `node:path`, `node:os`, `node:crypto`, `node:url` |
 | **License** | **MIT License** — see [`LICENSE`](LICENSE) and the repository root |
 
@@ -42,6 +42,10 @@ agent calls to remember and to recall:
 - **`recall`** — search the namespaces the calling agent is allowed to read,
   rank the records by cosine similarity, and report which namespaces were
   scanned.
+- **`forget`** — soft-retire a record by `id` or by `query`; the record leaves
+  recall but its text stays on disk.
+- **`feedback`** — increment a usefulness counter on a record the caller may
+  read, feeding the ranking tie-break.
 
 The **calling agent's identity is never an input field**. It is resolved from
 the running session (the trusted plugin context) and looked up in
@@ -132,13 +136,18 @@ Input schema (JSON Schema, `additionalProperties: false` — there is deliberate
 
 | Field | Type | Used by | Meaning |
 |---|---|---|---|
-| `op` *(required)* | `"who"` \| `"store"` \| `"recall"` | all | the operation |
+| `op` *(required)* | `"who"` \| `"store"` \| `"recall"` \| `"forget"` \| `"feedback"` | all | the operation |
 | `text` | string (non-empty) | store | the memory text to persist |
-| `target` | string | store | `self` (default), `global`, `agent:<name>` |
+| `target` | string | store, forget | `self` (default), `global`, `agent:<name>` — `forget` accepts `self` or `global` only |
 | `meta` | object | store | optional metadata, stored verbatim |
-| `query` | string | recall | text to rank against (cosine); omit to list the most recent records |
+| `query` | string | recall, forget | text to rank against (cosine); omit to list the most recent records — `forget` retires every active record at/above the match threshold |
 | `limit` | integer | recall | maximum results (default 5) |
 | `from` | string | recall | `self`, `global`, `agent:<name>`; omitted = every namespace this agent may read |
+| `id` | string | forget, feedback | the record id — forget's exact record, or feedback's target record |
+| `useful` | boolean | feedback | whether the record was useful |
+
+- **`forget`** — soft retire by `id` or `query`; the record leaves recall but its text stays on disk.
+- **`feedback`** — increments a usefulness counter on a record the caller may read.
 
 Results — the tool returns this JSON as its content:
 
@@ -162,7 +171,8 @@ A refusal is a clear `ERROR:` line, never a silent empty result — for example:
 ERROR: core_memory store: agent 'CB_GAMMA' cannot write to 'global': no global access
 ```
 
-`recall` ranks by cosine similarity (tie-break: `updatedAt` descending),
+`recall` ranks by cosine similarity with the full tie-break
+`score desc → feedback.useful desc → retrievals desc → updatedAt desc`,
 increments `retrievals` on every returned hit, and always reports `scanned` so
 the caller can see which namespaces were consulted.
 
@@ -195,8 +205,15 @@ YAML, no external dependency.
 ```jsonc
 // record shape
 { "id": "<uuid>", "agent": "agent_beta", "scope": "agent", "text": "…",
-  "meta": {}, "createdAt": "ISO-8601", "updatedAt": "ISO-8601", "retrievals": 0 }
+  "meta": {}, "createdAt": "ISO-8601", "updatedAt": "ISO-8601", "retrievals": 0,
+  "retiredAt": "ISO-8601",                  // OPTIONAL — soft retire (forget)
+  "feedback": { "useful": 0, "useless": 0 } // OPTIONAL — usefulness (feedback)
+}
 ```
+
+`retiredAt?: string` and `feedback?: { useful, useless }` are **OPTIONAL**: a
+record written by v0.1.0 carries neither and still reads as **active** (no
+`retiredAt`) and **neutral** (no `feedback`).
 
 ## Embedder — `hash-ngram-v1` (declared stub)
 
@@ -212,6 +229,75 @@ determinism — the access matrix and top-k retrieval run for real, in-process,
 over real stored vectors — but it is **not** good enough for semantic search
 quality. A production semantic embedder is a declared follow-up (see
 [v1 vs roadmap](#v1-vs-roadmap)).
+
+---
+## MCP server — `core-brain`
+
+The plugin ships a companion **MCP server** that exposes the store's
+administration surface over stdio, so a script, a cron or the USER's own
+tooling can read the shared layer without a session. It is declared in
+`opencode.json` → `mcp.servers.core-brain` and launched with:
+
+```json
+"core-brain": {
+  "type": "local",
+  "command": ["node", "/home/<user>/.config/opencode/plugins/core-brain/mcp/server.js"]
+}
+```
+
+No port, no daemon, no PID file — stdio only, and **zero runtime
+dependencies**: the newline-delimited JSON-RPC 2.0 transport lives in the repo
+(`mcp/jsonrpc.js` + `mcp/server.js`), with no `@modelcontextprotocol/*` and no
+`zod`. The store keeps using `node:fs` / `node:path` / `node:os` /
+`node:crypto` / `node:url` only.
+
+### The five tools
+
+| Tool | What it returns |
+|---|---|
+| `core_recall` | reads the **global namespace only** — *"global namespace only — this is not an agent view; per-agent recall goes through the `core_memory` tool."* |
+| `core_status` | per-namespace counts (records / retired / retrievals), storage root, config path, embedder and dim — **counts only, never memory text** |
+| `core_doctor` | the five health checks, each with an id, an ok flag and a detail |
+| `core_receipt` | counted report of what was stored and retrieved |
+| `core_admin` | `purge` / `reindex` / `export` / `import` / `compact` |
+
+Invalid requests are JSON-RPC errors (`-32602`); a refusal raised by the store comes back as a tool result with `isError: true` and an `ERROR: …` text — the MCP convention for protocol errors versus tool-level errors.
+
+### Why the agent-facing operations are NOT on the MCP
+
+An MCP server receives **no session and no agent identity** — measured on this
+machine: the environment of a local MCP process carries no
+`OPENCODE_SESSION_ID` and no agent key. Any per-agent operation exposed over
+MCP would therefore have to accept the agent name as a **tool argument**, and
+anything the model can type, the model can forge — which would defeat the
+isolation this project exists to provide. Identity-needing operations
+(`store`, `recall`, `forget`, `feedback`) stay on the plugin tool
+`core_memory`, whose identity comes from the running session.
+
+The MCP is the **administration/observability surface**; `core_recall` is the
+single read it offers, and it is explicitly a global-namespace view.
+
+### New plugin operations (this slice)
+
+- **`forget`** — retires a record without deleting it (by `id`, or by `query` above the match threshold). A retired record is excluded from recall; its text stays on disk.
+- **`feedback`** — records whether a record the caller may read was useful. It feeds the ranking tie-break: `score desc → feedback.useful desc → retrievals desc → updatedAt desc`.
+
+### Coexistence with PLUR
+
+Both MCP servers run side by side during the transition — no identifier is
+shared:
+
+| Artifact | PLUR | core-brain MCP |
+|---|---|---|
+| Server name | `plur` | `core-brain` |
+| Command | `npx -y @plur-ai/mcp` | local `node …/mcp/server.js` |
+| Tool prefix | `plur_*` | `core_*` |
+| Store | `~/.plur/` | `~/.core-brain/` |
+| Runtime deps | 5 packages (3 × `@modelcontextprotocol/*` + `zod`) | **zero** |
+
+See [`INSTALACAO.md`](INSTALACAO.md) for the install and verification steps.
+
+---
 
 ## Zero collision with PLUR
 

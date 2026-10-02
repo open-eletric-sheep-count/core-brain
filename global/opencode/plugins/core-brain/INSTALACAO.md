@@ -158,3 +158,76 @@ a plain `{ id, setup }` object):
   handling of the `ctx.session.get` beta envelope);
 - CLI used above (`run`, `plugin list`, `debug agents`, `mcp list`, `reload`) —
   <https://opencode.ai/v2/docs/cli/commands> and `/cli/plugins`.
+
+---
+
+## 11. Installing the MCP server
+
+The MCP server is part of the plugin; installing the plugin copies it too
+(it travels inside `plugins/core-brain/mcp/`). Only the `opencode.json` entry
+is added by hand.
+
+### Step 1 — add the `mcp.servers` entry
+
+In `~/.config/opencode/opencode.json`, inside `mcp.servers`:
+
+```json
+"core-brain": {
+  "type": "local",
+  "command": ["node", "/home/<user>/.config/opencode/plugins/core-brain/mcp/server.js"],
+  "environment": { "CORE_BRAIN_HOME": "/home/<user>/.core-brain" }
+}
+```
+
+**The key is `environment`, not `env`.** Measured on this machine: an entry
+written with `"env": { … }` is accepted by the parser and **silently dropped** —
+the variable never reaches the server. (`opencode2 mcp add --env k=v` writes
+`"environment"` for the same reason.)
+
+Notes:
+
+- The path must point at the **mirror** the running engine loads
+  (`~/.config/opencode/…`), not at the repository.
+- `CORE_BRAIN_HOME` is optional: without it the server resolves `~/.core-brain`
+  from the user's home. Keep it when the store lives elsewhere.
+
+### Step 2 — reload
+
+```bash
+opencode2 reload
+```
+
+so the running service spawns the new server. (A local MCP server is spawned
+per session; a reload makes it visible to new sessions.)
+
+### Step 3 — verify
+
+```bash
+opencode2 mcp list
+```
+
+`core-brain` must show **connected**, and so must `plur` — the two coexist.
+
+### Step 4 — smoke test
+
+```bash
+bash ~/.config/opencode/plugins/core-brain/mcp/check.sh
+```
+
+Expected: `18/18 lines PASS` with exit code 0. The check drives the real
+server over stdio (`initialize` → `notifications/initialized` → `tools/list` →
+`tools/call`).
+
+### Step 5 — coexistence
+
+Confirm `~/.plur/` is untouched and the `plur` MCP is still connected in the
+same `mcp list` output. Nothing in this plugin reads or writes PLUR data.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `mcp list` does not show `core-brain` | the path in `command` is wrong — it must be the mirror (`~/.config/opencode/…`); then `opencode2 reload` |
+| data appears in an unexpected directory | `CORE_BRAIN_HOME` in the `environment` block points elsewhere, or the key was written as `env` and ignored |
+| a change under `~/.config/opencode` disappeared | that tree is generated — edit the **source** (`global/opencode/`) and re-run the installer |
+| `core_recall` returns only global results | by design: it is an administration view, not an agent view; per-agent recall uses `core_memory` |

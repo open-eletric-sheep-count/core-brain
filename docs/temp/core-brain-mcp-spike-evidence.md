@@ -84,3 +84,9 @@ Captured verbatim from the rig's `calls.log` (newline-delimited JSON, MCP stdio 
 
 - Rig processes `dump-server.mjs`: killed after the run; `/tmp/opencode/cb-spike/` removed.
 - No live/global config file was modified for the spikes (project config + `OPENCODE_CONFIG` only).
+
+## CORRECTION (ORACLE self-audit, 2026-10-02 16:05)
+
+A read is NOT side-effect free: `recallOp` increments `MemoryRecord.retrievals` and rewrites `memories.json` for every namespace that produced a hit. So neither `core_recall` nor `core_memory op:"recall"` can serve as a 'no file changed' probe; only `core_status`, `core_doctor` and `core_receipt` are pure reads. The earlier Layer-B wording in the spec/plan was wrong for recall (the ARCHITECT rewrote spec §10).
+
+Also recorded: session ID typo fix — the concurrent session is `ses_f06055d18ffetklAOTycxMjZ8g`.

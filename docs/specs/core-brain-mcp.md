@@ -90,16 +90,16 @@ Legend — **Host:** `P` = plugin tool `core_memory` (identity from the session)
 | 8 | `plur_doctor` | `core_doctor` **(new, G3)** | **M** | `{}` | `{ ok, checks: [{ id, ok, detail }] }` | see AC6 for the check list |
 | 9 | `plur_receipt` | `core_receipt` **(new, G3)** | **M** | `{ ns?, days? }` | `{ stored, retrieved, hits, byNamespace[] }` | read-only counters |
 | 10 | `plur_admin` | `core_admin` **(new, G3)** | **M** | `{ action, args }` | dispatcher (one validation path, one error shape) | maintenance: `purge`, `reindex`, `export`, `import`, `compact` |
-| 11 | `plur_capture` | `core_memory op:"episode"` **(new — the episodic timeline)** | **P** | `{ summary, tags?, sessionId? }` | `{ ok, id, ns }` | write matrix §6.2 |
-| 12 | `plur_timeline` | `core_memory op:"timeline"` / MCP `core_timeline` **(new — the episodic timeline)** | **P** (own view) · **M** (global, admin) | `{ query?, since?, until?, tags?, limit? }` | `{ results: Episode[], scanned[] }` | read matrix §6.1; the MCP view reads `global` only |
-| 13 | `plur_episode_to_engram` | `core_memory op:"promote"` **(new — the episodic timeline)** | **P** | `{ episodeId, text, tags? }` | `{ ok, episodeId, memoryId }` | the episode must be readable by the caller; the memory follows §6.2; the episode gains the id in `engramIds` |
+| 11 | `plur_capture` | `core_memory op:"episode"` **(new — the episodic timeline; DEFERRED to the v2 engine slice, USER decision 2026-10-02)** | **P** | `{ summary, tags?, sessionId? }` | `{ ok, id, ns }` | write matrix §6.2 |
+| 12 | `plur_timeline` | `core_memory op:"timeline"` / MCP `core_timeline` **(new — the episodic timeline; DEFERRED to the v2 engine slice, USER decision 2026-10-02 — `core_timeline` is NOT shipped by this slice)** | **P** (own view) · **M** (global, admin) | `{ query?, since?, until?, tags?, limit? }` | `{ results: Episode[], scanned[] }` | read matrix §6.1; the MCP view reads `global` only |
+| 13 | `plur_episode_to_engram` | `core_memory op:"promote"` **(new — the episodic timeline; DEFERRED to the v2 engine slice, USER decision 2026-10-02)** | **P** | `{ episodeId, text, tags? }` | `{ ok, episodeId, memoryId }` | the episode must be readable by the caller; the memory follows §6.2; the episode gains the id in `engramIds` |
 | 14 | `plur_packs_*` | **out of scope** | — | — | — | PLUR-specific feature; no equivalent is promised (§14) |
 | 15 | `plur_tensions_purge` | `core_admin { action: "purge" }` | **M** | — | PLUR-specific concept → folded into the admin purge |
 | 16 | the 33 admin ops | **only the named ones** (`purge`, `reindex`, `export`, `import`, `compact`, plus the three episodic ops above) | **M** | — | the rest are PLUR-store features (sync, remote stores, scopes, provenance, profiles) with no core-brain counterpart and no requirement |
 
-**The episodic timeline** (rows 11–13) is specified in full — object, storage, isolation, the migration of the existing 34, AC-TL1–AC-TL6 — in **`core-brain-v2.md` §12**. It is first-class, not a tag.
+**The episodic timeline** (rows 11–13) is specified in full — object, storage, isolation, the migration of the existing 34, AC-TL1–AC-TL6 — in **`core-brain-v2.md` §12**. It is first-class, not a tag. **It is DEFERRED to the v2 engine slice (USER decision 2026-10-02):** with the declared stub embedder (`hash-ngram-v1`) a timeline search could only match spelling, and the v2 spec §8 puts the engine first — shipping the timeline now would promise a search quality this slice cannot deliver.
 
-**Surface size:** the plugin registers **one** tool (`core_memory`) with **8** ops (who, store, recall, forget, feedback, episode, timeline, promote); the MCP exposes **6** tools (recall, status, doctor, receipt, timeline, admin). Deliberately smaller than PLUR's 12+33: every tool kept closes a stated gap in §0.
+**Surface size (corrected to what actually shipped — 2026-10-02):** the plugin registers **one** tool (`core_memory`) with **5** ops (`who`, `store`, `recall`, `forget`, `feedback`); the MCP exposes **5** tools (`core_recall`, `core_status`, `core_doctor`, `core_receipt`, `core_admin`). **`core_timeline` is deferred** (rows 11–13), so the earlier "8 ops / 6 tools" counts no longer apply. Deliberately smaller than PLUR's 12+33: every tool kept closes a stated gap in §0.
 
 ---
 
@@ -138,7 +138,7 @@ The §6 matrix of the sibling spec is untouched; what this slice adds is the rul
 | `core_admin { purge }` (M) | — | one namespace, named explicitly | refuses a **private** agent namespace unless the namespace is named explicitly **and** `--force` is passed; the refusal names the namespace |
 | `core_admin { import/export }` (M) | any | any | export writes a file the caller names; import merges and **never** overwrites an existing record id |
 
-Rule inherited from the plugin, **as changed by `docs/specs/core-brain-default-policy-spec.md`**: an agent absent from `config.json` no longer gets an error — it resolves to the default policy `{ private:false, hasGlobalAccess:true }` and may use its own namespace and `global`. The old error `agent '<name>' is not configured in core-brain config.json` is **removed from production**. **The future MCP server's own behaviour for an unlisted agent is a separate, unresolved decision** — that surface has no implementation and is out of scope for this slice (`docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3); do not read this document as deciding it.
+Rule inherited from the plugin, **as changed by `docs/specs/core-brain-default-policy-spec.md`**: an agent absent from `config.json` no longer gets an error — it resolves to the default policy `{ private:false, hasGlobalAccess:true }` and may use its own namespace and `global`. The old error `agent '<name>' is not configured in core-brain config.json` is **removed from production**. **Resolved for the built MCP (2026-10-02):** the MCP never resolves a caller — it fixes its engine identity to the constant `core-brain-admin`, which is unlisted and therefore takes the default policy `{ private:false, hasGlobalAccess:true }` — and `core_recall` hard-codes `from:"global"`. There is no caller-supplied identity on the MCP surface, so the unlisted-agent question does not arise there.
 
 ---
 
@@ -193,10 +193,10 @@ Both can run side by side during the transition, as criterion 3 requires.
   "core-brain": {
     "type": "local",
     "command": ["node", "<abs>/global/opencode/plugins/core-brain/mcp/server.js"],
-    "env": { "CORE_BRAIN_HOME": "/home/<user>/.core-brain" }
+    "environment": { "CORE_BRAIN_HOME": "/home/<user>/.core-brain" }
   }
   ```
-  `env` presence is **SPIKE-2** (§12); if unsupported, the same value is the process's default (`~/.core-brain`) and the entry stays `command`-only — the already-proven shape (`context7`/`pt` entries use `command` only).
+  **Correction (SPIKE-2, measured 2026-10-02):** the canonical key is **`environment`, not `env`**. `opencode2 mcp add --env k=v` writes `environment`; an entry written with `"env": { … }` is accepted by the parser and **silently dropped** (measured: the spawned process carried 196 env keys and none of the marker). The shipped live entry uses `environment`. `CORE_BRAIN_HOME` itself remains optional — without it the server resolves `~/.core-brain` from the inherited `HOME`.
 - **Install:** the plugin's existing `install-global.sh` path already copies `plugins/core-brain/`, so `mcp/` travels with it; the only **USER** action is the `opencode.json` entry (the mirror is generated) + `opencode2 reload`.
 - **Diagnostics:** `CORE_BRAIN_DEBUG=1` prints one line per tool call to stderr, the same switch the plugin uses.
 
@@ -210,7 +210,7 @@ Both can run side by side during the transition, as criterion 3 requires.
 - **AC4** — `core_forget` retires without deleting: after retire, recall excludes it, `core_status` counts it as `retired`, and the record's `text` is still on disk.
 - **AC5** — `core_feedback({ useful: true })` demonstrably moves ranking: two records with identical cosine, one with positive feedback, the feedbacked one ranks first.
 - **AC6** — `core_doctor` detects, one check each, and reports a failing `detail`: (a) an invalid config row (`private:false && hasGlobalAccess:false`), (b) an `embedder`/`dim` mismatch against `EMBEDDER_ID`/`EMBEDDING_DIM`, (c) an unwritable store root, (d) an orphan vector (vector without record) and a record without vector, (e) a `vector` whose dimension ≠ `dim`.
-- **AC7** — `core_recall` over MCP reads **only** `global`; the per-agent view stays on the plugin. **Open decision (not decided here):** the MCP server's own behaviour for an unlisted agent is a separate surface with no implementation (`docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3); the plugin no longer refuses an absent agent, so the old proof ("a call from an unlisted agent gives an error") no longer applies, and this AC must be re-derived when the MCP is built.
+- **AC7** — `core_recall` over MCP reads **only** `global`; the per-agent view stays on the plugin. **Resolved (recorded result, 2026-10-02):** the MCP has no caller identity — it reads the `global` namespace only and rejects a `from` argument with `-32602` — while the plugin tool `core_memory` carries the per-agent identity from the session. The transport self-test pins it: `bash global/opencode/plugins/core-brain/mcp/check.sh` → **18/18 PASS, exit 0**, asserting `tools/list` advertises exactly the five tools, the `core_recall` description carries the verbatim §4.3 sentence, a `from` argument is refused, and the read's `scanned` is exactly `["global"]`. The old open decision about an unlisted agent is closed by construction: the MCP never resolves a caller, so there is no unlisted-agent surface to decide.
 - **AC8** — the mirror's existing `plugins[]` behaviour and `check.sh` are untouched: **13/13 PASS, exit 0** — the same command and exit code the plugin is accepted on.
 - **AC9** — zero runtime dependencies: `plugins/core-brain/` has no `node_modules` and no `package.json` dependency beyond the current empty set; the MCP server starts under `node --experimental-strip-types` alone.
 - **AC10** — a `INSTALACAO.md` section and a `README.md` section exist for the MCP, in the same voice as the plugin's, and the `CHANGELOG.md` carries the entry.
@@ -220,7 +220,7 @@ Both can run side by side during the transition, as criterion 3 requires.
 ## 10. Test plan — two layers, same bar as the plugin
 
 - **Layer A (in-process, deterministic):** `mcp/check.sh` driving the engine directly (no MCP transport) + **a transport test** driving the built server over stdio with a scripted JSON-RPC conversation (`initialize` → `tools/list` → `tools/call`), asserting: the 5 tool names, their schemas, the refusal shapes of §5/AC3, the retire semantics of AC4, the ranking of AC5, every `core_doctor` check of AC6.
-- **Layer B (live, headless):** a real `opencode run` in which an **unlisted** agent calls `core_recall` over the MCP — its behaviour is an **open decision for the MCP surface** (AC7; `docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3), not decided by this document — and the store is inspected before/after (`~/.core-brain/`) to prove nothing was written by a read.
+- **Layer B (live, headless):** a real `opencode run` calls `core_recall` over the MCP — the MCP exposes no caller identity (AC7, resolved 2026-10-02: `global` only, `from` refused), so there is no unlisted-agent surface to measure — and the store is inspected before/after (`~/.core-brain/`) to prove no memory record was added, removed or edited by the read. (The `retrievals` counter of returned hits is updated by recall, exactly as the plugin's `recall` already does; the inspection is about memory text, not that counter.)
 - **Evidence to record, per the repo's rule 16/17:** the exact commands and their digests; screenshots are not applicable (no UI).
 
 ---
@@ -289,10 +289,10 @@ Taking PLUR out is a **three-part** operation. This spec closes 1 and 3; part 2 
 
 | Deliverable | Where |
 |---|---|
-| The MCP server (zero deps, stdio) | `global/opencode/plugins/core-brain/mcp/server.js` (+ any split modules) |
-| Store additions (`forget`/`feedback`/`status`/`doctor`/`receipt`/`admin`) | `store.ts`, `types.ts` |
+| The MCP server (zero deps, stdio) | `global/opencode/plugins/core-brain/mcp/server.js` + `mcp/jsonrpc.js` (the hand-rolled JSON-RPC transport) |
+| Store additions (`forget`/`feedback`/`status`/`doctor`/`receipt`/`admin`) | `store.ts`, `types.ts`, `shims.d.ts` |
 | Plugin tool additions (`core_memory` ops `forget`, `feedback`) | `index.ts` |
-| Self-test + transport test | `mcp/check.sh`, `mcp/test/` |
+| Self-test + transport test | `mcp/check.sh`, `mcp/test/transport.selftest.mjs` |
 | Docs | `README.md`, `INSTALACAO.md`, `CHANGELOG.md` (repo root), `TASKS.md` |
 | Proof of the 5 spikes | recorded digests, appended to this spec or to a `docs/temp/` file |
 

@@ -5,8 +5,44 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed
+- **Removed the personal injection path from `context-inject/config.json` — the public repo no longer ships user-specific configuration** (`global/opencode/plugins/context-inject/config.json`; USER request 2026-10-02): the reserved `ALL` key carried the absolute personal path `/home/gandb/.config/opencode/PERSONAL_RULES.md` (added in commit `cf30642`), which does not belong in an opensource repository. The personal injection now lives in the private **project-generator** repository at the same relative path, which is copied **over** this tree at install time (that repo's `src/install-global.sh` installs core-brain first and project-generator last). This file keeps only the generic `ORACLE` HOWTO injections (`TODO_TOOL_HOWTO.md`, `LAUNCH_LEDGER_HOWTO.md`), which resolve relative to the plugin directory. **Exposure note:** the personal path remains in this repository's git history (`cf30642`, already pushed to `origin/main`) — rewriting it is a git write and was NOT performed; that is the USER's decision. Evidence executed 2026-10-02: `python3 -c json.load(...)` on both copies → valid JSON; `grep PERSONAL_RULES` over the tree → zero hits outside journal/temp files; the overlay test in the project-generator repo → 10/10 PASS.
+
 ### Added
 
+- **The `core-brain` MCP server — the administration surface, zero runtime dependencies**
+  (`global/opencode/plugins/core-brain/mcp/server.js`, `mcp/jsonrpc.js`,
+  `mcp/check.sh`, `mcp/test/transport.selftest.mjs`; spec
+  `docs/specs/core-brain-mcp.md`, slice G1+G3): a newline-delimited JSON-RPC 2.0
+  server over **stdio** (no port, no daemon, no PID file) exposing **five**
+  tools — `core_recall` (**global namespace only**, explicitly not an agent
+  view), `core_status`, `core_doctor`, `core_receipt`, `core_admin`
+  (`purge`/`reindex`/`export`/`import`/`compact`). The transport is implemented
+  in the repo: **no `@modelcontextprotocol/*`, no `zod`, no runtime dependency**
+  at all. The plugin tool `core_memory` gains two operations — `forget` (soft
+  retire: recall excludes the record, its text stays on disk) and `feedback`
+  (feeds the ranking tie-break `score → feedback.useful → retrievals →
+  updatedAt`); the store format is extended **additively** (two optional record
+  fields), so a store written by v0.1.0 opens unchanged. The MCP carries no
+  per-agent identity by construction — measured: a local MCP process receives no
+  `OPENCODE_SESSION_ID` and no agent key — so every identity-needing operation
+  stays on the session-scoped `core_memory` tool and impersonation is impossible.
+  **Non-destructive:** the plugin's isolation matrix stays **13/13 PASS, exit 0**;
+  the 23 pre-existing agents and the four `CB_*` test agents are byte-identical;
+  `~/.plur/` is untouched and the `plur` MCP stays connected alongside
+  `core-brain`. Evidence, **executed 2026-10-02** (Node v24.15.0):
+  `bash global/opencode/plugins/core-brain/check.sh` → **13/13 lines PASS**;
+  `bash global/opencode/plugins/core-brain/mcp/check.sh` → **18/18 lines PASS**;
+  `opencode2 mcp list` → `core-brain` **connected** AND `plur` **connected**;
+  live probes by the dedicated agents `CB_ALPHA`/`CB_BETA`/`CB_GAMMA`/`CB_DELTA`
+  returning the expected JSON and the expected refusals (`agent 'CB_GAMMA' cannot
+  write to 'global': no global access`; `agent 'CB_ALPHA' cannot write to
+  'agent:CB_BETA': target is private — cross-agent write not allowed`); an
+  unlisted agent resolves to the default policy `{ private:false,
+  hasGlobalAccess:true }`. Docs: the plugin's `README.md` (MCP section) and
+  `INSTALACAO.md` §11. **Note for the operator:** the `opencode.json` key for a
+  local server's environment is **`environment`**, not `env` — an `env` block is
+  silently ignored (measured).
 - **New plugin `core-brain` v0.1.0 — per-agent memory isolation for OpenCode V2**
   (`global/opencode/plugins/core-brain/`: `index.ts`, `store.ts`, `types.ts`,
   `package.json`, `tsconfig.json`, `shims.d.ts`, `config.json` seed, `LICENSE`,
