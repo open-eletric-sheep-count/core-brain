@@ -82,13 +82,13 @@ or restart OpenCode. The plugin is loaded, its config is validated, and the
 ```bash
 opencode2 plugin list                              # must list core-brain
 opencode2 debug agents                             # must list your agents (e.g. the CB_* ones)
-bash global/opencode/plugins/core-brain/check.sh   # must print 8/8 PASS and exit 0
+bash global/opencode/plugins/core-brain/check.sh   # must print 13/13 lines PASS and exit 0
 ```
 
 The third command is the executable isolation matrix: it runs the real store and
 authorizer against a disposable `CORE_BRAIN_HOME` created with `mktemp -d`,
-prints one line per rule (`7 PASS … 14 PASS`) and removes the temp root when it
-exits. Measured reference: **8/8 lines PASS**, exit code `0` (Node v24.15.0).
+prints one line per rule (`7 PASS … 19 PASS`) and removes the temp root when it
+exits. Measured reference: **13/13 lines PASS**, exit code `0` (Node v24.15.0).
 
 ## 6. Smoke it for real (headless run)
 
@@ -120,7 +120,7 @@ collision table in [`README.md`](README.md#zero-collision-with-plur)).
 
 | Symptom | Cause | What to do |
 |---|---|---|
-| `ERROR: agent '<name>' is not configured in core-brain config.json` | the session's agent is not listed in the policy | add an `agents[]` row whose `name` matches exactly |
+| an agent **not** listed in the policy | expected — it now gets the default policy (`private:false` + `hasGlobalAccess:true`); the old `agent '<name>' is not configured in core-brain config.json` error no longer exists | no action needed to use `self`/`global`; add an explicit `agents[]` row whose `name` matches exactly only if you want to override the default |
 | `ERROR: InvalidConfigurationError (INVALID_CONFIGURATION): … public agent without global access …` | a row has `private: false` **and** `hasGlobalAccess: false` | fix that row (make it `private: true`, or give it global access) |
 | `ERROR: core_memory store: agent '<A>' cannot write to 'global': no global access` | `hasGlobalAccess` is false for that agent | expected behaviour — write to `self`, or grant access |
 | `ERROR: core_memory store: agent '<A>' cannot write to 'agent:<B>': target is private — cross-agent write not allowed` | cross-agent write | expected behaviour — writes only go to your own space |

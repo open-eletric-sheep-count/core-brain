@@ -90,7 +90,8 @@ MVP plan in [README.md](README.md).
   (`who` / `store` / `recall`), the §4 access matrix of
   `docs/core_brain_specification.md` implemented exactly (a private namespace per
   agent, an optional shared `global` namespace, cross-agent writes refused,
-  unlisted agents fail-closed), atomic JSON persistence under `~/.core-brain/`
+  absent rows defaulted to `private:false` + `hasGlobalAccess:true` instead of
+  fail-closed), atomic JSON persistence under `~/.core-brain/`
   (override `CORE_BRAIN_HOME`) and a declared offline stub embedder
   (`hash-ngram-v1`, 256 dims).
   - Four dedicated test agents: `global/opencode/agent/CB_{ALPHA,BETA,GAMMA,DELTA}.md`

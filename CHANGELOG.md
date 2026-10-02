@@ -139,6 +139,22 @@ Newest on top.
 
 ### Changed
 
+- **core-brain: an agent absent from `config.json` is no longer fail-closed — it gets the default
+  policy `private:false` + `hasGlobalAccess:true`, and a configured row that omits `private` and/or
+  `hasGlobalAccess` takes the same defaults** (`global/opencode/plugins/core-brain/store.ts`; USER,
+  2026-10-02): `requirePolicy()` now returns the configured policy or a synthesized
+  `{ name, private:false, hasGlobalAccess:true }` instead of throwing `agent '<name>' is not
+  configured in core-brain config.json` (that string is removed from production); in
+  `loadPolicies()`, a field whose key is **absent** (`undefined`) resolves to its default
+  (`hasGlobalAccess` → `true`, `private` → `false`), while a **present non-boolean still throws**
+  `InvalidConfigurationError` (the defaults are a missing-key rule, not coercion) and the
+  **unchanged** invalid-row rule still throws for `private:false` + `hasGlobalAccess:false`. This is
+  a **deliberate reversal of fail-closed** (spec §10): an unlisted agent — and, if `config.json` is
+  missing or empty, every agent — now participates in the shared `global` namespace; its namespace
+  does **not** join another agent's public read union and is not readable via `from:"agent:<X>"`
+  (spec §4.3; rejected alternative: disk namespace discovery). The isolation matrix grew from 8 to
+  **13 lines**; `bash global/opencode/plugins/core-brain/check.sh` → **13/13 matrix lines PASS**,
+  exit code `0`.
 - **Tico&Teco: o ARCHITECT entrega o plano ao ORACLE, e o debate passa a viver em `docs/forum.md`** (USER, 2026-09-20; `helpers/METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md`, passo 3): no motor local (SGLang) o ARCHITECT já não pode lançar o DEVELOPER — profundidade <= 1, imposta pelo plugin `sglang-guard` —, então o ORACLE lança o DEVELOPER com o plano do ARCHITECT, **um agente de cada vez**, e a conversa ARCHITECT ↔ DEVELOPER viaja por **`docs/forum.md`**: aberto NOVO no início de **cada tarefa** (o anterior é arquivado como `docs/forum-<AAAAMMDD-HHMM>.md`), com cabeçalho que identifica a tarefa, *append-only* daí em diante, uma entrada por agente com `## <AGENTE> — <AAAA-MM-DD HH:MM>`, e **entradas de duas tarefas no mesmo arquivo são um defeito**. O ORACLE relay só o caminho (nunca texto colado — regras 13/14) e o ARCHITECT mantém a autoridade (comanda, revê, reprova). Em provider remoto a chamada direta ARCHITECT → DEVELOPER mantém-se como estava; o forum continua a ser o registo.
 - **`agent/ARCHITECT.md`: "sole relay" passa a autoridade sem launch** (USER, 2026-09-20; GOLDEN RULES): o bullet agora diz que o ARCHITECT é a única autoridade sobre o DEVELOPER mas **nunca o lança** — um subagente de nível 1 não lança nada (AGENTS.md regra 19) —, que o ORACLE lança e transporta, que o brief e os veredictos viajam como caminhos de arquivo, e que o DEVELOPER nunca discute com o ORACLE (os conflitos voltam pelo ARCHITECT).
 - **Agent take-over rule: 3 informed attempts + USER permission**

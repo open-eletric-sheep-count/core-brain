@@ -33,6 +33,10 @@ export interface MemoryRecord {
   createdAt: string;
   updatedAt: string;
   retrievals: number;
+  /** Soft retire (M8): set when the record is forgotten; empty = active. */
+  retiredAt?: string;
+  /** `core_feedback` signal; absent = neutral (useful = useless = 0). */
+  feedback?: { useful: number; useless: number };
 }
 
 /** `vectors/<ns>/index.json` — real vectors, keyed by record id. */
@@ -75,16 +79,106 @@ export interface RecallResult {
   scanned: string[];
 }
 
-export type CoreMemoryResult = WhoResult | StoreResult | RecallResult;
+/** `core_memory({ op: "forget" })` result. */
+export interface ForgetResult {
+  ok: true;
+  retired: string[];
+}
+
+/** `core_memory({ op: "feedback" })` result. */
+export interface FeedbackResult {
+  ok: true;
+  id: string;
+  usefulness: { useful: number; useless: number };
+}
+
+/** Per-namespace counts as reported by `status` (spec §3 row 7). */
+export interface StatusNamespaceCount {
+  ns: string;
+  records: number;
+  retired: number;
+  retrievals: number;
+}
+
+/** `core_memory({ op: "status" })` result — counts only, no memory text. */
+export interface StatusResult {
+  storageRoot: string;
+  configPath: string;
+  embedder: string;
+  dim: number;
+  namespaces: StatusNamespaceCount[];
+  totals: { records: number; retired: number; retrievals: number };
+}
+
+/** One `doctor` check (AC6 shape). */
+export interface DoctorCheck {
+  id: string;
+  ok: boolean;
+  detail: string;
+}
+
+/** `core_memory({ op: "doctor" })` result. */
+export interface DoctorResult {
+  ok: boolean;
+  checks: DoctorCheck[];
+}
+
+/** Per-namespace throughput for `receipt`. */
+export interface ReceiptNamespaceCount {
+  ns: string;
+  stored: number;
+  retrieved: number;
+  hits: number;
+}
+
+/** `core_memory({ op: "receipt" })` result (spec §3 row 9 shape). */
+export interface ReceiptResult {
+  stored: number;
+  retrieved: number;
+  hits: number;
+  byNamespace: ReceiptNamespaceCount[];
+}
+
+/** `core_memory({ op: "admin" })` result — the single dispatcher error shape. */
+export interface AdminResult {
+  ok: true;
+  action: string;
+  detail?: string;
+}
+
+export type CoreMemoryResult =
+  | WhoResult
+  | StoreResult
+  | RecallResult
+  | ForgetResult
+  | FeedbackResult
+  | StatusResult
+  | DoctorResult
+  | ReceiptResult
+  | AdminResult;
 
 /**
  * The `core_memory` request. `agentName` is NOT part of it on purpose (spec
  * §7.1): identity is trusted infrastructure data injected by the tool layer.
+ *
+ * Tool-facing ops (`core_memory`): `who`, `store`, `recall`, `forget`, `feedback`.
+ * Engine-only ops (reached by the MCP through the same `engine.invoke` seam
+ * with the admin identity — spec §6/M9): `status`, `doctor`, `receipt`, `admin`.
  */
 export type CoreMemoryRequest =
   | { op: "who" }
   | { op: "store"; text: string; target?: NamespaceTarget; meta?: Record<string, unknown> }
-  | { op: "recall"; query?: string; limit?: number; from?: NamespaceTarget };
+  | { op: "recall"; query?: string; limit?: number; from?: NamespaceTarget }
+  | { op: "forget"; id?: string; query?: string; target?: "self" | "global" }
+  | { op: "feedback"; id: string; useful: boolean }
+  | { op: "status"; ns?: string }
+  | { op: "doctor" }
+  | { op: "receipt"; ns?: string; days?: number }
+  | {
+      op: "admin";
+      action: "purge" | "reindex" | "export" | "import" | "compact";
+      args?: Record<string, unknown>;
+    };
 
 /** Options accepted by `createEngine` (spec Q3 precedence). */
 export interface EngineOptions {

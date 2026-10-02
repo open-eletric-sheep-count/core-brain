@@ -1,14 +1,16 @@
 // test/matrix.selftest.mjs — executable isolation matrix for the `core-brain` plugin.
 //
 // LAYER A (spec docs/specs/core-brain-plugin.md §9.2): proves access rules
-// 7, 8, 9, 10, 11, 12, 13, 14 IN-PROCESS against the REAL store + authorizer,
-// on a disposable CORE_BRAIN_HOME. This is the proof of the access rules — not
-// an implementation unit test.
+// 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 IN-PROCESS against the REAL
+// store + authorizer, on a disposable CORE_BRAIN_HOME. This is the proof of the
+// access rules — not an implementation unit test.
 //
-// STATUS (updated 2026-10-01): the implementation EXISTS (../store.ts) and this
-// matrix HAS been executed end-to-end by the ORACLE: 8/8 lines PASS, exit 0,
-// Node v24.15.0. This file remains the CONTRACT the implementation satisfies; the
-// dynamic import below now resolves the real store + authorizer.
+// STATUS (updated 2026-10-02): all lines 7–19 were executed end-to-end by the
+// ORACLE (13/13 PASS, exit 0, Node v24.15.0). Lines 15–19 pin the default-policy
+// slice (docs/specs/core-brain-default-policy-spec.md §7): absent/incomplete config
+// rows default to private:false + hasGlobalAccess:true, and this file is the
+// contract the implementation satisfies. The dynamic import below resolves the
+// real store + authorizer.
 //
 // ---------------------------------------------------------------------------
 // TEST-FACING CONTRACT (declared by TESTER; see test/CONTRACT.md)
@@ -93,6 +95,22 @@ writeFileSync(
     null,
     2,
   )}\n`,
+);
+
+// --- default-policy fixtures (docs/specs/core-brain-default-policy-spec.md §7) ---
+// Lines 15–19 need a config whose row omits fields, and one whose row is invalid
+// only AFTER the omitted field resolves to its default (§3 B1–B3).
+const OMITTED_CONFIG = join(HOME, "config.omitted.json");
+const PARTIAL_INVALID_CONFIG = join(HOME, "config.partial-invalid.json");
+const BADTYPE_CONFIG = join(HOME, "config.badtype.json");
+writeFileSync(OMITTED_CONFIG, `${JSON.stringify({ agents: [{ name: "CB_OMITTED" }] })}\n`);
+writeFileSync(
+  PARTIAL_INVALID_CONFIG,
+  `${JSON.stringify({ agents: [{ name: "CB_HALF", hasGlobalAccess: false }] })}\n`,
+);
+writeFileSync(
+  BADTYPE_CONFIG,
+  `${JSON.stringify({ agents: [{ name: "CB_BADTYPE", hasGlobalAccess: true, private: "yes" }] })}\n`,
 );
 
 const NONCE = Date.now().toString(36);
@@ -241,6 +259,68 @@ row(14, "CB_ALPHA store target:agent:CB_BETA -> blocked, names CB_BETA + 'privat
     (e) => e instanceof Error && /CB_BETA/.test(e.message) && /private/i.test(e.message),
     "CB_ALPHA -> agent:CB_BETA write",
   );
+});
+
+// 15 — an agent absent from config.json gets the default policy and can use it.
+row(15, "CB_UNLISTED who -> private:false+hasGlobalAccess:true; store/recall global round-trips", () => {
+  const w = engine.invoke("CB_UNLISTED", { op: "who" });
+  assert((w.agent || w.name) === "CB_UNLISTED", `who identity mismatch: ${JSON.stringify(w)}`);
+  assert(w.private === false && w.hasGlobalAccess === true, `default policy mismatch: ${JSON.stringify(w)}`);
+  const mg = marker("l15-unlisted-global");
+  const sg = engine.invoke("CB_UNLISTED", { op: "store", text: mg, target: "global" });
+  assert(sg.ok === true && sg.ns === "global", `global store mismatch: ${JSON.stringify(sg)}`);
+  const rg = engine.invoke("CB_UNLISTED", { op: "recall", from: "global" });
+  assert(rg.results.some((r) => r.text === mg), `global recall must echo ${JSON.stringify(mg)}`);
+  const ms = marker("l15-unlisted-self");
+  engine.invoke("CB_UNLISTED", { op: "store", text: ms, target: "self" });
+  const rs = engine.invoke("CB_UNLISTED", { op: "recall", from: "self" });
+  assert(rs.results.some((r) => r.text === ms), `self recall must echo ${JSON.stringify(ms)}`);
+});
+
+// 16 — a row omitting BOTH fields no longer throws and resolves to the defaults.
+row(16, "config row omitting private+hasGlobalAccess -> loads; who -> false/true", () => {
+  const e2 = createEngine({ home: HOME, configPath: OMITTED_CONFIG }); // must not throw
+  const w = e2.invoke("CB_OMITTED", { op: "who" });
+  assert(w.private === false && w.hasGlobalAccess === true, `omitted-row defaults mismatch: ${JSON.stringify(w)}`);
+  const absent = e2.invoke("CB_ALSO_ABSENT", { op: "who" });
+  assert(absent.private === false && absent.hasGlobalAccess === true, `absent on partial config mismatch: ${JSON.stringify(absent)}`);
+});
+
+// 17 — omitting `private` (-> false) with hasGlobalAccess:false is STILL an invalid row.
+row(17, "row omitting private + hasGlobalAccess:false -> InvalidConfigurationError", () => {
+  assertThrows(
+    () => createEngine({ home: HOME, configPath: PARTIAL_INVALID_CONFIG }),
+    (e) => e instanceof InvalidConfigurationError && e.code === "INVALID_CONFIGURATION" &&
+           /CB_HALF/.test(e.message) && /public agent without global access/i.test(e.message),
+    "omitted-private invalid row",
+  );
+});
+
+// 18 — a present but non-boolean field is still rejected (defaults are not coercion).
+row(18, "present non-boolean private/hasGlobalAccess -> InvalidConfigurationError", () => {
+  assertThrows(
+    () => createEngine({ home: HOME, configPath: BADTYPE_CONFIG }),
+    (e) => e instanceof InvalidConfigurationError && /CB_BADTYPE/.test(e.message) && /boolean/i.test(e.message),
+    "non-boolean private",
+  );
+  const bad2 = join(HOME, "config.badtype2.json");
+  writeFileSync(bad2, `${JSON.stringify({ agents: [{ name: "CB_BADTYPE2", hasGlobalAccess: "yes" }] })}\n`);
+  assertThrows(
+    () => createEngine({ home: HOME, configPath: bad2 }),
+    (e) => e instanceof InvalidConfigurationError && /CB_BADTYPE2/.test(e.message) && /boolean/i.test(e.message),
+    "non-boolean hasGlobalAccess",
+  );
+});
+
+// 19 — union decision: an absent agent's namespace is NOT a read target for others.
+row(19, "unlisted namespace not in another agent's read union / from:agent:<X>", () => {
+  const m = marker("l19-unlisted-self");
+  engine.invoke("CB_UNLISTED", { op: "store", text: m, target: "self" });
+  const direct = engine.invoke("CB_ALPHA", { op: "recall", from: "agent:CB_UNLISTED" });
+  assert(direct.results.length === 0, `direct read must be empty, got ${direct.results.length}`);
+  assert(!scannedMentions(direct.scanned, "CB_UNLISTED"), `scanned must exclude CB_UNLISTED: ${JSON.stringify(direct.scanned)}`);
+  const union = engine.invoke("CB_ALPHA", { op: "recall" });
+  assert(!scannedMentions(union.scanned, "CB_UNLISTED"), `default union must exclude CB_UNLISTED: ${JSON.stringify(union.scanned)}`);
 });
 
 // ---------------------------------------------------------------------------

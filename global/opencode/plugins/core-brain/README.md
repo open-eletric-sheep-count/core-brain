@@ -46,7 +46,8 @@ agent calls to remember and to recall:
 The **calling agent's identity is never an input field**. It is resolved from
 the running session (the trusted plugin context) and looked up in
 `config.json`; a caller cannot name itself, and an agent that is not in the
-config is refused (`fail-closed`) instead of silently allowed.
+config gets the **default policy** (`private:false` + `hasGlobalAccess:true`)
+instead of being refused.
 
 ## Configuration — `~/.core-brain/config.json`
 
@@ -63,8 +64,8 @@ config is refused (`fail-closed`) instead of silently allowed.
 | Field | Type | Required | Meaning |
 |---|---|---|---|
 | `name` | string | yes | Unique, filename-safe identifier. It maps directly to the agent's isolated namespace (`agents/<name>/`, `vectors/<name>/`). |
-| `hasGlobalAccess` | boolean | yes | Whether this agent may read and write the shared `global` namespace. |
-| `private` | boolean | yes | Whether this agent's own namespace is closed to every other agent. |
+| `hasGlobalAccess` | boolean | no (default `true`) | Whether this agent may read and write the shared `global` namespace. |
+| `private` | boolean | no (default `false`) | Whether this agent's own namespace is closed to every other agent. |
 
 **Precedence** (first existing file wins):
 
@@ -79,18 +80,25 @@ config is refused (`fail-closed`) instead of silently allowed.
 
 The whole file is validated **at init, before any read or write**:
 
-- every entry needs a non-empty, filename-safe `name` (`[A-Za-z0-9][A-Za-z0-9._-]*`),
-  a boolean `hasGlobalAccess` and a boolean `private`;
+- every entry needs a non-empty, filename-safe `name` (`[A-Za-z0-9][A-Za-z0-9._-]*`);
+  `hasGlobalAccess` and `private`, when present, must be booleans — omitting
+  either key takes its default (`hasGlobalAccess` → `true`, `private` → `false`),
+  while a present `null`, string or number is rejected;
 - names must be unique;
 - **`private: false` + `hasGlobalAccess: false` is invalid** and aborts the
   engine with `InvalidConfigurationError` (`.code === "INVALID_CONFIGURATION"`,
   message naming the offending agent and the rule). A *public* agent that cannot
   reach the shared layer is a contradiction: it neither contributes to shared
-  knowledge nor keeps its own space readable-by-others.
+  knowledge nor keeps its own space readable-by-others. The rule is applied
+  **after** the defaults are resolved, so a row with `hasGlobalAccess: false`
+  and no `private` still aborts (its `private` defaults to `false`).
 
-A record for an agent that is **not** listed is refused with
-`agent '<name>' is not configured in core-brain config.json` — no fallback to
-`global`, no default allow.
+An agent that is **not** listed in `config.json` is no longer refused: it gets
+the synthesized default policy `private: false` + `hasGlobalAccess: true`, so it
+can use `self` and `global` like any public agent. Its namespace does **not**
+join another agent's public read union and is not readable through
+`agent:<name>` — a namespace becomes readable by others only by being a
+configured row with `private: false` (see the access matrix below).
 
 ## Access matrix
 
@@ -102,6 +110,7 @@ Read (which datasets an agent `A` may query, from `docs/core_brain_specification
 | `false` | `false` | **Invalid** | **throws `InvalidConfigurationError` at init** | N/A |
 | `true`  | `true`  | **Valid** | `agent_db(A)` + `global_db` | **No** (private to this agent) |
 | `true`  | `false` | **Valid** | `agent_db(A)` only | **No** (private to this agent) |
+| `false` | `true`  | **Valid** (default for an absent row, or a row omitting the key) | `agent_db(A)` + `global_db` | **No** (unlisted namespace stays out of the union) |
 
 Write rules (target authorization):
 
@@ -231,7 +240,8 @@ in-process cosine top-k; the `hash-ngram-v1` stub embedder; one tool; an
 **inert** `prompt` hook that only records the active agent for debug logging (it
 never edits the user's prompt and never injects into the system block); **no**
 `compaction` hook; and **tools-only** behaviour, so an agent that is not listed
-in the config sees no change at all.
+in the config gets the default policy (`private:false` + `hasGlobalAccess:true`)
+the moment it calls `core_memory` — the `prompt` hook stays inert for it.
 
 **Roadmap (declared, not v1 gaps):** a production semantic embedder (local
 sentence-transformer or API-backed) replacing the stub; opt-in context injection
@@ -247,8 +257,9 @@ Measured on a live OpenCode V2 install (Node v24.15.0), not simulated:
   `~/.config/opencode/plugins/core-brain/index.ts`;
 - `opencode2 debug agents` → **23 → 27**: `CB_ALPHA`, `CB_BETA`, `CB_GAMMA` and
   `CB_DELTA` added, **none removed**, the 23 pre-existing agents byte-identical;
-- `bash global/opencode/plugins/core-brain/check.sh` → **8/8 matrix lines PASS**,
-  exit code `0` — the access-isolation matrix, in-process, on a disposable
+- `bash global/opencode/plugins/core-brain/check.sh` → **13/13 matrix lines PASS**,
+  exit code `0` (8 lines at the 2026-10-01 baseline; 5 default-policy lines added
+  2026-10-02) — the access-isolation matrix, in-process, on a disposable
   `CORE_BRAIN_HOME`;
 - three real headless smokes (`opencode2 run --agent <X> --auto "…"`):
   `CB_BETA` stored and recalled its own record; `CB_GAMMA` was refused on

@@ -37,7 +37,9 @@ Three layers must be separated — v1 conflated them:
 |---|---|---|---|
 | **Retrieval engine** — how similarity is computed and results ranked | real embeddings + hybrid keyword/vector + fusion | **must be PLUR's mechanism** | **changes in v2** |
 | **Store** — where records live | `~/.plur/` (YAML + PGlite) | `~/.core-brain/` (JSON per namespace) | **stays** (see M2) |
-| **Isolation** — who may read/write what | none (store-level trust only) | the §4 matrix, per agent, fail-closed | **stays — this is core-brain's reason to exist** |
+| **Isolation** — who may read/write what | none (store-level trust only) | the §4 matrix, per agent, fail-closed | **stays — this is core-brain's reason to exist** (superseded note: the *absent-agent* default is no longer fail-closed — see the note below) |
+
+> **Superseded note (2026-10-02, `docs/specs/core-brain-default-policy-spec.md`):** the isolation **matrix stays**, but the *absent-agent* default changed. An agent absent from `config.json` (or a configured row omitting `private`/`hasGlobalAccess`) now resolves to `{ private:false, hasGlobalAccess:true }` instead of being fail-closed. "Fail-closed" above describes the matrix's refusals, **not** the absent-agent lookup; that lookup is superseded.
 
 So the ruling changes **one** layer. The other two are already correct and are not re-opened.
 
@@ -73,8 +75,8 @@ So the ruling changes **one** layer. The other two are already correct and are n
 | # | Decision | Rationale |
 |---|---|---|
 | **M1** | **The retrieval engine is PLUR's**, reused rather than reinvented: same model family, same hybrid keyword+vector, same fusion, same reranker. Implemented by depending on `@plur-ai/core` (pinned) and/or by vendoring the parts of its source that are needed. | the USER ruling; and it is the only way "substitute" is true. |
-| **M2** | **The store stays core-brain's** (per-namespace JSON under `~/.core-brain/`, atomic writes). PLUR's PGlite store is **not** adopted in this pass. | the isolation proof (`check.sh`, 8/8) is built on the namespace layout; swapping the store would re-open the matrix work for no gain in retrieval. Recorded alternative: adopting PGlite wholesale is allowed by R-0 and can be a later slice if durability/concurrency demands it. |
-| **M3** | **The isolation layer is untouched**: matrix §4, namespaces, fail-closed, `InvalidConfigurationError`, the tool `core_memory`, the MCP surface of `core-brain-mcp.md` §3. | orthogonal to retrieval; it is the part already proven. |
+| **M2** | **The store stays core-brain's** (per-namespace JSON under `~/.core-brain/`, atomic writes). PLUR's PGlite store is **not** adopted in this pass. | the isolation proof (`check.sh`, 13/13) is built on the namespace layout; swapping the store would re-open the matrix work for no gain in retrieval. Recorded alternative: adopting PGlite wholesale is allowed by R-0 and can be a later slice if durability/concurrency demands it. |
+| **M3** | **The isolation layer is untouched**: matrix §4, namespaces, fail-closed, `InvalidConfigurationError`, the tool `core_memory`, the MCP surface of `core-brain-mcp.md` §3. | orthogonal to retrieval; it is the part already proven. **Superseded note (2026-10-02):** the *absent-agent* default changed to `{ private:false, hasGlobalAccess:true }` (`docs/specs/core-brain-default-policy-spec.md`); the matrix itself stays. |
 | **M4** | **D14 ("zero runtime dependencies") is SUPERSEDED.** New rule: dependencies are allowed and expected; each one is declared in `package.json`; **sharing a package with PLUR is allowed** — only *identifiers* must not collide (plugin id, tool names, store path, env vars, MCP server name). | USER: *"pode usar até as mesmas dependências"*. |
 | **M5** | **Model weights are fetched once and cached outside the plugin tree** (shared cache dir, e.g. `~/.core-brain/models`; env-overridable), so the weights are never duplicated per plugin copy. | the runtime binaries are copied; the weights do not have to be. |
 | **M6** | **The index records what produced it**: `embedder` (model id) + `dim` + model revision. A mismatch is refused at load (already true) and there is an explicit **reindex** path. `EMBEDDING_DIM` stops being a hardcoded constant. | the current 256-dim index is the artifact that must be replaced, not silently mixed. |
@@ -90,7 +92,7 @@ So the ruling changes **one** layer. The other two are already correct and are n
 - **R3 — Hybrid, fused.** Keyword (BM25) + vector, fused (RRF), over **the namespaces §4 permits** — and only those. Hybrid must never widen the read set.
 - **R4 — Rerank, configurable.** PLUR's cross-encoder, with a documented off switch.
 - **R5 — Local and offline at query time.** Models load from the local cache; no network call during a recall. The first fetch is documented, with its size.
-- **R6 — The isolation proof survives the engine change.** `bash global/opencode/plugins/core-brain/check.sh` stays **8/8, exit 0**, with the real embedder in place — same command, same bar.
+- **R6 — The isolation proof survives the engine change.** `bash global/opencode/plugins/core-brain/check.sh` stays **13/13, exit 0**, with the real embedder in place — same command, same bar.
 - **R7 — Dependency cost is declared and bounded.** `README.md` states the installed size of the runtime closure (measured today: ≈ 920 MB for a full copy) and how the repo avoids duplicating model weights (M5). Trimming the closure — e.g. dropping the browser build (`onnxruntime-web`) or the unrelated `@img/sharp` tree if nothing needs them — is **required before shipping**, with the measured result recorded.
 - **R8 — Apache-2.0 duties.** For every copied/vendored PLUR file: keep the Apache-2.0 `LICENSE`, carry a `NOTICE` (or an equivalent provenance section) naming the origin (`plur-ai/plur`, `packages/core`, version), and state in `README.md` that the repo is **mixed-licence**: core-brain's own code MIT, vendored engine Apache-2.0. Modified files carry a header saying they were changed.
 - **R9 — Nothing duplicated silently.** One engine implementation, consumed by both the plugin path (`core_memory`) and the MCP path — no second copy of the ranking logic.
@@ -113,7 +115,7 @@ The text is the source of truth; vectors are derived. Therefore:
 - **AC1** — a semantic probe passes: query and record with **no shared words** but the same meaning → hit; the same query with a keyword-only record → no hit. (Executed, with the literal query/record pair recorded.)
 - **AC2** — hybrid is real: a keyword-only match and a vector-only match both surface, and their fused order matches RRF.
 - **AC3** — the reranker changes the order when enabled and does not when disabled.
-- **AC4** — `check.sh` → **8/8, exit 0**, with the real embedder (the isolation matrix is unchanged by the engine).
+- **AC4** — `check.sh` → **13/13, exit 0**, with the real embedder (the isolation matrix is unchanged by the engine).
 - **AC5** — recall from an agent that may read only its own namespace returns **only** its namespace, with the hybrid engine active — the isolation is not weakened by the new search path.
 - **AC6** — a recall against a namespace still holding a 256-dim index is **refused** with the reindex message (never answered with a stale index).
 - **AC7** — `reindex` on a namespace makes AC1 pass on that namespace, and running it twice changes nothing.
@@ -157,7 +159,7 @@ The MCP surface (`core-brain-mcp.md`) is unaffected in shape and rides on the sa
 
 ## 11. Not touched by this document
 
-The isolation matrix, the store format, the record shape, the plugin tool `core_memory`, the MCP tool surface and its two-host decision, the two-layer test plan, and the rule that an unlisted agent gets nothing. The isolation is the one thing that was already right. **§12 adds a new object (episodes) beside them — it changes none of them.**
+The isolation matrix, the store format, the record shape, the plugin tool `core_memory`, the MCP tool surface and its two-host decision, the two-layer test plan, and the rule that an unlisted agent gets nothing **(superseded 2026-10-02: an unlisted agent now gets the default policy `{ private:false, hasGlobalAccess:true }`, per `docs/specs/core-brain-default-policy-spec.md`; every other item in this list is untouched)**. The isolation is the one thing that was already right. **§12 adds a new object (episodes) beside them — it changes none of them.**
 
 ---
 
@@ -214,7 +216,7 @@ interface Episode {
 - **AC-TL3** — the 34 import with dates, tags and owners intact, and re-running the import changes nothing.
 - **AC-TL4** — a query with **no shared words** finds the right episode (the *SGLang / `timeout 9999`* pair is the probe).
 - **AC-TL5** — `core_promote` produces a memory carrying `derivedFrom`, the episode lists it in `engramIds`, and the episode is otherwise unchanged.
-- **AC-TL6** — `check.sh` stays **8/8**, and the backup mirrors the episodes (`bkps/.core-brain/`).
+- **AC-TL6** — `check.sh` stays **13/13**, and the backup mirrors the episodes (`bkps/.core-brain/`).
 
 ### 12.6 Honest bounds
 

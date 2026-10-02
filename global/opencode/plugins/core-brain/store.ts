@@ -31,6 +31,12 @@ export const EMBEDDER_ID = "hash-ngram-v1";
 export const EMBEDDING_DIM = 256;
 const DEFAULT_RECALL_LIMIT = 5;
 
+/**
+ * Default policy for an agent absent from `config.json`, and for a configured
+ * row that omits `private` / `hasGlobalAccess` (spec §2/A2, §3/B1).
+ */
+const DEFAULT_POLICY = { private: false, hasGlobalAccess: true } as const;
+
 /** Directory of this module, used as the last config fallback (dev seed). */
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -208,7 +214,9 @@ const AGENT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**
  * Loads + validates `agents[]` at init, BEFORE any read/write (§6.4):
- * any `private:false && hasGlobalAccess:false` row aborts the engine.
+ * an absent `hasGlobalAccess`/`private` key takes the default (`true` / `false`);
+ * a present non-boolean still throws; any resolved
+ * `private:false && hasGlobalAccess:false` row aborts the engine.
  */
 function loadPolicies(configPath: string | null): AgentPolicy[] {
   if (!configPath) return [];
@@ -261,12 +269,15 @@ function loadPolicies(configPath: string | null): AgentPolicy[] {
         `core-brain config '${configPath}': agent '${name}' has a name that is not filename-safe`,
       );
     }
-    if (row.hasGlobalAccess !== true && row.hasGlobalAccess !== false) {
+    const hasGlobalAccess =
+      row.hasGlobalAccess === undefined ? DEFAULT_POLICY.hasGlobalAccess : row.hasGlobalAccess;
+    if (hasGlobalAccess !== true && hasGlobalAccess !== false) {
       throw new InvalidConfigurationError(
         `core-brain config '${configPath}': agent '${name}' needs a boolean 'hasGlobalAccess'`,
       );
     }
-    if (row.private !== true && row.private !== false) {
+    const isPrivate = row.private === undefined ? DEFAULT_POLICY.private : row.private;
+    if (isPrivate !== true && isPrivate !== false) {
       throw new InvalidConfigurationError(
         `core-brain config '${configPath}': agent '${name}' needs a boolean 'private'`,
       );
@@ -276,14 +287,14 @@ function loadPolicies(configPath: string | null): AgentPolicy[] {
         `core-brain config '${configPath}': agent '${name}' is declared more than once`,
       );
     }
-    if (row.private === false && row.hasGlobalAccess === false) {
+    if (isPrivate === false && hasGlobalAccess === false) {
       throw new InvalidConfigurationError(
         `core-brain config '${configPath}': agent '${name}' is a public agent without global access ` +
           `(private:false + hasGlobalAccess:false) — invalid row, refusing to start`,
       );
     }
     seen.add(name);
-    policies.push({ name, hasGlobalAccess: row.hasGlobalAccess, private: row.private });
+    policies.push({ name, hasGlobalAccess, private: isPrivate });
   }
   return policies;
 }
@@ -421,13 +432,18 @@ export function createEngine(options: EngineOptions = {}): Engine {
   for (const policy of policies) policyByName.set(policy.name, policy);
   const lookup = (name: string): AgentPolicy | undefined => policyByName.get(name);
 
-  /** Fail-closed for an unlisted agent (§7.1): no default allow, no fallback. */
+  /**
+   * Resolves an agent's policy. A configured agent keeps its policy; an agent
+   * absent from `config.json` gets the synthesized default (never throws).
+   */
   function requirePolicy(agentName: string): AgentPolicy {
-    const policy = policyByName.get(agentName);
-    if (!policy) {
-      throw new Error(`agent '${agentName}' is not configured in core-brain config.json`);
-    }
-    return policy;
+    return (
+      policyByName.get(agentName) ?? {
+        name: agentName,
+        private: DEFAULT_POLICY.private,
+        hasGlobalAccess: DEFAULT_POLICY.hasGlobalAccess,
+      }
+    );
   }
 
   function whoOp(policy: AgentPolicy): WhoResult {

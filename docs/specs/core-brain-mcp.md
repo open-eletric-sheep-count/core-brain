@@ -25,7 +25,7 @@ core-brain v0.1.0 shipped **neither of PLUR's two pieces**: it shipped a third t
 ```
 core_memory { op: "who" }  →  ERROR: agent 'ORACLE' is not configured in core-brain config.json
 ```
-(the plugin is live and answering; it is fail-closed because `~/.core-brain/config.json` does not exist and the seed lists only the three acceptance agents `CB_ALPHA/CB_BETA/CB_GAMMA`).
+(the plugin is live and answering. **Historical observation (2026-10-01), superseded:** it was fail-closed because `~/.core-brain/config.json` did not exist and the seed listed only the three acceptance agents `CB_ALPHA/CB_BETA/CB_GAMMA`. Per `docs/specs/core-brain-default-policy-spec.md` the plugin no longer refuses an absent agent — it now resolves to the default policy `{ private:false, hasGlobalAccess:true }`).
 
 So the swap PLUR → core-brain has **three** gaps, and the MCP is only one of them:
 
@@ -84,7 +84,7 @@ Legend — **Host:** `P` = plugin tool `core_memory` (identity from the session)
 | 2 | `plur_recall` | `core_recall` (=`core_memory recall`) | **P** *and* **M (read-only global)** | `{ query?, limit?, from? }` | `{ results[], scanned[] }` | **P:** §6.1 union of permitted namespaces. **M:** `global` only, see §4.3 |
 | 3 | `plur_forget` | `core_forget` **(new, G1)** | **P** | `{ id? , query? , target?: "self"\|"global" }` | `{ ok, retired: [ids] }` | §6.2 write matrix — an agent can retire **only its own** records and, with `hasGlobalAccess`, global ones |
 | 4 | `plur_feedback` | `core_feedback` **(new, G1)** | **P** | `{ id, useful: boolean }` | `{ ok, id, usefulness }` | the record must be **readable** by the caller (§6.1) — feedback on an unreadable record is refused |
-| 5 | `plur_session_start` | `core_session` (=`who`) | **P** | `{}` | `{ agent, private, hasGlobalAccess, dataDir }` | fail-closed if unlisted |
+| 5 | `plur_session_start` | `core_session` (=`who`) | **P** | `{}` | `{ agent, private, hasGlobalAccess, dataDir }` | absent agent → default policy `{ private:false, hasGlobalAccess:true }` (`docs/specs/core-brain-default-policy-spec.md`) — no refusal |
 | 6 | `plur_session_end` | *no counterpart in v1* | — | — | — | PLUR's tool asks the model to extract learnings before closing; core-brain has no auto-learn yet (G2). Declared **not closed by this slice** (§13). |
 | 7 | `plur_status` | `core_status` **(new, G3)** | **M** | `{ ns? }` | `{ storageRoot, configPath, embedder, dim, namespaces: [{ ns, records, retired, retrievals }], totals }` | read-only aggregate; **counts only** — never memory text |
 | 8 | `plur_doctor` | `core_doctor` **(new, G3)** | **M** | `{}` | `{ ok, checks: [{ id, ok, detail }] }` | see AC6 for the check list |
@@ -109,7 +109,7 @@ Legend — **Host:** `P` = plugin tool `core_memory` (identity from the session)
 The plugin resolves the agent from `ctx.session` / `event.agent` (sibling spec §7.1) — the hook context **is** the identity. An MCP server receives no hook, no session and no agent: the MCP protocol carries only the caller's arguments. Therefore any MCP tool that behaves per-agent would have to receive the agent name **inside the arguments**, and anything the model can type, the model can forge. That would silently defeat §4 of the upstream spec — the very property core-brain exists to provide.
 
 ### 4.2 The decision (M3)
-Ops that need "who is calling" **are not exposed over MCP**. They stay on the plugin tool, whose identity channel is the session. This is not a workaround: it is the only shape in which the isolation proof (`check.sh`, 8/8) remains true, and it keeps the plugin as the single writer path.
+Ops that need "who is calling" **are not exposed over MCP**. They stay on the plugin tool, whose identity channel is the session. This is not a workaround: it is the only shape in which the isolation proof (`check.sh`, 13/13) remains true, and it keeps the plugin as the single writer path.
 
 ### 4.3 The one nuance — `core_recall` over MCP
 `core_recall` is the single operation exposed on **both** hosts, and the difference is deliberate and must be in the tool description:
@@ -130,15 +130,15 @@ The MCP tool description must say, verbatim: *"global namespace only — this is
 
 The §6 matrix of the sibling spec is untouched; what this slice adds is the rule for the **new** operations:
 
-| Operation | Read set | Write set | Fail-closed behaviour |
+| Operation | Read set | Write set | Refusal / default behaviour |
 |---|---|---|---|
-| `core_forget` (P) | the record(s) matched | same namespace as the records retired | unlisted agent → refuse (`not configured`) |
+| `core_forget` (P) | the record(s) matched | same namespace as the records retired | absent agent → default policy `{ private:false, hasGlobalAccess:true }` (`docs/specs/core-brain-default-policy-spec.md`) — no longer refused |
 | `core_feedback` (P) | the record | the record's counters | feedback on a record the caller may not read → refuse, naming the namespace and the reason |
 | `core_status` / `core_doctor` / `core_receipt` (M) | store metadata only | none | read-only; never returns memory text |
 | `core_admin { purge }` (M) | — | one namespace, named explicitly | refuses a **private** agent namespace unless the namespace is named explicitly **and** `--force` is passed; the refusal names the namespace |
 | `core_admin { import/export }` (M) | any | any | export writes a file the caller names; import merges and **never** overwrites an existing record id |
 
-Rule that survives verbatim from the plugin: **an unlisted agent gets nothing** — not an empty result, but an error naming the agent (`agent '<name>' is not configured in core-brain config.json`).
+Rule inherited from the plugin, **as changed by `docs/specs/core-brain-default-policy-spec.md`**: an agent absent from `config.json` no longer gets an error — it resolves to the default policy `{ private:false, hasGlobalAccess:true }` and may use its own namespace and `global`. The old error `agent '<name>' is not configured in core-brain config.json` is **removed from production**. **The future MCP server's own behaviour for an unlisted agent is a separate, unresolved decision** — that surface has no implementation and is out of scope for this slice (`docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3); do not read this document as deciding it.
 
 ---
 
@@ -164,7 +164,7 @@ New engine operations (same seam — `engine.invoke(agentName, request)`; the MC
 | `receipt` | counters from `MemoryRecord.retrievals` + the store's write log |
 | `admin` | `purge` (hard delete, destructive), `reindex` (rebuild `vectors/*/index.json` from records), `export`/`import` (portable JSON), `compact` (drop vectors of retired records) |
 
-**Whatever is added must keep `bash global/opencode/plugins/core-brain/check.sh` green — 8/8, unchanged.** That check is the isolation contract and this slice does not get to weaken it.
+**Whatever is added must keep `bash global/opencode/plugins/core-brain/check.sh` green — 13/13, unchanged.** That check is the isolation contract and this slice does not get to weaken it.
 
 ---
 
@@ -210,8 +210,8 @@ Both can run side by side during the transition, as criterion 3 requires.
 - **AC4** — `core_forget` retires without deleting: after retire, recall excludes it, `core_status` counts it as `retired`, and the record's `text` is still on disk.
 - **AC5** — `core_feedback({ useful: true })` demonstrably moves ranking: two records with identical cosine, one with positive feedback, the feedbacked one ranks first.
 - **AC6** — `core_doctor` detects, one check each, and reports a failing `detail`: (a) an invalid config row (`private:false && hasGlobalAccess:false`), (b) an `embedder`/`dim` mismatch against `EMBEDDER_ID`/`EMBEDDING_DIM`, (c) an unwritable store root, (d) an orphan vector (vector without record) and a record without vector, (e) a `vector` whose dimension ≠ `dim`.
-- **AC7** — `core_recall` over MCP reads **only** `global`; the per-agent view stays on the plugin (proved by a call from an unlisted agent: error, not a silent global read).
-- **AC8** — the mirror's existing `plugins[]` behaviour and `check.sh` are untouched: **8/8 PASS, exit 0** — the same command and exit code the plugin is accepted on.
+- **AC7** — `core_recall` over MCP reads **only** `global`; the per-agent view stays on the plugin. **Open decision (not decided here):** the MCP server's own behaviour for an unlisted agent is a separate surface with no implementation (`docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3); the plugin no longer refuses an absent agent, so the old proof ("a call from an unlisted agent gives an error") no longer applies, and this AC must be re-derived when the MCP is built.
+- **AC8** — the mirror's existing `plugins[]` behaviour and `check.sh` are untouched: **13/13 PASS, exit 0** — the same command and exit code the plugin is accepted on.
 - **AC9** — zero runtime dependencies: `plugins/core-brain/` has no `node_modules` and no `package.json` dependency beyond the current empty set; the MCP server starts under `node --experimental-strip-types` alone.
 - **AC10** — a `INSTALACAO.md` section and a `README.md` section exist for the MCP, in the same voice as the plugin's, and the `CHANGELOG.md` carries the entry.
 
@@ -220,14 +220,14 @@ Both can run side by side during the transition, as criterion 3 requires.
 ## 10. Test plan — two layers, same bar as the plugin
 
 - **Layer A (in-process, deterministic):** `mcp/check.sh` driving the engine directly (no MCP transport) + **a transport test** driving the built server over stdio with a scripted JSON-RPC conversation (`initialize` → `tools/list` → `tools/call`), asserting: the 5 tool names, their schemas, the refusal shapes of §5/AC3, the retire semantics of AC4, the ranking of AC5, every `core_doctor` check of AC6.
-- **Layer B (live, headless):** a real `opencode run` in which an **unlisted** agent calls `core_recall` over the MCP (must be refused per AC7) and the store is inspected before/after (`~/.core-brain/`) to prove nothing was written by a read.
+- **Layer B (live, headless):** a real `opencode run` in which an **unlisted** agent calls `core_recall` over the MCP — its behaviour is an **open decision for the MCP surface** (AC7; `docs/specs/core-brain-default-policy-spec.md` §9.2/§5.3), not decided by this document — and the store is inspected before/after (`~/.core-brain/`) to prove nothing was written by a read.
 - **Evidence to record, per the repo's rule 16/17:** the exact commands and their digests; screenshots are not applicable (no UI).
 
 ---
 
 ## 11. Non-regression
 
-- The plugin's `check.sh` **8/8** and its `test/matrix.selftest.mjs` stay green and unmodified in meaning.
+- The plugin's `check.sh` **13/13** and its `test/matrix.selftest.mjs` stay green and unmodified in meaning.
 - The 23 pre-existing agents stay byte-identical; the four `CB_*` test agents keep working.
 - `~/.plur/` and the `plur` MCP are untouched (coexistence, criterion 3).
 - Existing store files load unchanged (M7): a store written by v0.1.0 must open under the new code with no migration step.
@@ -257,7 +257,7 @@ Taking PLUR out is a **three-part** operation. This spec closes 1 and 3; part 2 
 1. **This slice (G1 + G3)** — agent-facing `forget`/`feedback`, and the MCP's `status`/`doctor`/`receipt`/`recall`/`admin`.
 2. **Companion slice (G2 — REQUIRED before the swap, not covered here):** the plugin's automatic layer — `context` injection into `system[]` (opt-in flag per agent, off by default → and the swap turns it **on**), learning from the user's text, and the `compaction` hook that carries memory across the cut. Without it, an agent that swaps to core-brain **silently stops receiving any memory** — which is precisely the "capenga" the USER is trying to avoid.
 3. **Config + governance cut-over, in this order:**
-   - create `~/.core-brain/config.json` with the **real** agents and their policy (`private` / `hasGlobalAccess`) — today it does not exist and every real agent is refused;
+   - create `~/.core-brain/config.json` with the **real** agents and their policy (`private` / `hasGlobalAccess`) — today it does not exist, so every real agent falls back to the default policy (`private:false` + `hasGlobalAccess:true`, `docs/specs/core-brain-default-policy-spec.md`); creating the file is how each real agent gets its intended policy;
    - add the `core-brain` MCP entry (§8);
    - rewrite `AGENTS.md` rule 8b (`plur_learn`/`plur_recall`/`plur_session_*` → the `core_*` counterparts) — **requires explicit USER OK; the mirror is the USER's to update**;
    - remove `mcp.servers.plur` and, when G2 ships, `plugins/plur-memory`;

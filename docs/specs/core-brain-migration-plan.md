@@ -19,7 +19,7 @@
 | Store size | 2,9 MB (mirrored) / 4,1 MB embeddings cache | 64 KB (mirrored) |
 | Runtime deps | ≈ **921 MB** on disk | **0** (the engine is a stub) |
 | MCP | `plur` — connected | — |
-| Plugin | `plur-memory` — loaded, injecting | `core-brain` — loaded, **refusing every real agent** |
+| Plugin | `plur-memory` — loaded, injecting | `core-brain` — loaded; at this 2026-10-01 baseline it refused every real agent (all absent from the config). Per `docs/specs/core-brain-default-policy-spec.md` an absent agent now resolves to the default policy `{ private:false, hasGlobalAccess:true }` |
 | Real-agent config | store-level trust (`plur.yaml`) | **absent** — `~/.core-brain/config.json` does not exist |
 | Git | backup mirrored (`bkps/.plur`) | backup mirrored (`bkps/.core-brain`) since today |
 | Commits | — | **zero** (USER instruction) |
@@ -36,7 +36,7 @@
 | **B2** | Depend on `@plur-ai/core@0.20.1` **or** vendor its source | decides the repo layout and the licence work | decide with B3's numbers in hand |
 | **B3** | How much of the ≈ 921 MB is actually reachable | R7 demands a measured, bounded cost | trim (`onnxruntime-web`, `@img/sharp`) and measure |
 | **B4** | Offline/test strategy | the isolation tests must stay reproducible | pin a small model **or** commit a vector fixture for the test path |
-| **B5** | Which real agents enter core-brain, and with what policy (`private` / `hasGlobalAccess`) | with no `config.json`, **every** real agent is refused | produce `~/.core-brain/config.json` |
+| **B5** | Which real agents enter core-brain, and with what policy (`private` / `hasGlobalAccess`) | with no `config.json`, **every** real agent falls back to the default policy `{ private:false, hasGlobalAccess:true }` (`docs/specs/core-brain-default-policy-spec.md`) — not a refusal; the file is then how each gets its **intended** policy | produce `~/.core-brain/config.json` |
 
 ---
 
@@ -50,7 +50,7 @@
 | **E4** | Model weights in a shared cache, never inside the plugin tree | `~/.core-brain/models` | a second install duplicates no weights |
 | **E5** | Index stamped `embedder` + `dim` + revision; **refuse** a stale index; `reindex` | `store.ts`, `core_admin` | the 256-dim index is refused with the reindex message; reindex is idempotent |
 | **E6** | Apache-2.0 compliance for every copied file | `LICENSE`, `NOTICE`, per-file headers, `README.md` | `grep` shows the provenance; README declares the mixed licence |
-| **E7** | The isolation proof survives the engine | `check.sh` | **8/8, exit 0**, with the real embedder |
+| **E7** | The isolation proof survives the engine | `check.sh` | **13/13, exit 0**, with the real embedder |
 | **E8** | The measured cost, written down | `README.md` | the trimmed closure's size, measured |
 
 ---
@@ -61,7 +61,7 @@ Without this, an agent that switches **silently stops receiving memory**. It is 
 
 | id | Deliverable | Proof |
 |---|---|---|
-| **A1** | `context` hook: render the memory block into the outgoing `system[]` (opt-in per agent — **switched ON at the swap**) | a live session shows the block; an unlisted agent shows nothing |
+| **A1** | `context` hook: render the memory block into the outgoing `system[]` (opt-in per agent — **switched ON at the swap**) | a live session shows the block; an agent **not opted in** shows nothing (the injection is opt-in — **not** a config refusal: an agent absent from `config.json` now gets the default policy `{ private:false, hasGlobalAccess:true }`, `docs/specs/core-brain-default-policy-spec.md`) |
 | **A2** | `prompt` hook: recall once per user turn + learn from the user's own text | a token taught in one turn is recalled in the next session |
 | **A3** | `compaction` hook: carry memory across the cut, learn from what is dropped | a fact stated before a compaction survives it |
 | **A4** | Session-closing ritual (extract learnings → memory, and the episode) | a session ends and both a memory and an episode appear |
@@ -98,7 +98,7 @@ Order is binding: each step names its **proof** and its **rollback**. Nothing is
 
 | id | Step | Proof | Rollback |
 |---|---|---|---|
-| **M1** | **Create `~/.core-brain/config.json`** with the real agents and their policy (closes B5) | `core_memory who` answers for each agent; an unlisted one is still refused | delete the file → back to fail-closed |
+| **M1** | **Create `~/.core-brain/config.json`** with the real agents and their policy (closes B5) | `core_memory who` answers for each agent; an agent absent from the file resolves to the default policy `{ private:false, hasGlobalAccess:true }` (`docs/specs/core-brain-default-policy-spec.md`) | delete the file → every agent falls back to the default policy (no longer fail-closed) |
 | **M2** | **Import the memory**: 1028 engrams → their namespaces; 34 episodes → §12 namespaces (`core_admin import`); reindex | counts before/after; a re-run changes nothing (idempotent) | the import writes new files; `~/.plur` is untouched |
 | **M3** | **Verify the imported memory**: count parity, a random read-back sample, and one semantic probe per namespace | the sample matches `engrams.yaml` verbatim; the probe passes | — |
 | **M4** | **Coexistence window**: PLUR keeps running (plugin + MCP); both stores stay mirrored in `bkps/` | `opencode2 mcp list` shows both; both backups advance | nothing to roll back |
@@ -140,7 +140,7 @@ They are **not** blockers: measured today, the install has **0 packs**, and none
 
 ## 9. What already exists (so the plan starts from facts)
 
-- `global/opencode/plugins/core-brain/` — the plugin v0.1.0 (isolation matrix proven, `check.sh` 8/8).
+- `global/opencode/plugins/core-brain/` — the plugin v0.1.0 (isolation matrix proven, `check.sh` 13/13).
 - `docs/specs/core-brain-plugin.md`, `docs/specs/core-brain-mcp.md`, `docs/specs/core-brain-v2.md`, `docs/adr/0001-core-brain-memory-isolation.md`.
 - Four requirement changes already accepted: real engine (v2 §0), timeline first-class (v2 §12), one-tool identity rule (MCP §4), two-host surface (MCP §3).
 - `project-generator/src/install-global.sh` — now mirrors **both** stores (`bkps/.plur` + `bkps/.core-brain`), so the transition cannot lose either.

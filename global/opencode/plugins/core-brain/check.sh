@@ -8,16 +8,17 @@
 #        CB_ALPHA public+global, CB_BETA private+global,
 #        CB_GAMMA private+no-global, CB_DELTA public+no-global (INVALID row).
 #   3. Runs test/matrix.selftest.mjs against that root (native TS type-stripping).
-#   4. Prints the matrix table `7 PASS … 14 PASS`.
+#   4. Prints the matrix table `7 PASS … 19 PASS`.
 #   5. Removes the temp root on exit (AGENTS.md rule 21 / spec §15.3).
 #   6. Exits 0 only if every line PASSes; non-zero otherwise.
 #
 # Run:  bash check.sh        (or: chmod +x check.sh && ./check.sh)
 #
-# STATUS (updated 2026-10-01): the plugin implementation EXISTS (../store.ts,
-# ../types.ts, ../index.ts) and this matrix HAS been executed by the ORACLE:
-# 8/8 lines PASS, exit code 0, Node v24.15.0. Step 3 below now drives the real
-# store + authorizer; the missing-implementation failure mode no longer applies.
+# STATUS (updated 2026-10-02): the plugin implementation EXISTS (../store.ts,
+# ../types.ts, ../index.ts) and the default-policy slice is IMPLEMENTED (spec §2/§3).
+# All lines 7–19 were executed by the ORACLE: 13/13 PASS, exit code 0, Node v24.15.0.
+# Lines 15–19 pin docs/specs/core-brain-default-policy-spec.md §7 and are GREEN.
+# Step 3 below drives the real store + authorizer.
 
 set -euo pipefail
 

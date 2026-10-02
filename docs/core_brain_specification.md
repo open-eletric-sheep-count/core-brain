@@ -35,8 +35,10 @@ Add an `agents` array to `config.json`:
 ### Configuration Rules & Validation Constraints
 
 * **`name`** (`string`, required): Unique identifier for the agent instance. Maps directly to its isolated database namespace.
-* **`hasGlobalAccess`** (`boolean`, required): Controls access to the shared global database (`global_db`).
-* **`private`** (`boolean`, required): Controls whether this agent's isolated database (`agent_db`) can be queried by other agents.
+* **`hasGlobalAccess`** (`boolean`, optional, default `true`): Controls access to the shared global database (`global_db`). An omitted field resolves to `true`.
+* **`private`** (`boolean`, optional, default `false`): Controls whether this agent's isolated database (`agent_db`) can be queried by other agents. An omitted field resolves to `false`.
+* **Defaults for omitted fields:** a row that omits `hasGlobalAccess`/`private` takes the defaults above. A **present non-boolean** value still raises `InvalidConfigurationError` — the defaults are a missing-key rule, not coercion.
+* **Agent absent from `config.json`:** an agent with no row at all (or when `config.json` is missing/empty) is **not refused**; it uses the same defaults `{ private:false, hasGlobalAccess:true }`. Its namespace is **not** added to another agent's read union and is not readable via `from:"agent:<X>"`.
 * **Validation Error (`InvalidConfigurationError`):**
   Setting both **`private: false`** and **`hasGlobalAccess: false`** is invalid and **must throw a initialization error**. If an agent is not private (intended to contribute to shared knowledge) but is denied global database access, it cannot write to or read from the shared layer, creating an illogical configuration state.
 
@@ -55,6 +57,8 @@ When an agent requests a memory query or retrieval:
 | `false` | `false` | **Invalid** | **Throws Error (Invalid Config)** | N/A |
 | `true` | `true` | **Valid** | `agent_db` + `global_db` | **No** (Private to this Agent) |
 | `true` | `false` | **Valid** | `agent_db` only | **No** (Private to this Agent) |
+| omitted → `false` | omitted → `true` | **Valid** | `agent_db` + `global_db` | Yes (Public Agent Space) |
+| agent absent from `config.json` → `false` | agent absent → `true` | **Valid** | `agent_db` + `global_db` | **No** (namespace is not in other agents' read union) |
 
 ## 5. Implementation Roadmap
 

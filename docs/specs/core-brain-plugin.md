@@ -6,6 +6,7 @@
 - **Upstream contract:** `docs/core_brain_specification.md` (65 lines, read in full) — this spec is the executable plan for that contract
 - **Working folder:** `/media/gandb/workspace/oesc/core-brain`
 - **Artifacts of this task are in English.** The DEVELOPER implements to THIS spec; the ORACLE (judge) attacks it against the 16 USER acceptance criteria below.
+- **Superseded rules / new law:** the absent/incomplete-config-row policy in this spec's Q6, §6.3, §6.4, §7.1, §8, §9.2 and §10 step 5 is **superseded** by `docs/specs/core-brain-default-policy-spec.md` (ACTIVE, 2026-10-02). An agent absent from `config.json` now receives the default policy `private:false` + `hasGlobalAccess:true` instead of a fail-closed refusal.
 
 > This document is the **law** for the slice. Every path a user (agent) can see, every access rule, and every config error MUST be demonstrated in the running product, not just unit-tested. Green tests are the floor, not the bar.
 
@@ -36,11 +37,11 @@ Each line is a binding decision the DEVELOPER must follow. "Proposed" = an ARCHI
 |---|----------|----------|
 | **Q1** | Where the plugin lives + id | Repo: `global/opencode/plugins/core-brain/` (single folder, same shape as `todo-list`/`context-inject`). Plugin `id: "core-brain"`. npm `name: "@oesc/core-brain"` (NOT `opencode-plur-memory`). Zero-collision proof in §3. |
 | **Q2** | Language & structure | TypeScript/Node on the V2 plugin API. Files: `package.json`, `index.ts`, `store.ts`, `types.ts`, `tsconfig.json`, `shims.d.ts`, `check.sh`, dev `config.json` seed, `LICENSE`, `README.md`, `INSTALACAO.md`, plus `test/matrix.selftest.mjs`. Default export = plain object `{ id, setup }`, **no runtime OpenCode SDK import**. Node builtins only (`node:fs/os/path/url`); **zero external npm runtime deps**. |
-| **Q3** | `config.json` contract | Authoritative at `~/.core-brain/config.json` (shared across projects — see Q4). Precedence: `options.configPath` > `~/.core-brain/config.json` > `<pluginDir>/config.json` (dev seed). Schema `agents[]` = `{ name (string, required, unique, filename-safe), hasGlobalAccess (boolean, required), private (boolean, required) }`. If any entry has `private===false && hasGlobalAccess===false` → throw `InvalidConfigurationError` (custom `Error` subclass, `.code === "INVALID_CONFIGURATION"`, message names the agent + the rule) **at init**, before any read/write. |
+| **Q3** | `config.json` contract | Authoritative at `~/.core-brain/config.json` (shared across projects — see Q4). Precedence: `options.configPath` > `~/.core-brain/config.json` > `<pluginDir>/config.json` (dev seed). Schema `agents[]` = `{ name (string, required, unique, filename-safe), hasGlobalAccess (boolean, optional, default true), private (boolean, optional, default false) }`. If a row *omits* a field it takes the default; a *present* non-boolean field still throws. If any resolved entry has `private===false && hasGlobalAccess===false` → throw `InvalidConfigurationError` (custom `Error` subclass, `.code === "INVALID_CONFIGURATION"`, message names the agent + the rule) **at init**, before any read/write. |
 | **Q4** | Storage in `~/.core-brain` | See §4 (layout + persistence) and §5 (vectors: what is real vs stub). Data dir = `~/.core-brain/` (env-overridable `CORE_BRAIN_HOME` for tests). Never in the project root — memory is shared across projects. |
 | **Q5** | Access matrix | See §6 (READ datasets + WRITE authorization), implemented exactly per upstream §4 incl. the invalid row. |
-| **Q6** | Public API + identity | Single tool `core_memory` (§7). Identity = the session's OpenCode agent name, read from the hook context (`event.agent` / `ctx.session.get`), **never** user-supplied (no impersonation). Looked up in `config.json` by `name`; unlisted agent → fail-closed "not configured" error. |
-| **Q7** | Integration without touching current agents | v1 = **TOOLS ONLY**. `prompt` hook only records the active agent; it **never mutates** `event.prompt.text` and **never injects** into `event.system` unless the agent is explicitly OPT-IN listed. No `compaction` hook in v1. Unlisted agents see zero change (§8 non-regression). |
+| **Q6** | Public API + identity | Single tool `core_memory` (§7). Identity = the session's OpenCode agent name, read from the hook context (`event.agent` / `ctx.session.get`), **never** user-supplied (no impersonation). Looked up in `config.json` by `name`; an agent **absent** from the file (and a row that **omits** a field) resolves to the default policy `private:false` + `hasGlobalAccess:true` — there is **no** fail-closed "not configured" refusal. |
+| **Q7** | Integration without touching current agents | v1 = **TOOLS ONLY**. `prompt` hook only records the active agent; it **never mutates** `event.prompt.text` and **never injects** into `event.system` unless the agent is explicitly OPT-IN listed. No `compaction` hook in v1. Unlisted agents see no prompt change (the hook stays inert); if they call `core_memory`, they now get the default policy (§8 non-regression, new law `docs/specs/core-brain-default-policy-spec.md`). |
 | **Q8** | Dedicated test agents | 4 agents in `global/opencode/agent/` — `global/opencode/agent/CB_ALPHA.md`, `CB_BETA.md`, `CB_GAMMA.md`, `CB_DELTA.md` (`mode: all`, inherited model — see [REQ] R3 + the §9.1 discovery gate). Names match `config.json` `agents[].name`. Two-layer evidence: (a) data-layer functional self-test via `check.sh` against a TEMP dir (`CORE_BRAIN_HOME`) proving matrix rules 7–14 in-process; (b) headless live smoke `opencode2 run --agent CB_<X>` for the identity-resolution aspects of 7/11/13 (§9.1 pre-flight + §9.3). |
 | **Q9** | Non-regression (criterion 5) | `opencode2 api GET /api/agent` snapshot **before** and **after** — the baseline count is whatever the snapshot reports (**not asserted**; the "25 agents" figure was unmeasured, per D7). The diff must show **only additions** (`CB_*`); every pre-existing agent byte-identical. `git status` shows only NEW files (no edits to existing `global/opencode/agent/*.md` or `opencode.json`). Prove the `prompt` hook is inert for an unlisted agent (a trivial headless run of an existing agent with no injected block). |
 | **Q10** | Install plan | See §10 (becomes `INSTALACAO.md`). |
@@ -165,10 +166,14 @@ Implemented **exactly** per upstream §4, plus the WRITE side.
 | `false` | `false` | **Invalid** | **throws `InvalidConfigurationError` at init** | N/A |
 | `true`  | `true`  | **Valid** | `agent_db` + `global_db` | No (private) |
 | `true`  | `false` | **Valid** | `agent_db` only | No (private) |
+| omitted (`undefined`) | defaults → `true` / `false` | **Valid** | `agent_db` + `global_db` | Yes (public space) |
+| agent **absent** from `config.json` | defaults → `true` / `false` | **Valid** | `agent_db` + `global_db` | **No** — its namespace is not in the configured read union |
+
+> New law for the last two rows: `docs/specs/core-brain-default-policy-spec.md`. A row that omits a field takes that field's default; an agent with no row at all is synthesized with the same defaults and is **never refused**.
 
 ### 6.4 Errors (shapes the DEVELOPER must emit; the test asserts on these)
 - `InvalidConfigurationError` (extends `Error`), `.code === "INVALID_CONFIGURATION"`, `message` includes the offending `name` and the rule ("public agent without global access").
-- Cross-namespace/private access: a normal `Error` (or typed `AccessDeniedError`) whose `message` names the **target namespace** and the reason (`"private"` / `"no global access"` / `"cross-agent write not allowed"`). Fail-**closed**: any unresolvable or unlisted agent = deny.
+- Cross-namespace/private access: a normal `Error` (or typed `AccessDeniedError`) whose `message` names the **target namespace** and the reason (`"private"` / `"no global access"` / `"cross-agent write not allowed"`). An agent **absent** from `config.json` is **not** denied: it resolves to the default policy (§6.3; `docs/specs/core-brain-default-policy-spec.md`). Only a completely unresolvable identity (no agent name at all) is refused, and that refusal stays in the tool layer (`index.ts`), unchanged.
 
 ---
 
@@ -176,8 +181,8 @@ Implemented **exactly** per upstream §4, plus the WRITE side.
 
 ### 7.1 Identity
 The agent's identity is the **OpenCode agent name of the running session**, obtained from the V2 hook context (`event.agent` on `prompt`, or `ctx.session.get({ sessionID })`). It is **trusted infrastructure data**, never a tool argument — an agent cannot pass `"agent": "someone_else"` to impersonate. The name is looked up in `config.json` `agents[]`:
-- found → its `{ hasGlobalAccess, private }` policy is used;
-- **not found** → fail-closed `Error: "agent '<name>' is not configured in core-brain config.json"` (no default allow, no fallback to global).
+- found → its `{ hasGlobalAccess, private }` policy is used; a field the row **omits** resolves to its default (`hasGlobalAccess` → `true`, `private` → `false`);
+- **not found** → the default policy `{ private:false, hasGlobalAccess:true }` is used; it **never throws**. The old error `agent '<name>' is not configured in core-brain config.json` is removed from production. New law: `docs/specs/core-brain-default-policy-spec.md`.
 
 ### 7.2 The single tool: `core_memory`
 One tool, sub-ops by `op`:
@@ -206,7 +211,7 @@ core_memory({ op: "recall", query?: string, limit?: number /* default 5 */,
 - **v1 is TOOLS ONLY.** The only registered surface the current agents see is the `core_memory` tool.
 - **`prompt` hook:** records the active agent (for logging/debug via `CORE_BRAIN_DEBUG`). It **never** mutates `event.prompt.text` and **never** injects anything into `event.system` unless the agent is explicitly OPT-IN listed in `config.json` (a separate, off-by-default flag, e.g. `inject: true`). Default: **no injection**.
 - **No `compaction` hook in v1.**
-- **Unlisted agents:** because identity is fail-closed and injection is off by default, an agent not in `config.json` experiences **zero** behavioural change from this plugin. This is the invariant the non-regression proof (§9 Q9) asserts.
+- **Unlisted agents:** the `prompt` hook stays **inert** — no mutation, no injection — so an agent not in `config.json` sees no prompt change. But if it actually calls `core_memory`, it now receives the **default policy** `{ private:false, hasGlobalAccess:true }` instead of the removed fail-closed refusal (new law `docs/specs/core-brain-default-policy-spec.md`). This is the invariant the non-regression proof (§9 Q9) asserts **for the hook**.
 
 ---
 
@@ -231,7 +236,7 @@ Each `.md` frontmatter mirrors `TESTER.md` (`description`, `mode: all`); the bod
 2. Confirm `CB_ALPHA`, `CB_BETA`, `CB_GAMMA`, `CB_DELTA` all appear.
 3. **If any is missing → STOP and report to the ORACLE.** Adding `agents`-block entries to `opencode.json` is USER territory, not an agent's. Do not proceed to Layer B until the 4 are confirmed listable.
 
-### 9.2 Layer A — data-layer functional self-test (`check.sh`, criteria 7–14 **proven in-process**)
+### 9.2 Layer A — data-layer functional self-test (`check.sh`, criteria 7–14 + the default-policy rules **proven in-process**)
 `check.sh` (mirrors `todo-list/check.sh`):
 1. `CORE_BRAIN_HOME="$(mktemp -d)"` — a disposable temp root.
 2. Writes `$CORE_BRAIN_HOME/config.json` with the 4 agents above.
@@ -248,8 +253,13 @@ Each `.md` frontmatter mirrors `TESTER.md` (`description`, `mode: all`); the bod
 | 12 | init with a `CB_DELTA`-shaped entry | **throws** `InvalidConfigurationError`, `.code==="INVALID_CONFIGURATION"` |
 | 13 | CB_ALPHA store `target:"global"` → CB_ALPHA recall `from:"global"` | returns it |
 | 14 | CB_ALPHA store `target:"agent:CB_BETA"` | **blocked**, message names "CB_BETA" + "private" |
+| 15 | CB_UNLISTED (absent from `config.valid.json`) `who`, then `store target:"global"` → `recall from:"global"`, then `store self` → `recall from:"self"` | `who` = `private:false`+`hasGlobalAccess:true`; global store `{ok:true,ns:"global"}`; both recalls echo their marker; never throws |
+| 16 | `createEngine(config.omitted.json)` (row `CB_OMITTED` omits both fields) → `who("CB_OMITTED")`; `who("CB_ALSO_ABSENT")` | load does **not** throw; both report `private:false`, `hasGlobalAccess:true` |
+| 17 | `createEngine(config.partial-invalid.json)` (`{name:"CB_HALF",hasGlobalAccess:false}`; `private` omitted) | **throws** `InvalidConfigurationError`, `.code==="INVALID_CONFIGURATION"`, message names `CB_HALF` + "public agent without global access" |
+| 18 | `createEngine(config.badtype.json)` (`private:"yes"`), then a file with `hasGlobalAccess:"yes"` | each **throws** `InvalidConfigurationError` naming the agent + "boolean" |
+| 19 | CB_UNLISTED `store self` → CB_ALPHA `recall from:"agent:CB_UNLISTED"`; then CB_ALPHA `recall` (default union) | direct read empty; `scanned` excludes `CB_UNLISTED` in both the direct read and the default union |
 
-Output = a printed table `7 PASS … 14 PASS`, and **exit code 0** only if all 8 PASS; any FAIL → non-zero. This is the executable proof of the isolation matrix (not a static read).
+Output = a printed table `7 PASS … 19 PASS` (13 rows), and **exit code 0** only if all 13 PASS; any FAIL → non-zero. This is the executable proof of the isolation matrix and the default-policy rules (not a static read). Lines 15–19 pin `docs/specs/core-brain-default-policy-spec.md` §2/§3/§4.3.
 
 ### 9.3 Layer B — headless live smoke (identity-resolution aspects of 7/11/13)
 `opencode2 run --agent CB_BETA "<prompt>"` where the prompt is: "Call `core_memory` with `op:'who'`; then `op:'store'` text `'beta-private-marker-<ts>'` target `'self'`; then `op:'recall'` from `'self'`. Report the raw JSON of each."
@@ -268,7 +278,7 @@ Output = a printed table `7 PASS … 14 PASS`, and **exit code 0** only if all 8
 2. Implement the slice.
 3. **After:** `opencode2 api GET /api/agent` → `docs/temp/agents-after.json`. Diff must show **only additions** (`CB_*`); every pre-existing agent byte-identical.
 4. **`git status`** must list only NEW files (`global/opencode/plugins/core-brain/**`, `global/opencode/agent/CB_*.md`, this spec, `docs/temp/*`). **No edit** to any existing `global/opencode/agent/*.md`, `global/opencode/plugins/{todo-list,context-inject}/**`, or `opencode.json`.
-5. **Inert-hook proof:** a trivial headless run of an existing, unlisted agent (e.g. `tester`) shows no `core_memory` block in its system prompt and unchanged behaviour.
+5. **Inert-hook proof:** a trivial headless run of an existing, unlisted agent (e.g. `tester`) shows no `core_memory` block in its system prompt and unchanged prompt behaviour. This proves the **hook** is inert (no injection) — it does **not** rest on the agent being refused: an unlisted agent that actually calls `core_memory` now receives the default policy (new law `docs/specs/core-brain-default-policy-spec.md`).
 
 ---
 

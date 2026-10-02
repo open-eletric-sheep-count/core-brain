@@ -87,6 +87,8 @@ Accepted deliberately: the engine is only as good as its config, so a bad config
 
 ### D5 — Fail-closed: unlisted agents get nothing; cross-agent write is always denied
 
+> Superseded by ADR-0003 (2026-10-02).
+
 **Decision.** An agent **not** present in `config.json` receives no namespace and no access
 (never a default-allow). A write to **another agent's** namespace (`agent:OTHER`) is always
 denied, regardless of that agent's privacy.
@@ -230,6 +232,7 @@ Executed by the ORACLE; cross-checked line-by-line against the delivered source 
   CB_ALPHA sees only public+global; CB_BETA own+global+public-alpha; CB_GAMMA own+public-alpha
   (no global, no others' private); unlisted agent → `not configured`; cross-agent
   `target:"agent:../CB_BETA"` → **denied**. Zero private leakage on the default path.
+  Superseded by ADR-0003 (2026-10-02).
 - **Storage (D7/D8):** `~/.core-brain/` populated; `vectors/<ns>/index.json` stamped
   `embedder: hash-ngram-v1`, `dim: 256`.
 - **Coexistence (D1):** PLUR **`connected`** (its server up) with **zero collision** alongside
@@ -259,6 +262,7 @@ delivery. The evidence above was measured at acceptance, before that cleanup.
   shared; a leak-by-default.
 - **Default-allow for unlisted agents** — rejected (D5): silently grants memory to every agent;
   the safe default is deny.
+  Superseded by ADR-0003 (2026-10-02).
 - **Identity from the tool input** — rejected (D6): impersonation / isolation break at the source;
   identity must come from the trusted session.
 - **Neural embedder in v1** — rejected (D8/D14): requires a dependency tree and/or network,
