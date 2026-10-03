@@ -1,0 +1,3634 @@
+{
+  "embedder": "fixture-bge-small",
+  "dim": 384,
+  "revision": "fixture-v1",
+  "byteLength": 795648,
+  "entries": [
+    {
+      "text": "where does the assistant keep the things it was told earlier",
+      "key": "where does the assistant keep the things it was told earlier",
+      "sha256": "4e3ecc471c4a16f6c2ebe1599ebfd905a08993707a03e399fd8385d810f0e001",
+      "offset": 0,
+      "length": 1536
+    },
+    {
+      "text": "my pocket robot tucks every message I gave it before into a drawer",
+      "key": "my pocket robot tucks every message i gave it before into a drawer",
+      "sha256": "0c2f16fb10d393dde541ba83f6a8173f1a9461da94e9aeb16a02c0153d0feb3c",
+      "offset": 1536,
+      "length": 1536
+    },
+    {
+      "text": "the assistant forecaster told the farmers earlier to keep the young things warm through the frost",
+      "key": "the assistant forecaster told the farmers earlier to keep the young things warm through the frost",
+      "sha256": "70fe8e5d0aaeb13e3598eaf952d0622141110d8c7f9d8d591bb1320bfb29a94a",
+      "offset": 3072,
+      "length": 1536
+    },
+    {
+      "text": "ledger reconciliation nightly batch job",
+      "key": "ledger reconciliation nightly batch job",
+      "sha256": "72d4ee5b0c59ef7ed3a8e94bef40265411a5320dfde6808a9d82299d6f4c0bbf",
+      "offset": 4608,
+      "length": 1536
+    },
+    {
+      "text": "ledger reconciliation nightly batch job review",
+      "key": "ledger reconciliation nightly batch job review",
+      "sha256": "aa76b2c69d106f093cb0462b82bd498e9ab90d8904791ceb8e1def57cb659728",
+      "offset": 6144,
+      "length": 1536
+    },
+    {
+      "text": "posting entries that square the accounts away each evening",
+      "key": "posting entries that square the accounts away each evening",
+      "sha256": "d34b13e876ccd736def792c82f6640650c456c5d1d69f99a050b9087d9e9b9fb",
+      "offset": 7680,
+      "length": 1536
+    },
+    {
+      "text": "which memory retrieval layer ranks paraphrases above keyword matches",
+      "key": "which memory retrieval layer ranks paraphrases above keyword matches",
+      "sha256": "89e00c6260ae91731efa4a0156bdd52f45eab2fef671d785720c84a8460219c4",
+      "offset": 9216,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0000",
+      "key": "cb-fixture-entry-0000",
+      "sha256": "0aea0f9fc4b46b50ff18f1c0f96e6cada7f7f4ebe40dfe0955fb981b86f2f44a",
+      "offset": 10752,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0001",
+      "key": "cb-fixture-entry-0001",
+      "sha256": "572b3a14388ac2091ad91cec1b4eab6e06c051a7d8a2f652b04cbae287d29c44",
+      "offset": 12288,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0002",
+      "key": "cb-fixture-entry-0002",
+      "sha256": "40b47167ee085a5f8b8143de7a33d5a0a347d504887bdb6297cd9661f5910431",
+      "offset": 13824,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0003",
+      "key": "cb-fixture-entry-0003",
+      "sha256": "79787e14497d1ce8a8a0127bfb7dae055ff8cbeab011bd4df4f05234d7bbf82d",
+      "offset": 15360,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0004",
+      "key": "cb-fixture-entry-0004",
+      "sha256": "0a71c0c84c75b014c41f85636d8c3b48f883888e81c8b0a5b2e67d47748bd0af",
+      "offset": 16896,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0005",
+      "key": "cb-fixture-entry-0005",
+      "sha256": "90d78841899c4fb704f106d555d2f55820859efe595ea4f3460b0b41e7d7e071",
+      "offset": 18432,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0006",
+      "key": "cb-fixture-entry-0006",
+      "sha256": "baf14c288bc8d74ac9e861911b447cade31f52f201f52e68af1f447d3b25c8c0",
+      "offset": 19968,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0007",
+      "key": "cb-fixture-entry-0007",
+      "sha256": "aab7e9a46d37552054b85e80c47a90ab336e926098c779e5302663d5b5ad9580",
+      "offset": 21504,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0008",
+      "key": "cb-fixture-entry-0008",
+      "sha256": "94dbb4f2db3551f8565dff9812cf42ae6db42a6c2e6636b434dd350cb0137368",
+      "offset": 23040,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0009",
+      "key": "cb-fixture-entry-0009",
+      "sha256": "c42ffbd212cbec71cc715497b3943ad10a6f55bca75696690961bb0a83f69a17",
+      "offset": 24576,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0010",
+      "key": "cb-fixture-entry-0010",
+      "sha256": "680eff8581fcb24b210ef5401eb56a412e81cd3ea285df54796d61b979477028",
+      "offset": 26112,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0011",
+      "key": "cb-fixture-entry-0011",
+      "sha256": "b078a6be4a708fad9b22be540cecbf97b78ec893177d1f4f5c315a98eaad45d7",
+      "offset": 27648,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0012",
+      "key": "cb-fixture-entry-0012",
+      "sha256": "b72ae7699c46cdc5edb5b8e1390787b365b21c501ec92e2d661558e06c941917",
+      "offset": 29184,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0013",
+      "key": "cb-fixture-entry-0013",
+      "sha256": "3e948baf4b3526087a360a1cf6db8428ba13f84fb9383f4e5d592498934684ef",
+      "offset": 30720,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0014",
+      "key": "cb-fixture-entry-0014",
+      "sha256": "27f8500fd8380aa201cf53cfaa3fc93852cd0ecdc8f04793a5c451bf165c4d36",
+      "offset": 32256,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0015",
+      "key": "cb-fixture-entry-0015",
+      "sha256": "1dfee54f166e7430f435c97a77c9d8777e04fd2c6b427769cc0a38721b5f1b78",
+      "offset": 33792,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0016",
+      "key": "cb-fixture-entry-0016",
+      "sha256": "8cadcb546654fcd2f90b8144c590226cd9adb8d3430884a0740829d8b2eedda4",
+      "offset": 35328,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0017",
+      "key": "cb-fixture-entry-0017",
+      "sha256": "84aff2e18b320ac27c9889efb8f1376a64801294425f343be090fe80cdffe28d",
+      "offset": 36864,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0018",
+      "key": "cb-fixture-entry-0018",
+      "sha256": "f4b974c0405bde126df63b6b16b8b8c78291b8d280a2ca18d041b2ac791bc604",
+      "offset": 38400,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0019",
+      "key": "cb-fixture-entry-0019",
+      "sha256": "baeb2004d95e9c8f7924287945d1a67196c069ec900c16058b91e0f7636889fd",
+      "offset": 39936,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0020",
+      "key": "cb-fixture-entry-0020",
+      "sha256": "bbb0ee42d8151e8ad14efef1cad3008bdca6ebd237682ee945b8f69ed85b03e1",
+      "offset": 41472,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0021",
+      "key": "cb-fixture-entry-0021",
+      "sha256": "1e333fa08ed2a2434ae457396ad76db48a8eab81d5a0d3f7de17d94e49eba6f7",
+      "offset": 43008,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0022",
+      "key": "cb-fixture-entry-0022",
+      "sha256": "8f28861e4fa4706c952ed2403c542893ee5736714732248b5fe119d67541e5cd",
+      "offset": 44544,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0023",
+      "key": "cb-fixture-entry-0023",
+      "sha256": "48b08d6ca30e043b2ca7186bc8ac0759ab9389b66186ab57cf4b271d89348b3e",
+      "offset": 46080,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0024",
+      "key": "cb-fixture-entry-0024",
+      "sha256": "7dcd47196954f76270a731a0b8b78ab3cf0197dc23c272a7ab5c793c5ebe802b",
+      "offset": 47616,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0025",
+      "key": "cb-fixture-entry-0025",
+      "sha256": "2781bddeaec20e56c14705e37d805d2bace97a20828ea6fb77b5403be9acdc80",
+      "offset": 49152,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0026",
+      "key": "cb-fixture-entry-0026",
+      "sha256": "31abdcfd184be6370dad80387f07a2b5352a134660f8ddbd9d6ee1df595b64a7",
+      "offset": 50688,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0027",
+      "key": "cb-fixture-entry-0027",
+      "sha256": "83cac5ea445c5633747a703d476b431b6ee05a75356ac464ebf4e4e27a6d7e8b",
+      "offset": 52224,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0028",
+      "key": "cb-fixture-entry-0028",
+      "sha256": "e7d0fbfeb49cd3511d7823c90e8ffa4270c760f80c44496764ee279de9647234",
+      "offset": 53760,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0029",
+      "key": "cb-fixture-entry-0029",
+      "sha256": "d09160f51b2e74c52558a96a3c6a07a39c8c4f9405af5614cc74789b4114400b",
+      "offset": 55296,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0030",
+      "key": "cb-fixture-entry-0030",
+      "sha256": "ae433ec690535eaebc25a69e03e0a040d9045f045342295e3d15139512e9f584",
+      "offset": 56832,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0031",
+      "key": "cb-fixture-entry-0031",
+      "sha256": "fb7e9d6be88a674ab36e5764e3a72ddfc0ba94c22e1e43200cb57465b2fa1e67",
+      "offset": 58368,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0032",
+      "key": "cb-fixture-entry-0032",
+      "sha256": "9b348b6f997676da4b4590e0b1e09cb1292eb57d2321ae7bcc9c1ae755a86538",
+      "offset": 59904,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0033",
+      "key": "cb-fixture-entry-0033",
+      "sha256": "d1e1229abac892bf24342dbd6ea092326a9c74ccde357ad87a2989ff362f6932",
+      "offset": 61440,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0034",
+      "key": "cb-fixture-entry-0034",
+      "sha256": "56e40f71743db8bd09d3ad69ecfb768bc704eeda0a1d4db2bfa8e52aece22369",
+      "offset": 62976,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0035",
+      "key": "cb-fixture-entry-0035",
+      "sha256": "f21af71ed111aeec96394579129159a454cce38807162b28d2fdf32213bdd444",
+      "offset": 64512,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0036",
+      "key": "cb-fixture-entry-0036",
+      "sha256": "901f7c740f02452ab7d0961c66fec1a07fe56c3af7f376bef9b66dc5f78f6007",
+      "offset": 66048,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0037",
+      "key": "cb-fixture-entry-0037",
+      "sha256": "c8e690f23657e752da146991bd580d55cf08663fe97eaba05587b8d8ee15d981",
+      "offset": 67584,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0038",
+      "key": "cb-fixture-entry-0038",
+      "sha256": "a3dad6a9dd31a88c9a6f2ec4427ed54e878d5223dcc83840fdb24ff57d15fda6",
+      "offset": 69120,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0039",
+      "key": "cb-fixture-entry-0039",
+      "sha256": "3eaa73feaff662cd95c327c8b960db3748e1dcb7fc01bd634a04365cdab67101",
+      "offset": 70656,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0040",
+      "key": "cb-fixture-entry-0040",
+      "sha256": "fc01eb7f67ab7998b611daf87ff0ac738c9b878e37444e50c729eb5134fbaa78",
+      "offset": 72192,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0041",
+      "key": "cb-fixture-entry-0041",
+      "sha256": "6afbcc703dd31bdb7df734571f4f5abd10fb52c8bf7c26e7c3f1a473a90a4d50",
+      "offset": 73728,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0042",
+      "key": "cb-fixture-entry-0042",
+      "sha256": "04556c9a0dc9e053dacd101e157388755c0e6054b0e889d514526a4e68886a20",
+      "offset": 75264,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0043",
+      "key": "cb-fixture-entry-0043",
+      "sha256": "edf2e42eddd55a41344eeb6687451b52535b9ac9f59901b6aea5fa8d182a6125",
+      "offset": 76800,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0044",
+      "key": "cb-fixture-entry-0044",
+      "sha256": "5c7e60ba7f4bfdc314d10e33592860f94795f11d5ae737094d8bbdb2a2966bdf",
+      "offset": 78336,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0045",
+      "key": "cb-fixture-entry-0045",
+      "sha256": "1a90c5f7ea511afea3d9936c6d7981e267c04c5ea35f4d5cf98096a738241cfc",
+      "offset": 79872,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0046",
+      "key": "cb-fixture-entry-0046",
+      "sha256": "d0b23b2f7b80bf49d2b1bac2320e8ae477b10f2304cce87f5a24135263368913",
+      "offset": 81408,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0047",
+      "key": "cb-fixture-entry-0047",
+      "sha256": "d6dd7f5289bde6bf6b85d16408d430930b3ca54868c815d0317589a6d8d411f6",
+      "offset": 82944,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0048",
+      "key": "cb-fixture-entry-0048",
+      "sha256": "d3db1069d7eee15ddf87f72b22a4f5bac369d53b5e2bda493168360c580729cb",
+      "offset": 84480,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0049",
+      "key": "cb-fixture-entry-0049",
+      "sha256": "b1ed0e99d78551543f9d5ee596d280c9e31a8941942b1d8b7192c50161e4eefe",
+      "offset": 86016,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0050",
+      "key": "cb-fixture-entry-0050",
+      "sha256": "5d57ca190086c31bca0155cbf0d2865d8649ea1f9c446986b02cb035c0fb36f9",
+      "offset": 87552,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0051",
+      "key": "cb-fixture-entry-0051",
+      "sha256": "fff34bc0c3b54e5825be2aa7a6e493869106690a2c2afbddb757f00566d35745",
+      "offset": 89088,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0052",
+      "key": "cb-fixture-entry-0052",
+      "sha256": "2f17fd9696bab3338fef558dabf666ac3c3ddcfbb434073d3ec021b2aa895f1a",
+      "offset": 90624,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0053",
+      "key": "cb-fixture-entry-0053",
+      "sha256": "9d14d1a4d609b0ad8a08418664fe224db66060b595e0fc1c96f254c020135130",
+      "offset": 92160,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0054",
+      "key": "cb-fixture-entry-0054",
+      "sha256": "baf8d89144587fab7ae8534ff47852a7eb67f2a80375559b951eccb5afdae4b4",
+      "offset": 93696,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0055",
+      "key": "cb-fixture-entry-0055",
+      "sha256": "e65342e192a1b9117cba1b7a75fa15452f6554ec8b065e2e244a957e971a38ef",
+      "offset": 95232,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0056",
+      "key": "cb-fixture-entry-0056",
+      "sha256": "4e4a9c4492c83d14153b412643aa4580eadff8ae49b4885f3b3ac165ffca01af",
+      "offset": 96768,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0057",
+      "key": "cb-fixture-entry-0057",
+      "sha256": "aad0eaa6c2b327fa0b911a47ea53365a6924cddfe4a2f7668b183c1de2944df9",
+      "offset": 98304,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0058",
+      "key": "cb-fixture-entry-0058",
+      "sha256": "18654514f4c9f581a90a0aeb174e92d411729d08d142337386310ca4d6c2efec",
+      "offset": 99840,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0059",
+      "key": "cb-fixture-entry-0059",
+      "sha256": "852c962ed6e83ba1f225ccfed209c3aa9f10ea3672fa6186021339f4f9311cb6",
+      "offset": 101376,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0060",
+      "key": "cb-fixture-entry-0060",
+      "sha256": "2e79b68ea8669e1a07a995feffd850a967f9cce7a74b4a78518e3752de2c6965",
+      "offset": 102912,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0061",
+      "key": "cb-fixture-entry-0061",
+      "sha256": "d0c6aed402e658f1ac9566e4c0a2d73815ecc51b7a06a24be77aaf818d7b6f1c",
+      "offset": 104448,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0062",
+      "key": "cb-fixture-entry-0062",
+      "sha256": "115377bf537a8ff7dc3d126f6aaa7c5ca0162520353c83de5d46be98675867e9",
+      "offset": 105984,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0063",
+      "key": "cb-fixture-entry-0063",
+      "sha256": "c695343e94bf507ec257ecf2f3ba0b4bdb080ea432b008b33e9d1af2aa05490c",
+      "offset": 107520,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0064",
+      "key": "cb-fixture-entry-0064",
+      "sha256": "98cd8b68ab0e45b66bcca9885d9d738bc2c2a34aaf48bb1d0e0f2fb8313a92ae",
+      "offset": 109056,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0065",
+      "key": "cb-fixture-entry-0065",
+      "sha256": "70ff2814167d6603e144538e44d78d6f022f519d014785a18e0ce1e8b6553464",
+      "offset": 110592,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0066",
+      "key": "cb-fixture-entry-0066",
+      "sha256": "5f983168ca905a245fd9321ca291e35233fbc96153fe617ee5b9017875a70198",
+      "offset": 112128,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0067",
+      "key": "cb-fixture-entry-0067",
+      "sha256": "fdb303f154fa40407df2971b58081814cd8fa9541edd2495b08aa3bb627b8a73",
+      "offset": 113664,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0068",
+      "key": "cb-fixture-entry-0068",
+      "sha256": "4875a98c68d4d9a8f303dca973a698cf98a69fb1fcc8baeb51680a7830ca04cd",
+      "offset": 115200,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0069",
+      "key": "cb-fixture-entry-0069",
+      "sha256": "c5d14d628b6d5a47ee25d9131bacb351605af03614fedcf016f9dc51f9b4f508",
+      "offset": 116736,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0070",
+      "key": "cb-fixture-entry-0070",
+      "sha256": "2271387c78cc6cd64aeb1ea89667c3e76858dbe2be846a26cb59d9cebb369317",
+      "offset": 118272,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0071",
+      "key": "cb-fixture-entry-0071",
+      "sha256": "02aa67d43f48945f4e5765f094b8a2b85f75bf85eb7ce34c73510471cae0be8e",
+      "offset": 119808,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0072",
+      "key": "cb-fixture-entry-0072",
+      "sha256": "f8ec304938a520129526c81fbc728f9ddb3602f4befd54452501f6a8c6bfe1b6",
+      "offset": 121344,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0073",
+      "key": "cb-fixture-entry-0073",
+      "sha256": "5b110875972cef02983b7e1fab3fc6b73a4d6602962a274e0b9a50cbbd16b252",
+      "offset": 122880,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0074",
+      "key": "cb-fixture-entry-0074",
+      "sha256": "fee7f886c9956d21548535d3a001dca3876fc0d9f2734bedbce3a0af199deac8",
+      "offset": 124416,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0075",
+      "key": "cb-fixture-entry-0075",
+      "sha256": "f381941a3612495b00c600f1a7e68df38e5ef42d88f4f925d900e282eccaabc1",
+      "offset": 125952,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0076",
+      "key": "cb-fixture-entry-0076",
+      "sha256": "dfdab56d284478239e399bfacd3e01f58776bf2ce01671f9b3e73583af1b0a0f",
+      "offset": 127488,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0077",
+      "key": "cb-fixture-entry-0077",
+      "sha256": "7de29e57a3eb9efd75bcd4051011bd3b7880b456b2a1f2f7f5064e5369edf6b6",
+      "offset": 129024,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0078",
+      "key": "cb-fixture-entry-0078",
+      "sha256": "cf19a85dd7e7cf7ff4ab0266c61890bd5dfaee083d92588e3937649df6aef009",
+      "offset": 130560,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0079",
+      "key": "cb-fixture-entry-0079",
+      "sha256": "8dc023d39c7747523a7686c8bbc94aa9436abaac95f26e4f111c8daa775376b4",
+      "offset": 132096,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0080",
+      "key": "cb-fixture-entry-0080",
+      "sha256": "1f18211be08257f48975c85a68014c9597ac8c34fe05c68b3fd566919a501132",
+      "offset": 133632,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0081",
+      "key": "cb-fixture-entry-0081",
+      "sha256": "0d07add2710632ffff42fccff611be6535b4e3a479f0a896a853633a7779356e",
+      "offset": 135168,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0082",
+      "key": "cb-fixture-entry-0082",
+      "sha256": "19500dd73d34e784f1c5dc46d36527d247ed3c292c306e8b8869755b8c0e06b0",
+      "offset": 136704,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0083",
+      "key": "cb-fixture-entry-0083",
+      "sha256": "c7bf9a4d7d7d42f2d07a39b96852d3ba84b295b74856f52716c2e32e800ce473",
+      "offset": 138240,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0084",
+      "key": "cb-fixture-entry-0084",
+      "sha256": "7171ac8c4f8e47a443a8967567d41b62299f88570fc7883ad212b51fe9b23438",
+      "offset": 139776,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0085",
+      "key": "cb-fixture-entry-0085",
+      "sha256": "09dd308b71eab73e0cd8200cfcc68e1d7097e8baa961f6f23670b96cf387b21f",
+      "offset": 141312,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0086",
+      "key": "cb-fixture-entry-0086",
+      "sha256": "c25e4e64d1e804ecd9a1c66acdced450a9e313fb8fdcdd253fc2f2d334b9a48c",
+      "offset": 142848,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0087",
+      "key": "cb-fixture-entry-0087",
+      "sha256": "008f5980601e00cac98f76fb44703001fdea1bba32e2a33caaf18d5417a49826",
+      "offset": 144384,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0088",
+      "key": "cb-fixture-entry-0088",
+      "sha256": "3d799b4108cf48d698f22bfcf9399e93022ec0ffaa502dc308f52784c919d010",
+      "offset": 145920,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0089",
+      "key": "cb-fixture-entry-0089",
+      "sha256": "d9b12b49149280088835a2fbf36c1b1750a7b07dbf932e6ff1fdafe3973ee141",
+      "offset": 147456,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0090",
+      "key": "cb-fixture-entry-0090",
+      "sha256": "5badf085b04ad2e6d9bd82c671450df4ac8bb1a6201d98a93b66905942651506",
+      "offset": 148992,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0091",
+      "key": "cb-fixture-entry-0091",
+      "sha256": "bf14c185328569e505f8d49acf783a19719bbe81ff0fa76d3acc9acda0e5f0af",
+      "offset": 150528,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0092",
+      "key": "cb-fixture-entry-0092",
+      "sha256": "64254299e0dc6a1b7067ca65f8d73905ce9e7e013e0d70d87e4f5d5f6f0540a4",
+      "offset": 152064,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0093",
+      "key": "cb-fixture-entry-0093",
+      "sha256": "8fa1d52824cb51306d6d00306d5643be9bdf580ed666a2c9921285d26f76a7e3",
+      "offset": 153600,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0094",
+      "key": "cb-fixture-entry-0094",
+      "sha256": "85384e1937ccb9a38533f7b8e3501c35dc5a739a19c484582efc20a549175057",
+      "offset": 155136,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0095",
+      "key": "cb-fixture-entry-0095",
+      "sha256": "9c05833e113b9d42be64c517468d3afb308dfed4d69eb11ce1ec99bd42c78fc4",
+      "offset": 156672,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0096",
+      "key": "cb-fixture-entry-0096",
+      "sha256": "7adb9b92837ccff00837befca61669a3dd160578d68033c237035c15e7bd300e",
+      "offset": 158208,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0097",
+      "key": "cb-fixture-entry-0097",
+      "sha256": "0470c9466379b1ce9e5121f201ea165925eb9fb20009cdbabb824888a059293d",
+      "offset": 159744,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0098",
+      "key": "cb-fixture-entry-0098",
+      "sha256": "915911ee584966759165ac4832da807ca1334bb41db7809b3f5bb9dc67d5af10",
+      "offset": 161280,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0099",
+      "key": "cb-fixture-entry-0099",
+      "sha256": "fa39158d44f431a32b57e5e932aef206103ed4b25447e9fd1cf3ebc39856cc69",
+      "offset": 162816,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0100",
+      "key": "cb-fixture-entry-0100",
+      "sha256": "20bfbacf4e9908cfb7c30197b21d4b950f33b5ec9d866584899ffbe329918dd6",
+      "offset": 164352,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0101",
+      "key": "cb-fixture-entry-0101",
+      "sha256": "6a4da97b771f9d7fba936c045939fa150ffe709d0e6f988b067f65837bbb440f",
+      "offset": 165888,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0102",
+      "key": "cb-fixture-entry-0102",
+      "sha256": "1b933f8d40cc9ea55ffcd79086a15a942f0f48184eb9cd3913890bc908cff0dc",
+      "offset": 167424,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0103",
+      "key": "cb-fixture-entry-0103",
+      "sha256": "12f35bf4dda54f2088d4ae03c3ff9734c9e15d6a909c19ab07a5e056c149389d",
+      "offset": 168960,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0104",
+      "key": "cb-fixture-entry-0104",
+      "sha256": "f69adfce6a3dfd0bfc3aa5eafeb699d8b27636fdcbad52cb039fb9c327280a40",
+      "offset": 170496,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0105",
+      "key": "cb-fixture-entry-0105",
+      "sha256": "0f8c59abcdfb5e45318cffcfce9382bf90e15900b96acfef648f45a521c1bb93",
+      "offset": 172032,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0106",
+      "key": "cb-fixture-entry-0106",
+      "sha256": "d025ac084ef81fa0797b2c525681cb2a0a3f1bf93d9dd39e2d26b57f405c5501",
+      "offset": 173568,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0107",
+      "key": "cb-fixture-entry-0107",
+      "sha256": "07cc4d89719e5be67aff734c5fbc22154063ff0654fe70988bc7ea6e92a31975",
+      "offset": 175104,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0108",
+      "key": "cb-fixture-entry-0108",
+      "sha256": "86b26588887a8c3d9041c39eddeaa237a202f24755c72a5cdb3844e64c4541dd",
+      "offset": 176640,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0109",
+      "key": "cb-fixture-entry-0109",
+      "sha256": "6c16b1f544d143ec391707afcf2c83f01f1ff08dfb2a7b1eda2265acba920b6f",
+      "offset": 178176,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0110",
+      "key": "cb-fixture-entry-0110",
+      "sha256": "08eb62d9855cc59ecd1f16633624095b8fe1d331d67df6a6ef1a4ae43cf9aad7",
+      "offset": 179712,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0111",
+      "key": "cb-fixture-entry-0111",
+      "sha256": "cbbefe2fd4732058f0b5035dbf91246278bfb4639c55c8f9b6bdc9a99f62073f",
+      "offset": 181248,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0112",
+      "key": "cb-fixture-entry-0112",
+      "sha256": "469bfd1564df5a3770d8f025b7f9722623471a483d873b7a64ae795600339cda",
+      "offset": 182784,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0113",
+      "key": "cb-fixture-entry-0113",
+      "sha256": "07832dccdad43877a8db13654bd15c94a3cd6fb79ff4f1b29ce4a00aebd3b80b",
+      "offset": 184320,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0114",
+      "key": "cb-fixture-entry-0114",
+      "sha256": "44618ccfd8ed855ad5363125c785f905ca0c5c1ef9bb562a1ea17ed574bb1f23",
+      "offset": 185856,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0115",
+      "key": "cb-fixture-entry-0115",
+      "sha256": "50458f5ce36247f171fcb760c228582e35e674eaf376f6854b154cadf84007b7",
+      "offset": 187392,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0116",
+      "key": "cb-fixture-entry-0116",
+      "sha256": "43fe535049840d0207f138fcec5845dd59ffadd1c03b039c8b828bcfe74b2aa9",
+      "offset": 188928,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0117",
+      "key": "cb-fixture-entry-0117",
+      "sha256": "6379d16361507ebb7955255c3bc9091104882285e1dd7649fb815de64406fe5f",
+      "offset": 190464,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0118",
+      "key": "cb-fixture-entry-0118",
+      "sha256": "7217b29904c9b3b423741c355bfa94605e5b502c63394b9d40142e4def4be616",
+      "offset": 192000,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0119",
+      "key": "cb-fixture-entry-0119",
+      "sha256": "e8cfcfe4e37ca427ad0c0b8bcd277a42b76a9f7d888c42647d234555ba1c5659",
+      "offset": 193536,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0120",
+      "key": "cb-fixture-entry-0120",
+      "sha256": "4b9b309eb428487965e903d7b16291a28e0add5c0531aa91b4908f03d7f861e8",
+      "offset": 195072,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0121",
+      "key": "cb-fixture-entry-0121",
+      "sha256": "ca05ba1429f70937fcc234a0a8e1bcfcb9b006cd3e34f840cbd06c17f62fe6ba",
+      "offset": 196608,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0122",
+      "key": "cb-fixture-entry-0122",
+      "sha256": "1b66576bef6f978573d61b86b5e4e0c497a3ad92d8d9071f6eae93c7a73e5650",
+      "offset": 198144,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0123",
+      "key": "cb-fixture-entry-0123",
+      "sha256": "d873b59506389dee066436a7ddfdd052ba37ad1f61f53de240f8e040d6a6b392",
+      "offset": 199680,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0124",
+      "key": "cb-fixture-entry-0124",
+      "sha256": "b5eb03706f21050e97475e4c8dc1ba36277f1c44264f160408d0b48a0de88b14",
+      "offset": 201216,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0125",
+      "key": "cb-fixture-entry-0125",
+      "sha256": "c1ae7457a669ee7e49744d08d06731fbdc3f3923d1b45f0f9775ee2542322897",
+      "offset": 202752,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0126",
+      "key": "cb-fixture-entry-0126",
+      "sha256": "fadc1c1c597bf499b9e468b3fe862ff8b41c53ced629d98cfe95ce59bfdbc2c4",
+      "offset": 204288,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0127",
+      "key": "cb-fixture-entry-0127",
+      "sha256": "0cd35426d300a076ec012c673d61a128863559dd99153f1c826df7e4fc274605",
+      "offset": 205824,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0128",
+      "key": "cb-fixture-entry-0128",
+      "sha256": "6545ba3a6777ec52178e473240b755677462a4ca6f1fb4aa5af72b81f7039263",
+      "offset": 207360,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0129",
+      "key": "cb-fixture-entry-0129",
+      "sha256": "c33b1d1cec17efe4586954b12f8281cde3081bf96a2240cc2df198e4e1aa3f37",
+      "offset": 208896,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0130",
+      "key": "cb-fixture-entry-0130",
+      "sha256": "30803cd05ea19246245eff3a91c79536a6458b183e49bf49bfdb864467824bbc",
+      "offset": 210432,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0131",
+      "key": "cb-fixture-entry-0131",
+      "sha256": "8bb8ceadd2e059fbf22cdaf0664eb45d09b1a2d03d7222dd22eb81bb75634ef6",
+      "offset": 211968,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0132",
+      "key": "cb-fixture-entry-0132",
+      "sha256": "7b187b1be34bb783ce9185fc9b7c731bb02c3c8de24f397ee8f7b63208c681ea",
+      "offset": 213504,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0133",
+      "key": "cb-fixture-entry-0133",
+      "sha256": "e646c7963a05a3e08bfdd427f5792a091631bccad6f9ec6ac7d006263daaed5f",
+      "offset": 215040,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0134",
+      "key": "cb-fixture-entry-0134",
+      "sha256": "0f3cd43ee6e512f6493c5e28d54d0aa4dbc999fb365244c5f467c346bc716509",
+      "offset": 216576,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0135",
+      "key": "cb-fixture-entry-0135",
+      "sha256": "1a25ec9c7baf1d716f674abdeddc0d38eaae09fc9f3bf2205807604d20c36694",
+      "offset": 218112,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0136",
+      "key": "cb-fixture-entry-0136",
+      "sha256": "35689ee607c79fe50e1786ebe1359d7012a66a38917a6276f9ee2f9bde3478e2",
+      "offset": 219648,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0137",
+      "key": "cb-fixture-entry-0137",
+      "sha256": "9bfe8404c086980fe4d919c3bf5769d1cbb6e71cc702483a36bc994581811a7c",
+      "offset": 221184,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0138",
+      "key": "cb-fixture-entry-0138",
+      "sha256": "5b1acc3a47b1b8d4c01b99357c0a367cf7e7b62b4c8ddc69921dfc17b8f3932d",
+      "offset": 222720,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0139",
+      "key": "cb-fixture-entry-0139",
+      "sha256": "edba78a63d2dc47b9320384cd7308c3750732a699f36080763b71cab33498ab8",
+      "offset": 224256,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0140",
+      "key": "cb-fixture-entry-0140",
+      "sha256": "bd218acb043852d6140a878058850c915b49a2614e553354209707776a9ee6bd",
+      "offset": 225792,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0141",
+      "key": "cb-fixture-entry-0141",
+      "sha256": "5a42bcf8eaae197db2c2bf020a094b463d3009575da78ddb93eae8e02a2e984e",
+      "offset": 227328,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0142",
+      "key": "cb-fixture-entry-0142",
+      "sha256": "1a7b16d217cb19a72e809434f7bd37fa7545537b13076c77ab5098c73727aba2",
+      "offset": 228864,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0143",
+      "key": "cb-fixture-entry-0143",
+      "sha256": "b656dff34143591826b16b808334da770406c757750de85f5ac4495f9b809451",
+      "offset": 230400,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0144",
+      "key": "cb-fixture-entry-0144",
+      "sha256": "91c8628e944e96478328ae6a2896557b6a498d7149a154912dfa82037d6a14fe",
+      "offset": 231936,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0145",
+      "key": "cb-fixture-entry-0145",
+      "sha256": "b02caa46dc38a4225b221ef70c7f132e1254138ece5564399dae4fb67c2ceeec",
+      "offset": 233472,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0146",
+      "key": "cb-fixture-entry-0146",
+      "sha256": "afe3e5b20da53c27babdd15d9013d4d31ebc1cd49e6ae1bbaec2dd1b7e82dde5",
+      "offset": 235008,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0147",
+      "key": "cb-fixture-entry-0147",
+      "sha256": "81ff7c8117a7432e51158ffb062cdd0c85688719a15e548f4242ecaafc7e71c3",
+      "offset": 236544,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0148",
+      "key": "cb-fixture-entry-0148",
+      "sha256": "2e46a90fecbdb93dbce6c68e0f250a5f864b4d680aabef6fc601a6d94f8136a4",
+      "offset": 238080,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0149",
+      "key": "cb-fixture-entry-0149",
+      "sha256": "c90046cf9852310aa33a3328c5c3da3a3569d40ff122e0ac6e262bb9ea8ef8d0",
+      "offset": 239616,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0150",
+      "key": "cb-fixture-entry-0150",
+      "sha256": "f699ed00e0d795d1d5810408c27ec3ccdfdd3c3dfca22e0a8531fd668671c90a",
+      "offset": 241152,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0151",
+      "key": "cb-fixture-entry-0151",
+      "sha256": "a1f017af8b01b0fee55a43071635710d330e1577333842001bf9b643da115dbc",
+      "offset": 242688,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0152",
+      "key": "cb-fixture-entry-0152",
+      "sha256": "daa04c9d6aacd84a9fdaa3482abc1157a3ab167436d2a5500ccffb7ac5272d2f",
+      "offset": 244224,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0153",
+      "key": "cb-fixture-entry-0153",
+      "sha256": "f8f5602f5533a642aa52a32e0d2f04d75a2c72d878aaea6dd52b52647e5cfe25",
+      "offset": 245760,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0154",
+      "key": "cb-fixture-entry-0154",
+      "sha256": "35dbad5823e6f654e46a83a2b8047f6d728ec1fa0109cc81b48698d2aab57f0c",
+      "offset": 247296,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0155",
+      "key": "cb-fixture-entry-0155",
+      "sha256": "b92e280fba3527c95c7b9225805350237e4dfc2e7e4d71d4952a4f74134401f8",
+      "offset": 248832,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0156",
+      "key": "cb-fixture-entry-0156",
+      "sha256": "34dd7732d9697eb3fe1fff160a31e6e89180b532e11a221ad0fd695e869853fc",
+      "offset": 250368,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0157",
+      "key": "cb-fixture-entry-0157",
+      "sha256": "a37e0a3dfee96fb3adb592c76b9c94607b3364b5a317663aed747b8f35beabd6",
+      "offset": 251904,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0158",
+      "key": "cb-fixture-entry-0158",
+      "sha256": "7ae0b2d2befe52fc51083fe9ff85cc5aba49edf80acfd7030075dc9648cd6c71",
+      "offset": 253440,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0159",
+      "key": "cb-fixture-entry-0159",
+      "sha256": "bb519a2bc0a31f4e4f3ef54c39c9b6c5f74b1f1f1bc23256194974067547156b",
+      "offset": 254976,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0160",
+      "key": "cb-fixture-entry-0160",
+      "sha256": "ffcfac8b6aa168f2e8f00d552ecbe14d65717ea60d3381c666838853e0ceabb8",
+      "offset": 256512,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0161",
+      "key": "cb-fixture-entry-0161",
+      "sha256": "9f45d296506bb09d997afc3141fd300b25a556811860654d3e6e5ea9adf6575e",
+      "offset": 258048,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0162",
+      "key": "cb-fixture-entry-0162",
+      "sha256": "92eb12cbc075bac60740c2b52fe540ea1cf08d98026511005e742a2b616dc021",
+      "offset": 259584,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0163",
+      "key": "cb-fixture-entry-0163",
+      "sha256": "2a2dc997c2218fda6f5d6b719e0346a302fe6af5beb376820a09d11a8fe12805",
+      "offset": 261120,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0164",
+      "key": "cb-fixture-entry-0164",
+      "sha256": "82f876e385ce1ecf86901476000a8bb5228ce6650ed1d38d1090e049ee4df6cf",
+      "offset": 262656,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0165",
+      "key": "cb-fixture-entry-0165",
+      "sha256": "a87f188030e6eddf4c669a257d64fd68d1ff94dcc7714117b310cc4dbe19dbc6",
+      "offset": 264192,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0166",
+      "key": "cb-fixture-entry-0166",
+      "sha256": "9b620083fd60d706aa726aaab8440f8dcc10676021fc0ae28e895c2db0fd4337",
+      "offset": 265728,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0167",
+      "key": "cb-fixture-entry-0167",
+      "sha256": "588de3f758b47ac148e7d0ae26548c5d0b6fbe1a3ff0cccf3830436b0b3fec22",
+      "offset": 267264,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0168",
+      "key": "cb-fixture-entry-0168",
+      "sha256": "376611ecb95952d6d988da742089388a0723f31984be0aa6ccfb996d00ed9ac1",
+      "offset": 268800,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0169",
+      "key": "cb-fixture-entry-0169",
+      "sha256": "c981e35e11a3f1620e5cdbcc65358a764bfb8a2e7d333787957c42f290eb38e9",
+      "offset": 270336,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0170",
+      "key": "cb-fixture-entry-0170",
+      "sha256": "816b0d1d46b0d56e4070eebab9b32019509bf605c21270c828e05a7719323eb5",
+      "offset": 271872,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0171",
+      "key": "cb-fixture-entry-0171",
+      "sha256": "ed6d4c66c0ea3018152881d4e83313591754f531259224ce3cbfd24fb85db928",
+      "offset": 273408,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0172",
+      "key": "cb-fixture-entry-0172",
+      "sha256": "8fe76c50a7545ff68495d42f822be9bc670a92885404268bd02fb92b5cad209f",
+      "offset": 274944,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0173",
+      "key": "cb-fixture-entry-0173",
+      "sha256": "878712762b615ed4f7b6ca501a53dc51f389bb8a319a7111c550d17282c2c426",
+      "offset": 276480,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0174",
+      "key": "cb-fixture-entry-0174",
+      "sha256": "a3d751e2e1fe954932100e417df2f374319b13d2aae2a41ac49c0400b2d2b7d4",
+      "offset": 278016,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0175",
+      "key": "cb-fixture-entry-0175",
+      "sha256": "bd0061c723e0fdd87faf80225887c5db0b0bb2de41ab76c6db70d81f9505aba3",
+      "offset": 279552,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0176",
+      "key": "cb-fixture-entry-0176",
+      "sha256": "066b20cfb4cfdec150b7efef964e065e3017e0b08188fd69d5dd33fabff6b31f",
+      "offset": 281088,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0177",
+      "key": "cb-fixture-entry-0177",
+      "sha256": "fa81d3e44c5be88d4d5135a0a1f9fd42df27d3555ec01edb97d9b354a01b3b20",
+      "offset": 282624,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0178",
+      "key": "cb-fixture-entry-0178",
+      "sha256": "36070ef9c97af4fcc5796d2e8f212ef8435ed2d939be5cd447a6909eba79868c",
+      "offset": 284160,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0179",
+      "key": "cb-fixture-entry-0179",
+      "sha256": "442170cf117df0760e222a0dd48f7aed9be493ba99dafefafa0746f5ffc51c0c",
+      "offset": 285696,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0180",
+      "key": "cb-fixture-entry-0180",
+      "sha256": "25c5813a4c26bdd7e1cc5a85ab3172e97ad92172aad812b47d4469fcddb18856",
+      "offset": 287232,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0181",
+      "key": "cb-fixture-entry-0181",
+      "sha256": "09948cc924546d3fa29b6a336deb5c1914e09766491493a34240a77375525f23",
+      "offset": 288768,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0182",
+      "key": "cb-fixture-entry-0182",
+      "sha256": "99458e72944e9a1fe5eabb8520da251d4d22699f5f717bea79a7fdadb38de5f1",
+      "offset": 290304,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0183",
+      "key": "cb-fixture-entry-0183",
+      "sha256": "48e4a2aa171fc67e68f65c6bb448a1dd1d17c9ca6cfb824790d0e19b8233e46a",
+      "offset": 291840,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0184",
+      "key": "cb-fixture-entry-0184",
+      "sha256": "4670515974953b80fd6e4c563f7b1c1309276598ff2009dee244d6597d195c27",
+      "offset": 293376,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0185",
+      "key": "cb-fixture-entry-0185",
+      "sha256": "fc532f021f30d1168350146b224d30e1660b1f43b91a57df8839f57fabb316c0",
+      "offset": 294912,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0186",
+      "key": "cb-fixture-entry-0186",
+      "sha256": "fe60e2689537a07b86a7d4239a0c181c1165d8bd097a160651d493266d585f90",
+      "offset": 296448,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0187",
+      "key": "cb-fixture-entry-0187",
+      "sha256": "db3271b6fe8ee3a4eefeaccfc908afa518b2c352c183726290e93d16ef81380f",
+      "offset": 297984,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0188",
+      "key": "cb-fixture-entry-0188",
+      "sha256": "b05f5a58aeb92b6371755b41580faa55bdf5447de9bd71d0fa79c6343eeed596",
+      "offset": 299520,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0189",
+      "key": "cb-fixture-entry-0189",
+      "sha256": "c10a66ea4511c2168ae5902000ce454ef8f9d5505d938a9db1441851b77e8a05",
+      "offset": 301056,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0190",
+      "key": "cb-fixture-entry-0190",
+      "sha256": "eb066699ff39163479ce6ac1232c130a8f506296205083e5e9dbb9c7e3126cd4",
+      "offset": 302592,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0191",
+      "key": "cb-fixture-entry-0191",
+      "sha256": "4e3f590103680205a6c134fed3cf033e84280f5f1970444a048a927c0cbbad27",
+      "offset": 304128,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0192",
+      "key": "cb-fixture-entry-0192",
+      "sha256": "2bd8bcd44a0558e622a645bfc4f6699c7082f205393e573fe8ad20a567464b6c",
+      "offset": 305664,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0193",
+      "key": "cb-fixture-entry-0193",
+      "sha256": "7acb0bb49bbf16b9b9f6f72e6bbb4242c15991a1faeeb0d3e7e72f7491664285",
+      "offset": 307200,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0194",
+      "key": "cb-fixture-entry-0194",
+      "sha256": "6733e5b97c16c82cf3ab4d9b0c03064c863c05bb99bb8cdd31ce90f6b0408ab1",
+      "offset": 308736,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0195",
+      "key": "cb-fixture-entry-0195",
+      "sha256": "b052cf03510a92f373aa97b10c65278fb4f385fcd9345f7244463740d29e9f87",
+      "offset": 310272,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0196",
+      "key": "cb-fixture-entry-0196",
+      "sha256": "a227c15108accea337d22cd1164c37879e315611ac35bff43ef97015a1228593",
+      "offset": 311808,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0197",
+      "key": "cb-fixture-entry-0197",
+      "sha256": "a8768d62053117c88b9b770617c7ab8e3c66e2b33c6f524388db4b25c2cbcc45",
+      "offset": 313344,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0198",
+      "key": "cb-fixture-entry-0198",
+      "sha256": "06302dab7a0244da51eedd07d924405bc82a4379d31931c847571ffdd48bd17d",
+      "offset": 314880,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0199",
+      "key": "cb-fixture-entry-0199",
+      "sha256": "d953eedd8ae64e081ac0cc11638e02e38f6ec2ce3720407432a69793c79a1254",
+      "offset": 316416,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0200",
+      "key": "cb-fixture-entry-0200",
+      "sha256": "3aa49d2636899f1a69dd20d0798f491e7170a941cec9c021407c4aa1096587a7",
+      "offset": 317952,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0201",
+      "key": "cb-fixture-entry-0201",
+      "sha256": "002fcbd47956849418ab4f947c22fb6b0cd12f819aad89c3d92db0b2caf1919d",
+      "offset": 319488,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0202",
+      "key": "cb-fixture-entry-0202",
+      "sha256": "2e89fc67219a19a2efe776cac1c2c2c22a5689f6849420e1b69303ba85026c55",
+      "offset": 321024,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0203",
+      "key": "cb-fixture-entry-0203",
+      "sha256": "c9e35ecc31bebf9a4df9b46c497991beac9e5ef3289f9ac6d0013f7e1d480118",
+      "offset": 322560,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0204",
+      "key": "cb-fixture-entry-0204",
+      "sha256": "69fe3985d04fcc1c5cc27d3c479d47626762edd552273a8d828f9b6784652097",
+      "offset": 324096,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0205",
+      "key": "cb-fixture-entry-0205",
+      "sha256": "d9d8f9caf2e5fa847199bf207007aa49af61683db016786bc693708c8cbfc0cf",
+      "offset": 325632,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0206",
+      "key": "cb-fixture-entry-0206",
+      "sha256": "a6678187bfd01a98f3221b3046e7706c7b924ce76395275b0de76b1e6ea8621e",
+      "offset": 327168,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0207",
+      "key": "cb-fixture-entry-0207",
+      "sha256": "24b80e497bf06de5abc60aacc6a863c7d1c26c41431ba99ca12c72e6c509838e",
+      "offset": 328704,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0208",
+      "key": "cb-fixture-entry-0208",
+      "sha256": "a2d0ee19388d18d1cb968aeff501bddbe8e13d4672d7ff8ee61dbc84228244cf",
+      "offset": 330240,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0209",
+      "key": "cb-fixture-entry-0209",
+      "sha256": "5a965d7c14e606fff72607cc3cdb67a09a441afd368dfb5e9c5d8bc3bb68de81",
+      "offset": 331776,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0210",
+      "key": "cb-fixture-entry-0210",
+      "sha256": "a513ffde5c38044b3c5546f16e03342ad26261baed9916fe6812367d383a6e75",
+      "offset": 333312,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0211",
+      "key": "cb-fixture-entry-0211",
+      "sha256": "b3b3e9eae9b145e8657272790f3c477b95ce01002a06130de75d544dee1d6f22",
+      "offset": 334848,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0212",
+      "key": "cb-fixture-entry-0212",
+      "sha256": "442efaa1f642f70414716045c514fe311edcac497624ff947e4b23bf61c5bb9f",
+      "offset": 336384,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0213",
+      "key": "cb-fixture-entry-0213",
+      "sha256": "4acb223a5698aed9264f9a32b819b060e3f3731f9a24e86ffecbb343bbe9d7b4",
+      "offset": 337920,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0214",
+      "key": "cb-fixture-entry-0214",
+      "sha256": "3cda82779f3e5ad8c5fb98e418247404074d5c7a252e9a4f8387c686cae4d36a",
+      "offset": 339456,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0215",
+      "key": "cb-fixture-entry-0215",
+      "sha256": "80c3ec65e94bef179daa4051545117fd9269fb7bb4e38efab9d3f18cc1a798e9",
+      "offset": 340992,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0216",
+      "key": "cb-fixture-entry-0216",
+      "sha256": "bb9221de314543a9dfbe58b53f6ef5a1ae0b8cd4cafcea1bca9a9c48b965307e",
+      "offset": 342528,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0217",
+      "key": "cb-fixture-entry-0217",
+      "sha256": "1f989f1809302cd34138afad391279a2e5bd6c927bfcaeb2e0bdfc0a6eaaa20f",
+      "offset": 344064,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0218",
+      "key": "cb-fixture-entry-0218",
+      "sha256": "1bf331b141ca148fd3fde6553a479eccc231434dbd8009294a348d1d9b73ad22",
+      "offset": 345600,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0219",
+      "key": "cb-fixture-entry-0219",
+      "sha256": "cb05cb217272ee76f63902e851dbf40570018a9787c055d236d2477b6cad4301",
+      "offset": 347136,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0220",
+      "key": "cb-fixture-entry-0220",
+      "sha256": "8015f299c6ae5de145b1f5c9b0e5dfabf1b9cb358facc04d04b083dc25e5c0a2",
+      "offset": 348672,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0221",
+      "key": "cb-fixture-entry-0221",
+      "sha256": "2c9a70a410c3339d64e931b2776a78b6a1a0cc75e2d68c2126bf07bc13fa266c",
+      "offset": 350208,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0222",
+      "key": "cb-fixture-entry-0222",
+      "sha256": "e4c47b06a1a4f43f8b4d90bf140632da689ebfa72671be6396c6c93bcb182b61",
+      "offset": 351744,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0223",
+      "key": "cb-fixture-entry-0223",
+      "sha256": "ea48d2ecaed1a135f8ba822f30a26a5632b5d6c212c8f4c2e6524e43f1181c9d",
+      "offset": 353280,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0224",
+      "key": "cb-fixture-entry-0224",
+      "sha256": "c9fb3202ccae9dfa23fc725e774aef55e8ba906cc3d9d1546378bd4de61663d7",
+      "offset": 354816,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0225",
+      "key": "cb-fixture-entry-0225",
+      "sha256": "23929e50c3418f235a236c85528dc2de89dccb9b190f11c6ea653eeeca5cd442",
+      "offset": 356352,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0226",
+      "key": "cb-fixture-entry-0226",
+      "sha256": "3276a315fb6dc995ccd4f7c05e2a99addc14e8a3f04dfbf1c97b65e6a1060526",
+      "offset": 357888,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0227",
+      "key": "cb-fixture-entry-0227",
+      "sha256": "29e7967cfb3c739f08139a985b5865e53bf20aed8c6ff54f21e2658cd5ff9daa",
+      "offset": 359424,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0228",
+      "key": "cb-fixture-entry-0228",
+      "sha256": "8a46156561c01c4bdfb5b5f7c932a5e965c6fd4257db6de7a168d7104209a0c7",
+      "offset": 360960,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0229",
+      "key": "cb-fixture-entry-0229",
+      "sha256": "eda5fcdcc8aac26c39c7e6c46d23bcfb42b65004701ae4e946bb82f285d0c755",
+      "offset": 362496,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0230",
+      "key": "cb-fixture-entry-0230",
+      "sha256": "bc97b6b38a3363a4cbf35a5797c628a300df1af98f9f1719da47a68b30840211",
+      "offset": 364032,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0231",
+      "key": "cb-fixture-entry-0231",
+      "sha256": "bc1f82a581b5f74ecfc95cc268905fe548c2faf18e78acca8045c5cde3448733",
+      "offset": 365568,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0232",
+      "key": "cb-fixture-entry-0232",
+      "sha256": "31c6ff4423d20da8e33482d0c11c5e860df9d94b80e975a84e4002a151b8818d",
+      "offset": 367104,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0233",
+      "key": "cb-fixture-entry-0233",
+      "sha256": "5fbe82a0bedc92aa732e59d9615be40b2ae8abcf3ba3f378ce30432574a951c0",
+      "offset": 368640,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0234",
+      "key": "cb-fixture-entry-0234",
+      "sha256": "a24169e3eb44ea3c3f7b09dce446e3b689e9696e7a29980a817f998f4930ca0a",
+      "offset": 370176,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0235",
+      "key": "cb-fixture-entry-0235",
+      "sha256": "6dd0ee9ca91ed8fa7fa0f337c905beda3ec11828a8e0ec0a7e5c9b12ff0c50e9",
+      "offset": 371712,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0236",
+      "key": "cb-fixture-entry-0236",
+      "sha256": "b4aaf6cd1d038948c5ca70cc3e6b640cbfc0c346ef1ec4c0b3a24ea7c5681d30",
+      "offset": 373248,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0237",
+      "key": "cb-fixture-entry-0237",
+      "sha256": "30e28e85911468943bc2ea6b6488416cb9b55ee0eeb53daab55fdb9a39e83466",
+      "offset": 374784,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0238",
+      "key": "cb-fixture-entry-0238",
+      "sha256": "1252ce0a509bb51a5fccb1f5d744fbd9a871787399e8b1407abd48564aa268c5",
+      "offset": 376320,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0239",
+      "key": "cb-fixture-entry-0239",
+      "sha256": "65a8f21a5b92f9c6d3eb6870dd606d53c0a5da48657a63511bbf78d3736b9c80",
+      "offset": 377856,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0240",
+      "key": "cb-fixture-entry-0240",
+      "sha256": "66a66960c5524f77f039d9d9dca7c4ec04f018d829118893cb3b1c31dd1e80d0",
+      "offset": 379392,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0241",
+      "key": "cb-fixture-entry-0241",
+      "sha256": "8e59ad888af9bd4c658c0a16acf507b81a50fd3acc0e438e199b87d46bbadda8",
+      "offset": 380928,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0242",
+      "key": "cb-fixture-entry-0242",
+      "sha256": "686d22c94968fb519cac6c1f8f8b7f85256f32a513e209745578aa01a40cfff2",
+      "offset": 382464,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0243",
+      "key": "cb-fixture-entry-0243",
+      "sha256": "3bafcc0a13b16a6d3deabe650dc1be5386029eb2bd5f6ad5e731f421b005bc92",
+      "offset": 384000,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0244",
+      "key": "cb-fixture-entry-0244",
+      "sha256": "a81636d44946e39bc545fe39cf574d3e5d61a166cc9f0af775c6e1663773aea4",
+      "offset": 385536,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0245",
+      "key": "cb-fixture-entry-0245",
+      "sha256": "7114ba7eedd294901aa0dcea4e496b7c2a7862e97ccbf3147b09015d62757e14",
+      "offset": 387072,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0246",
+      "key": "cb-fixture-entry-0246",
+      "sha256": "67b9cd3868c6ea6365ed703281dc5fbdcdf55b9076314858d7a6adc80e0efce2",
+      "offset": 388608,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0247",
+      "key": "cb-fixture-entry-0247",
+      "sha256": "41965969c51ff0b800ee916196dff1a05ee5073744b064964f68b0bb7fe87a51",
+      "offset": 390144,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0248",
+      "key": "cb-fixture-entry-0248",
+      "sha256": "20ac2b0f0f915b32a9cbf876d16dcab29764ada09ef15035ddd0b70e0dd3ae5d",
+      "offset": 391680,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0249",
+      "key": "cb-fixture-entry-0249",
+      "sha256": "e92801df5c066fe3660f91e87ff41d5d892b1625ce555cfe4ddc9abbd645c525",
+      "offset": 393216,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0250",
+      "key": "cb-fixture-entry-0250",
+      "sha256": "a921aed446bae0c1de4e26d7f9e2a3a4524d9f03ec8f75ff05c48e0921e00cc2",
+      "offset": 394752,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0251",
+      "key": "cb-fixture-entry-0251",
+      "sha256": "574c5e3a1c4f1fef4cac2843ebebfe8aba84f1c92d9cb5c689c337585c2d5c3e",
+      "offset": 396288,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0252",
+      "key": "cb-fixture-entry-0252",
+      "sha256": "d86f7d7df3e0ee3d086d57afa02d60a5e36d64410b746e7073f4fe71d36a9f52",
+      "offset": 397824,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0253",
+      "key": "cb-fixture-entry-0253",
+      "sha256": "f012cecfc724b4ae55c4a0c079c273719970b393c3d95df5f4714daf2fd1e246",
+      "offset": 399360,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0254",
+      "key": "cb-fixture-entry-0254",
+      "sha256": "0223777ea8f0f30b45b72b4b4ee0e85055ee4f8d91aaef5a4d011a0504a0832e",
+      "offset": 400896,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0255",
+      "key": "cb-fixture-entry-0255",
+      "sha256": "ca9cfb26b781aad17347e46ca5fdac690a92c8c225096030d47e858b322b5849",
+      "offset": 402432,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0256",
+      "key": "cb-fixture-entry-0256",
+      "sha256": "46f55f64d4000b718a70a0bbb30bb07797108457b5bed91bdef43b64422461fe",
+      "offset": 403968,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0257",
+      "key": "cb-fixture-entry-0257",
+      "sha256": "192af4a95cad045b11c7ac76078c53a50393d7af04354637e355c30a45d37b54",
+      "offset": 405504,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0258",
+      "key": "cb-fixture-entry-0258",
+      "sha256": "28352f503791bac185b544300a523e6a5e2dfbac58382537806083b8aee43756",
+      "offset": 407040,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0259",
+      "key": "cb-fixture-entry-0259",
+      "sha256": "3281c7105a20e13bf933991c999643af95a7f04da4a2f77abd9cc03a780def97",
+      "offset": 408576,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0260",
+      "key": "cb-fixture-entry-0260",
+      "sha256": "ae051202e3bf23511ec10569a78e1653e2b0a241bcda8f55db1ba01c0dfcb2f7",
+      "offset": 410112,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0261",
+      "key": "cb-fixture-entry-0261",
+      "sha256": "f438e31e98abfc2cfb10f0c854621fb84ac8b3374717a226e1a7ac2866f077cb",
+      "offset": 411648,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0262",
+      "key": "cb-fixture-entry-0262",
+      "sha256": "971a7295193c25bd0ecef34c3e134a3e82e2db9a36b0792517d60133d9353613",
+      "offset": 413184,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0263",
+      "key": "cb-fixture-entry-0263",
+      "sha256": "4ca46f91a7fb49b641bc6b384bd670edae924921a85a53ad0b13c3cd54bdf198",
+      "offset": 414720,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0264",
+      "key": "cb-fixture-entry-0264",
+      "sha256": "dc224308084e42d2aceb1b13b603fdce407ede1510039b84cafa8d7b025ba0ff",
+      "offset": 416256,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0265",
+      "key": "cb-fixture-entry-0265",
+      "sha256": "a927510f218c22b9f2e94b0647be5807f4fe7a69eaa489744eb85582a8f7edcf",
+      "offset": 417792,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0266",
+      "key": "cb-fixture-entry-0266",
+      "sha256": "088c9be2c782ba0620f6e7b2ae87ebe1141ee6b561a0d84e2669e0b23f7dc7a4",
+      "offset": 419328,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0267",
+      "key": "cb-fixture-entry-0267",
+      "sha256": "c3f77f95bb2fb3ccf25fedf996491d4c0b72ea945ba776bee171ae814f855fe9",
+      "offset": 420864,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0268",
+      "key": "cb-fixture-entry-0268",
+      "sha256": "f928edda45e70d0ea82ba89a669f0ac869e4895ba2d871890bc4897946d457d8",
+      "offset": 422400,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0269",
+      "key": "cb-fixture-entry-0269",
+      "sha256": "f14f134fd7a127bfcc412ad16e820c3c66608f8e56cbd8d96e7229cf495952bc",
+      "offset": 423936,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0270",
+      "key": "cb-fixture-entry-0270",
+      "sha256": "4464b24ecf76149b720788ad6cf6f11a59821fbed86b767cbf50c8c8a39e882b",
+      "offset": 425472,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0271",
+      "key": "cb-fixture-entry-0271",
+      "sha256": "c23c2a2d26bd8ce558846615efcb1de624ff49dc34c7e011310b1346170d0fdb",
+      "offset": 427008,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0272",
+      "key": "cb-fixture-entry-0272",
+      "sha256": "d34f3d3efcc61ff02aa712b9daf714459ed72a106005b0f5f54507f55c3afb77",
+      "offset": 428544,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0273",
+      "key": "cb-fixture-entry-0273",
+      "sha256": "ac5b175391dcabecef446cbf370be196679a7bd17893984c2ff1f3f374310287",
+      "offset": 430080,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0274",
+      "key": "cb-fixture-entry-0274",
+      "sha256": "d44080fc0a581e5a631286f8bbff707cfeaaed78056455f825fdf4441a10d5fc",
+      "offset": 431616,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0275",
+      "key": "cb-fixture-entry-0275",
+      "sha256": "99298ef2cc384e6d0026bb1e846ea8da8943a1429b40705a88bb9505325bc340",
+      "offset": 433152,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0276",
+      "key": "cb-fixture-entry-0276",
+      "sha256": "6cb7772016045bd4e15c96125436e3c2a9541bb7e7386eb004710916dc4bdfd1",
+      "offset": 434688,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0277",
+      "key": "cb-fixture-entry-0277",
+      "sha256": "39931cdce9ca03b5197f93f9a59e9bed374b321c69aaf52d67796c255425f669",
+      "offset": 436224,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0278",
+      "key": "cb-fixture-entry-0278",
+      "sha256": "e9a556445447f56dcf9aa78fd06c0fcdf9b4c411ba57d6146ba292968472ef85",
+      "offset": 437760,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0279",
+      "key": "cb-fixture-entry-0279",
+      "sha256": "c727d12259e13c9b3a19fad43649a4a8415fec7d3ce1b770a9675b9eeb67ccd0",
+      "offset": 439296,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0280",
+      "key": "cb-fixture-entry-0280",
+      "sha256": "9e62533ae471b1348bf4c5f30ddf6678bedec0ac9c2a6cf01386e4d107399fc0",
+      "offset": 440832,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0281",
+      "key": "cb-fixture-entry-0281",
+      "sha256": "a563a9dc723b8942229a7dd28fafb454d15967d11e9b53f99ff9b546a22ba5b2",
+      "offset": 442368,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0282",
+      "key": "cb-fixture-entry-0282",
+      "sha256": "ed6cb419bfe36d81e10dbaa8123f847be5c1bdd5c4ded0ab0bc4208c296de143",
+      "offset": 443904,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0283",
+      "key": "cb-fixture-entry-0283",
+      "sha256": "8418cc65da98bc4103ca9beb685de3fb68e6e9ad1cf0e76524d40f6da893bf0a",
+      "offset": 445440,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0284",
+      "key": "cb-fixture-entry-0284",
+      "sha256": "6f15ad079f4e7c0b9bd256abf8df41e6ebd96a70f7487dab87fda1e8c0f42d55",
+      "offset": 446976,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0285",
+      "key": "cb-fixture-entry-0285",
+      "sha256": "cd8bdae2c423c18fb02c51960ebfcc8becd65c19b44015cf7749b116c09780fe",
+      "offset": 448512,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0286",
+      "key": "cb-fixture-entry-0286",
+      "sha256": "ac883e97f2599ada4010964fb92fe59525de54d88894ed980ed699d410d9ccbd",
+      "offset": 450048,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0287",
+      "key": "cb-fixture-entry-0287",
+      "sha256": "df9f6da6baa08cd575e6d30d52a7824b06dd528aa731b936b1b22ffddfd3009f",
+      "offset": 451584,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0288",
+      "key": "cb-fixture-entry-0288",
+      "sha256": "183bd959132a1c3e5f2c1450ef955a77323aca82fef4aa8d23f271d22563f5c5",
+      "offset": 453120,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0289",
+      "key": "cb-fixture-entry-0289",
+      "sha256": "5b41606494d28da825366807641b1d3f4798b00ae11994cd8a13c4194d40e6e1",
+      "offset": 454656,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0290",
+      "key": "cb-fixture-entry-0290",
+      "sha256": "cbac8249b79096eb2c1685b8cfd7aa05f78988ab6882c2d4861f3938ec5678d9",
+      "offset": 456192,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0291",
+      "key": "cb-fixture-entry-0291",
+      "sha256": "5017335a2718000468864005621ee618697b977d332b1db8266c0632b4b9aa18",
+      "offset": 457728,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0292",
+      "key": "cb-fixture-entry-0292",
+      "sha256": "144ec26fef67121d2452d403046e7b574411a5eb8c90e710a8cd2409ededa51d",
+      "offset": 459264,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0293",
+      "key": "cb-fixture-entry-0293",
+      "sha256": "26aa373da507babd6ed61b05a0ac3616f80b73e812cb7c597371a4a34e363365",
+      "offset": 460800,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0294",
+      "key": "cb-fixture-entry-0294",
+      "sha256": "d8a07c32bbe4854d6bf3ce12b87731b2bd7849a54b5b105248f960615ef14a96",
+      "offset": 462336,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0295",
+      "key": "cb-fixture-entry-0295",
+      "sha256": "217ccf06a43c9da33f0b136760848cf8ab42a97e9f70d10fb3ab282243d680eb",
+      "offset": 463872,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0296",
+      "key": "cb-fixture-entry-0296",
+      "sha256": "03d42ac42adc959db67038fcc31205c6b0a698f7341e99441777b281bf88b26e",
+      "offset": 465408,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0297",
+      "key": "cb-fixture-entry-0297",
+      "sha256": "8007351f5416bf9260057fe084fc7f549625bdf68b5100ed288624edd2e0ea25",
+      "offset": 466944,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0298",
+      "key": "cb-fixture-entry-0298",
+      "sha256": "eab6353defe66d023973ed754ebb48f73c76f28f010f09f2a121643e7e31026e",
+      "offset": 468480,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0299",
+      "key": "cb-fixture-entry-0299",
+      "sha256": "48b62f6987cd8cd128d45ddfec9e079d256f6d608142e0aa270477608ed7d161",
+      "offset": 470016,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0300",
+      "key": "cb-fixture-entry-0300",
+      "sha256": "88acda32c60fa88e5259473346007f465e687e01a814a8f81f5d6500e4348717",
+      "offset": 471552,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0301",
+      "key": "cb-fixture-entry-0301",
+      "sha256": "4630f783a457375e25698d2823b9b04be19c5bc519fbf38ca28f248268a2aaec",
+      "offset": 473088,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0302",
+      "key": "cb-fixture-entry-0302",
+      "sha256": "f1342843dbe19ba706b2da47c68c07332315cf360c50a8548e7063be838e463a",
+      "offset": 474624,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0303",
+      "key": "cb-fixture-entry-0303",
+      "sha256": "1db389210d566af0b5dfbbadd5897da02470e6950089adc9d28dd2ed124afb97",
+      "offset": 476160,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0304",
+      "key": "cb-fixture-entry-0304",
+      "sha256": "9bcb36563d973b3747a0df3254834ddce654a5cb2cce9c5b45c0890a75991d80",
+      "offset": 477696,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0305",
+      "key": "cb-fixture-entry-0305",
+      "sha256": "44e9e4023b2e69d9cb2f1a14b984bdeefc60b41309b7c3ced5e5eaf5c63201bc",
+      "offset": 479232,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0306",
+      "key": "cb-fixture-entry-0306",
+      "sha256": "120914d7ea0c1983efe10ff925cd4a800e0a76b26d38821fe76a2e5f73bf3e33",
+      "offset": 480768,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0307",
+      "key": "cb-fixture-entry-0307",
+      "sha256": "480494c6fdc7d79f170d74fa2ad2a5eb6e5a40040ac6bbb012970f8a14860531",
+      "offset": 482304,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0308",
+      "key": "cb-fixture-entry-0308",
+      "sha256": "ec785e18fc3cb4e84dacc6028cd1015dbf5b5a922303ef055a484657966d6801",
+      "offset": 483840,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0309",
+      "key": "cb-fixture-entry-0309",
+      "sha256": "2c4d986bacb13bba8dbdf90c2194dc6dffbf9e5363d6d11ddd129997a0982e9e",
+      "offset": 485376,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0310",
+      "key": "cb-fixture-entry-0310",
+      "sha256": "c38ae63f7b2bba58ac25573d4ea72e27ae18e9a4d27001f03d69cec340e5ab68",
+      "offset": 486912,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0311",
+      "key": "cb-fixture-entry-0311",
+      "sha256": "05566229b198916816a790c50a0392cdf20baa840102b24539e13ff52f0faa79",
+      "offset": 488448,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0312",
+      "key": "cb-fixture-entry-0312",
+      "sha256": "53b51805163a34f13f43e88ee05b15fa219452def848c1629f63e09e3ff7e4dd",
+      "offset": 489984,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0313",
+      "key": "cb-fixture-entry-0313",
+      "sha256": "30cadf5002f0b3ccfa2935e3f9ed24afc50604f1873186aec3b0045c9c0a6a54",
+      "offset": 491520,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0314",
+      "key": "cb-fixture-entry-0314",
+      "sha256": "339f34bdd845a79a552032a8d676fd77cb94d10709ac10cdd0728801ebb87467",
+      "offset": 493056,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0315",
+      "key": "cb-fixture-entry-0315",
+      "sha256": "7ef7b798a2bf957c965b5f3f27992a5ae45a013a8079f250ed1009f85ec51e8e",
+      "offset": 494592,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0316",
+      "key": "cb-fixture-entry-0316",
+      "sha256": "79ecc6e4e7a258a1db14db9ecf427d0d8280c5a547480e30aee498ffb85f01cd",
+      "offset": 496128,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0317",
+      "key": "cb-fixture-entry-0317",
+      "sha256": "6e49783f04f05c400bee71b06ddc0c5ffc64e2ff221d212d903ac73c68fafa04",
+      "offset": 497664,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0318",
+      "key": "cb-fixture-entry-0318",
+      "sha256": "6909b34edeb01c05cb25f2f5cb3a02b2c961beed256315ac883010e4cbc341a4",
+      "offset": 499200,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0319",
+      "key": "cb-fixture-entry-0319",
+      "sha256": "7171802ae5d4e11a9f4fda08400552f067567854e02c0ca48566e9be4cc7c370",
+      "offset": 500736,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0320",
+      "key": "cb-fixture-entry-0320",
+      "sha256": "4740d21d005168c92de9e1456543e51490424473961d4660c25030166bef78d4",
+      "offset": 502272,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0321",
+      "key": "cb-fixture-entry-0321",
+      "sha256": "866925111d3c92ac4fd91a2bfc14734310ed23f6bb1ef2d3fe695a9710b126da",
+      "offset": 503808,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0322",
+      "key": "cb-fixture-entry-0322",
+      "sha256": "724b655e4c817409b962b683faa0ed998ca58e80ef6aefa3e42299ee183945af",
+      "offset": 505344,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0323",
+      "key": "cb-fixture-entry-0323",
+      "sha256": "541ba9317c3433452cf9d06ea7373bb48994eb4180aa023d88c445da7b57507b",
+      "offset": 506880,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0324",
+      "key": "cb-fixture-entry-0324",
+      "sha256": "a51f38f5bc5c8fc4e89ea36ab72dd7ef0142a74d2f9eb3e6c52f855dd19dc7ee",
+      "offset": 508416,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0325",
+      "key": "cb-fixture-entry-0325",
+      "sha256": "382cc01f49c689794b693e782bc8bb81c6204cb30210df09c2aa9f4c9d826799",
+      "offset": 509952,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0326",
+      "key": "cb-fixture-entry-0326",
+      "sha256": "863f9913bff5274fe64d106e0ef3a2e0c1eaf5f75e0030ef1c63e914a1865303",
+      "offset": 511488,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0327",
+      "key": "cb-fixture-entry-0327",
+      "sha256": "4c3e93a3abd0bd9fddfc6ab82fb06ccd86c7565c0e4df2589850df3dcce3e595",
+      "offset": 513024,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0328",
+      "key": "cb-fixture-entry-0328",
+      "sha256": "cb94b71d2655a6be7b6c84064ce936399dec0c968b5c22e0f95f519b0776dedc",
+      "offset": 514560,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0329",
+      "key": "cb-fixture-entry-0329",
+      "sha256": "4afd207e0979a4e08e193527aa92e79af7b552c57e35d00caec68b36f045ee34",
+      "offset": 516096,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0330",
+      "key": "cb-fixture-entry-0330",
+      "sha256": "d9fc241aca72b0ff72103c47e77bea188d3ae058e6410b2fd015b013bcd26717",
+      "offset": 517632,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0331",
+      "key": "cb-fixture-entry-0331",
+      "sha256": "6e870def9114e0a6b24d086f89b113d9d1b5caff64138e9f9a6a3c6fc8b4a351",
+      "offset": 519168,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0332",
+      "key": "cb-fixture-entry-0332",
+      "sha256": "1cc623f173e898ad34931df6f025ba28d9e1a5301073864b99131ddc3485dd61",
+      "offset": 520704,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0333",
+      "key": "cb-fixture-entry-0333",
+      "sha256": "d9462476055ec391fb7ac4ffc6b2fa04064abe0f54304d4f02992f994753a39d",
+      "offset": 522240,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0334",
+      "key": "cb-fixture-entry-0334",
+      "sha256": "371235e42ff17be9ec6534b1e53c3934fd1f2c3b950b2da936c97f1f9f7eb344",
+      "offset": 523776,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0335",
+      "key": "cb-fixture-entry-0335",
+      "sha256": "7b446326e00e2deac10e22be2bba70705238229fa6429f4e93343d85e624626c",
+      "offset": 525312,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0336",
+      "key": "cb-fixture-entry-0336",
+      "sha256": "fa8ca5ba1806961197a18f8b5df367b98ea0ae6547a53ee46c565ed1cd4334c6",
+      "offset": 526848,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0337",
+      "key": "cb-fixture-entry-0337",
+      "sha256": "9babb7c4c9bbc2e311719bd0b348435952571e4cd73e005a648571c638c4274a",
+      "offset": 528384,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0338",
+      "key": "cb-fixture-entry-0338",
+      "sha256": "140b8326be14412143d4c09c067db70407eaf0b4f30b65205471d05f01bd8d8b",
+      "offset": 529920,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0339",
+      "key": "cb-fixture-entry-0339",
+      "sha256": "20f237d88911aab14ca19641fd703a2077916e556c343bdf21d21c054766fa0d",
+      "offset": 531456,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0340",
+      "key": "cb-fixture-entry-0340",
+      "sha256": "39e801df6ff669fb522f5c7c9e4398f8efaf87271fe5cc54b7a2214bbf679d04",
+      "offset": 532992,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0341",
+      "key": "cb-fixture-entry-0341",
+      "sha256": "a70bffed4890deee21950163f61aa4797cde22c3be5ded2a84dd45307aba1f4f",
+      "offset": 534528,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0342",
+      "key": "cb-fixture-entry-0342",
+      "sha256": "5dadf97c82eded0197def41c99b0037357a6b5c3d30887564807f7e3466785a5",
+      "offset": 536064,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0343",
+      "key": "cb-fixture-entry-0343",
+      "sha256": "6f59a4c3649d28f97837ccce4ff8f2e876519d831f3e276adeb34f608473c2bf",
+      "offset": 537600,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0344",
+      "key": "cb-fixture-entry-0344",
+      "sha256": "808a81129db96ebe8560a7232ec5d5619faa537250332de47e519ddd56a1e0be",
+      "offset": 539136,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0345",
+      "key": "cb-fixture-entry-0345",
+      "sha256": "d35d2c23d5d44e15507de7f403d0898e5c11b3937310f3ea624b7efebd63c66c",
+      "offset": 540672,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0346",
+      "key": "cb-fixture-entry-0346",
+      "sha256": "db3cfa3454a8fc4dd92f701f3971831916fe10883477525a23fd3a3ddd2f63f3",
+      "offset": 542208,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0347",
+      "key": "cb-fixture-entry-0347",
+      "sha256": "b65bc04cb69ccaa5d6bc1d9f6d7a5c7f740be9c83d6fce79056ee206379284fa",
+      "offset": 543744,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0348",
+      "key": "cb-fixture-entry-0348",
+      "sha256": "c1b75eb66d3d4d387c0cb0108b0b08c3b5fb2776b8ab53bd9b12b25122c05783",
+      "offset": 545280,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0349",
+      "key": "cb-fixture-entry-0349",
+      "sha256": "d17035df2620d3e1a5737cb53e83302d7c0915c48c62905d48a2afd0f963faa7",
+      "offset": 546816,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0350",
+      "key": "cb-fixture-entry-0350",
+      "sha256": "b1a624bcf03751d8f58bfab39b8cf6ab92d11600c94016e5f38b2ef57e46846e",
+      "offset": 548352,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0351",
+      "key": "cb-fixture-entry-0351",
+      "sha256": "55bc15269443317ce745650bf8edcdd4a4ddde5238a143405685782adacfddd0",
+      "offset": 549888,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0352",
+      "key": "cb-fixture-entry-0352",
+      "sha256": "1badef2dfbed5b26b810037447a6351b3216a0a3334e7a034d90aa5918a85580",
+      "offset": 551424,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0353",
+      "key": "cb-fixture-entry-0353",
+      "sha256": "23b8cab630a5cf3304f925e2cd3c991e7d61ef5eda2eff551ccafb3aa0c274ad",
+      "offset": 552960,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0354",
+      "key": "cb-fixture-entry-0354",
+      "sha256": "d9f9eaed836671fa8cecfb763c6b7daf365ca81865c25779fa4e7248be91932a",
+      "offset": 554496,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0355",
+      "key": "cb-fixture-entry-0355",
+      "sha256": "5c7692628a3e2c881ea73e1e77b1e49d033df06d8b8090324524e4588e9a361b",
+      "offset": 556032,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0356",
+      "key": "cb-fixture-entry-0356",
+      "sha256": "b70b07775209672b69d10d791b78bb1779e19373c08512497f86ae839f79293d",
+      "offset": 557568,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0357",
+      "key": "cb-fixture-entry-0357",
+      "sha256": "49936d1ec15b5f7fdaf4b53d3184b9d0781249f0fde196dc49137b0119d48071",
+      "offset": 559104,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0358",
+      "key": "cb-fixture-entry-0358",
+      "sha256": "5e798fdd7dba2d4cceafd62fbd8c606cfb7f88b11c9bfbddc3a7f6f05fa99c4e",
+      "offset": 560640,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0359",
+      "key": "cb-fixture-entry-0359",
+      "sha256": "b2e5cfe2cb9233ac1635e561bccd43e4371d8b269330efc93739aaa1398e96e0",
+      "offset": 562176,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0360",
+      "key": "cb-fixture-entry-0360",
+      "sha256": "30e1794742d5791567e2f7b5ba999ecaa094647d5ae7fd9dbe1a2a8e1ee33cf2",
+      "offset": 563712,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0361",
+      "key": "cb-fixture-entry-0361",
+      "sha256": "a3df23b32dc870ed412bed8e076a1f1dae92c831cff5765b8133e818b4cc3b07",
+      "offset": 565248,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0362",
+      "key": "cb-fixture-entry-0362",
+      "sha256": "c92eff2908635921762d062123dcff45e38626bfd06256268b8a094cf708a508",
+      "offset": 566784,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0363",
+      "key": "cb-fixture-entry-0363",
+      "sha256": "9943ef5815e30f6c41846ac0b7e0914431524043cc91f6a195200e3b9e37780c",
+      "offset": 568320,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0364",
+      "key": "cb-fixture-entry-0364",
+      "sha256": "d7423065413f88023545f7ada0b17933e28537e1a186880a215535d404ec65b6",
+      "offset": 569856,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0365",
+      "key": "cb-fixture-entry-0365",
+      "sha256": "87bb6c457cea9750a26f0f90e02b3c34c4938d4172b5d9dc67d27313161a9d74",
+      "offset": 571392,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0366",
+      "key": "cb-fixture-entry-0366",
+      "sha256": "e7c2848d054126f8753c3037670ec6fcb0b777c5dc415017a58938b72e1d59a0",
+      "offset": 572928,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0367",
+      "key": "cb-fixture-entry-0367",
+      "sha256": "e4692919ee9a4844ae6ed1702d4da32bfcc46f73afde4a8215f7504e4f4d463c",
+      "offset": 574464,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0368",
+      "key": "cb-fixture-entry-0368",
+      "sha256": "14f2239674492d22ac592c0dac443000efa531f66497163e6c6ad31443c81b6a",
+      "offset": 576000,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0369",
+      "key": "cb-fixture-entry-0369",
+      "sha256": "7438612b32a4105409602a31755834785e381ef3aafde0e5412add20594d2b96",
+      "offset": 577536,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0370",
+      "key": "cb-fixture-entry-0370",
+      "sha256": "5b2db733f5e4b041ca4103eaee631727aa5488f43ccf7738b7e82b47e670f4bc",
+      "offset": 579072,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0371",
+      "key": "cb-fixture-entry-0371",
+      "sha256": "411e57f40c911b3a2707bc6c0b7ea090d47e0e59d6a4981098ae2cb8de1a7acc",
+      "offset": 580608,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0372",
+      "key": "cb-fixture-entry-0372",
+      "sha256": "5bcf9c6f939393686049a47eb18ffa723a7dce8cf5d7cd586868d71eb0c4f275",
+      "offset": 582144,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0373",
+      "key": "cb-fixture-entry-0373",
+      "sha256": "64fe97c8991795d39762a64804c7e35b18340418c826fb2ee4a3f6ec37e07052",
+      "offset": 583680,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0374",
+      "key": "cb-fixture-entry-0374",
+      "sha256": "76e36430ad4aec5d2c385e833508db33a40350de9b3b99a2ddb8871cb4179076",
+      "offset": 585216,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0375",
+      "key": "cb-fixture-entry-0375",
+      "sha256": "b5c58152a4d771e1fd2a80dbd8a366b3abc56618d502278d5ebe9fceec83614b",
+      "offset": 586752,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0376",
+      "key": "cb-fixture-entry-0376",
+      "sha256": "86ea0a0b81b39267a467261ada37b7b52a54406f5b9d08a63fb32232d6ed1487",
+      "offset": 588288,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0377",
+      "key": "cb-fixture-entry-0377",
+      "sha256": "31ef8f8a1c5b4687d771451a870d60c15b7e7d4726ac32d846c2af8c2d819298",
+      "offset": 589824,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0378",
+      "key": "cb-fixture-entry-0378",
+      "sha256": "fe23c46feb32683e0835f4024b7b56b105e5f2faa87d892d7006d9433436105b",
+      "offset": 591360,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0379",
+      "key": "cb-fixture-entry-0379",
+      "sha256": "95ef5fa653c1fa86a1b29334f1a57ccddbf2bb065666f6724ee2cfefbace5e2c",
+      "offset": 592896,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0380",
+      "key": "cb-fixture-entry-0380",
+      "sha256": "eca43640b8d3e301485202790f5cf2bf86e8c03603e5204273be8ec0df2ba734",
+      "offset": 594432,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0381",
+      "key": "cb-fixture-entry-0381",
+      "sha256": "9c8615eb6cf00be73f43da4274e3ce8af80753885fddf9ee66f0e6b9195ab763",
+      "offset": 595968,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0382",
+      "key": "cb-fixture-entry-0382",
+      "sha256": "18ff751a56a41efa9ed6fbd517db903aaba1fa1de3b0f596ca90bfb7eb79e1b2",
+      "offset": 597504,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0383",
+      "key": "cb-fixture-entry-0383",
+      "sha256": "69f04d40bbef8fd06039c7860c95266e80c1e4ff285102f95b45139babb8d6ca",
+      "offset": 599040,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0384",
+      "key": "cb-fixture-entry-0384",
+      "sha256": "c3c7ac9b9307d10f4e1db527890970db6af28f3ab18c8f3ef69a1bb8f3c38ad1",
+      "offset": 600576,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0385",
+      "key": "cb-fixture-entry-0385",
+      "sha256": "5519a2198bfc2ca3b6853926b3f37b200ab2452fedb1ccbd2d9128a954340114",
+      "offset": 602112,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0386",
+      "key": "cb-fixture-entry-0386",
+      "sha256": "860829da54aa3d543ba051448260bd3434436d324a20d71d4c9a290478a4429d",
+      "offset": 603648,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0387",
+      "key": "cb-fixture-entry-0387",
+      "sha256": "edf7576a15a826c24e86372355f165e29b33cdfc3b9eb25486212dec3f7aeadb",
+      "offset": 605184,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0388",
+      "key": "cb-fixture-entry-0388",
+      "sha256": "557c5f80202529eea5d0f4c4a87f12aa59f1b61470c186d3dc26c01155af05e1",
+      "offset": 606720,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0389",
+      "key": "cb-fixture-entry-0389",
+      "sha256": "20615831c69a502c9ddb33f9d9e69b5d3b66652062245cc7e005c0ec0a46384a",
+      "offset": 608256,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0390",
+      "key": "cb-fixture-entry-0390",
+      "sha256": "633f46c8e815b73dd44ef9cd16fd3d36448475135dcf5a2ffbc8fa4b5bea0678",
+      "offset": 609792,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0391",
+      "key": "cb-fixture-entry-0391",
+      "sha256": "edeab99280c4884b653a1250c243acb8802fbd588ad3615ff318774d7faaadd3",
+      "offset": 611328,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0392",
+      "key": "cb-fixture-entry-0392",
+      "sha256": "3bc6e14bed4ee4d7eed671beea16cc50cf3a6538c542fce08b968d31eeeb7a38",
+      "offset": 612864,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0393",
+      "key": "cb-fixture-entry-0393",
+      "sha256": "0fb66b840277e333d60d3ed9067c2249a0d637c73af01c47cfaee782118767c7",
+      "offset": 614400,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0394",
+      "key": "cb-fixture-entry-0394",
+      "sha256": "a27f6aac9288323c407174ed43054741c1c3bc01e06521ced3c252842e0e651a",
+      "offset": 615936,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0395",
+      "key": "cb-fixture-entry-0395",
+      "sha256": "4e45bfa1ebd5b19d7d8a59b5bdd648e48fd8fdbae3a849c4739826965ee774ec",
+      "offset": 617472,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0396",
+      "key": "cb-fixture-entry-0396",
+      "sha256": "86bf57138f3943446af2780d1521801824e0b222783a29331a05d423a5e7fa65",
+      "offset": 619008,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0397",
+      "key": "cb-fixture-entry-0397",
+      "sha256": "fe4ade5bc3ff4091ef03a35c9a75ceb7a2396b53a44eca84a6a1b0766b2d01b4",
+      "offset": 620544,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0398",
+      "key": "cb-fixture-entry-0398",
+      "sha256": "1187d9187ea7cb665a48acdbda023e37e674cb18020ab0b315103cf4cf2bef12",
+      "offset": 622080,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0399",
+      "key": "cb-fixture-entry-0399",
+      "sha256": "f706e8145667acb30da5ebc994ab386fa31a1dbae26fbd233fbbd0339733b020",
+      "offset": 623616,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0400",
+      "key": "cb-fixture-entry-0400",
+      "sha256": "b5e4dc1e1ce06e40b71728a671bf7000f14b5a66d979f5e651364e6f604ef61a",
+      "offset": 625152,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0401",
+      "key": "cb-fixture-entry-0401",
+      "sha256": "d9238f1b10f9023f26e35abce22f9ac69fb11244087315f50bfac02cddddccac",
+      "offset": 626688,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0402",
+      "key": "cb-fixture-entry-0402",
+      "sha256": "1329cffc81def36588c71078eedec81f80670a5356797c9918b9311684930bd4",
+      "offset": 628224,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0403",
+      "key": "cb-fixture-entry-0403",
+      "sha256": "532100535c0a9b5270e620c6800117695b390b803236df5b1d0060ac3071a55a",
+      "offset": 629760,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0404",
+      "key": "cb-fixture-entry-0404",
+      "sha256": "dd1ad0319504082ab01ec37fdae9e5a0d019cc26eb8c69f71fd7cb122c06cdec",
+      "offset": 631296,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0405",
+      "key": "cb-fixture-entry-0405",
+      "sha256": "6e23a90b062e64ee68d656209532c392ba9a843c3aa5b32af6d57caa815c3d66",
+      "offset": 632832,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0406",
+      "key": "cb-fixture-entry-0406",
+      "sha256": "36081033c3644d3f1388efeb778b7399f7cd059221cb1e6e367b122adcf2c889",
+      "offset": 634368,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0407",
+      "key": "cb-fixture-entry-0407",
+      "sha256": "11cb63c1e25e4bc76941ddac9587e141535c6385862e06f7ed78d093d0c9f671",
+      "offset": 635904,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0408",
+      "key": "cb-fixture-entry-0408",
+      "sha256": "0f727395e0aa76d548b2bbb1627529d56c25806c3dc88b6cb62fc11a50230281",
+      "offset": 637440,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0409",
+      "key": "cb-fixture-entry-0409",
+      "sha256": "e63eb4a7f94009dea64025d6d1393211d41e1fd60c46ce42f89230182184c935",
+      "offset": 638976,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0410",
+      "key": "cb-fixture-entry-0410",
+      "sha256": "7ed868d186c6ff2b381a8bd028cd2a33aa36c5fff82130ed516eb0e26277fac8",
+      "offset": 640512,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0411",
+      "key": "cb-fixture-entry-0411",
+      "sha256": "acbcf5b8d4b23fe599228d492f7cde21bcd88bcf262b7307a61c96839ae6baee",
+      "offset": 642048,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0412",
+      "key": "cb-fixture-entry-0412",
+      "sha256": "d61ff569981b870b41d7e528a596b9d333e05c3fee82be63d76cc1f33c40fa8f",
+      "offset": 643584,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0413",
+      "key": "cb-fixture-entry-0413",
+      "sha256": "332745739c3a6a30384eda6c0af8dec227b4c8eaf600987ce403867f3216bd95",
+      "offset": 645120,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0414",
+      "key": "cb-fixture-entry-0414",
+      "sha256": "68ac9bd47ca938efe244a913ee326bd938646df5205a560785f229dafc06a8b0",
+      "offset": 646656,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0415",
+      "key": "cb-fixture-entry-0415",
+      "sha256": "946993dd743f4a98019d3b96819d0bd324f4d9ae8fa41bfb15c6514ed7375984",
+      "offset": 648192,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0416",
+      "key": "cb-fixture-entry-0416",
+      "sha256": "b9b04d9f4a8e72fefe34af920bfcefab49aedc710086fcadedfd66a5e9a28e2b",
+      "offset": 649728,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0417",
+      "key": "cb-fixture-entry-0417",
+      "sha256": "53c24b463aa7f5f11b4a13464e838490f07ef994898852f77fa1e481a4ae46d8",
+      "offset": 651264,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0418",
+      "key": "cb-fixture-entry-0418",
+      "sha256": "54648ddc16317714e654f7ca17b641ef144a10ce66cc00ab5c669ae2336ad195",
+      "offset": 652800,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0419",
+      "key": "cb-fixture-entry-0419",
+      "sha256": "75f1685aac3f9d269a29010cf5e9027f48e8c081137b5a929b30f56c985813f0",
+      "offset": 654336,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0420",
+      "key": "cb-fixture-entry-0420",
+      "sha256": "ddd700b9e6844e242527440648e8c0be0bde8f96d2a707740ca899bae33a011c",
+      "offset": 655872,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0421",
+      "key": "cb-fixture-entry-0421",
+      "sha256": "24f935957a934bf703ad9aac274869332b127575d050c5a04e6a6ebd6aca6d4f",
+      "offset": 657408,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0422",
+      "key": "cb-fixture-entry-0422",
+      "sha256": "d185409c0d8acf948de4522b8cef51984ddcad6157f3be25e8ffa7e7a6e2a895",
+      "offset": 658944,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0423",
+      "key": "cb-fixture-entry-0423",
+      "sha256": "aa4a1280f940a6bb5c9dc633e52cd652624dc87e2a5201745147fbfa3b1cb269",
+      "offset": 660480,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0424",
+      "key": "cb-fixture-entry-0424",
+      "sha256": "4b1154d2b19d7e04d47c4980cde889628bc6e114035a3d30907b22f2f7740413",
+      "offset": 662016,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0425",
+      "key": "cb-fixture-entry-0425",
+      "sha256": "958a98162672672e5a2625ab6f10dd84d319ba3526eedbe9fdf0f89d48bd628a",
+      "offset": 663552,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0426",
+      "key": "cb-fixture-entry-0426",
+      "sha256": "b7051eddbd545e0e2e225df2283eb1bd72bc89f7a1a02561d7fb0622b474ebc6",
+      "offset": 665088,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0427",
+      "key": "cb-fixture-entry-0427",
+      "sha256": "14a4a6c104a6880f525b01f1572528db25dd7c0d6fa54791d6514f297b143338",
+      "offset": 666624,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0428",
+      "key": "cb-fixture-entry-0428",
+      "sha256": "7094fb7551f58fad3fdf81d0dade348dfeba6dcf8b7fe370806f23a4c7f15704",
+      "offset": 668160,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0429",
+      "key": "cb-fixture-entry-0429",
+      "sha256": "6bdbf0d009376c0f2041dda3cbce0087ea9d2e424ff954349de8a9ea43dcfbfe",
+      "offset": 669696,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0430",
+      "key": "cb-fixture-entry-0430",
+      "sha256": "e845a45480f062ee03772b168a1d56d66bf46bf770ac2bca5cd0e9c360097773",
+      "offset": 671232,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0431",
+      "key": "cb-fixture-entry-0431",
+      "sha256": "884403518f252b1998d1986cc3ee6dd289a7a8ecafc84a925ace0a104de06ebf",
+      "offset": 672768,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0432",
+      "key": "cb-fixture-entry-0432",
+      "sha256": "d6d9d0ee49b226aadac2eccd2ae2c56c08569726d47354cb9d0bd41d334abfc4",
+      "offset": 674304,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0433",
+      "key": "cb-fixture-entry-0433",
+      "sha256": "a65e1a4db6996b8f4e17d3e35550384cc9ead50270398c6acee4ba303938cb48",
+      "offset": 675840,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0434",
+      "key": "cb-fixture-entry-0434",
+      "sha256": "f546328d45832581a64dd8e2c0b779009068c45143e7afebec14301e51bb33b5",
+      "offset": 677376,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0435",
+      "key": "cb-fixture-entry-0435",
+      "sha256": "a2b13cd2b3b440d8cfb715a18a9f91426e532d35e62808b9c07a3cec8b1ff758",
+      "offset": 678912,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0436",
+      "key": "cb-fixture-entry-0436",
+      "sha256": "09c7aca3e0d39b86d2e02c360839e0c2d9210f3d17c55c79fc52f5ea5a5172db",
+      "offset": 680448,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0437",
+      "key": "cb-fixture-entry-0437",
+      "sha256": "7ad242abb84f020c21d01ad038e75574a083c711ccb4be5af6481298f65445c4",
+      "offset": 681984,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0438",
+      "key": "cb-fixture-entry-0438",
+      "sha256": "39afbc893c21f816b7352438380e77a8b40717f000b76a6d2348a2d550f55f10",
+      "offset": 683520,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0439",
+      "key": "cb-fixture-entry-0439",
+      "sha256": "81f26339253b812dddb398f94a7f593ad41c711c636502516e34c789555cc292",
+      "offset": 685056,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0440",
+      "key": "cb-fixture-entry-0440",
+      "sha256": "43e294667256e3f0a5cba0ec80e2d04da10ec2084813aa2af62c3c891bd46c0c",
+      "offset": 686592,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0441",
+      "key": "cb-fixture-entry-0441",
+      "sha256": "3c54a5a810fec32cc04e6b71a17280545edac25ba3a066d64dbea2dfdffcc67c",
+      "offset": 688128,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0442",
+      "key": "cb-fixture-entry-0442",
+      "sha256": "2e507cb0d63b2ed7467140f0caf94a2abd91d4a56c613d9942d1085c76554c74",
+      "offset": 689664,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0443",
+      "key": "cb-fixture-entry-0443",
+      "sha256": "de3b80888fe6d93f44923ad5f0ab5ec5c22b2ab2519261d5ffea3224eda221c5",
+      "offset": 691200,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0444",
+      "key": "cb-fixture-entry-0444",
+      "sha256": "52cca272cdf49fa9181ef043b2cf354800aafe02f1d94185e940132ed1fcc4d5",
+      "offset": 692736,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0445",
+      "key": "cb-fixture-entry-0445",
+      "sha256": "1390d1926d01924c3bca7b4042f288f985b28b332679f8d0e5eb8a180d85d35c",
+      "offset": 694272,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0446",
+      "key": "cb-fixture-entry-0446",
+      "sha256": "308f3b74fe9643f8f7bb17f8dac1f56eb79fe4bf644f76a385a3f27baa75e59d",
+      "offset": 695808,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0447",
+      "key": "cb-fixture-entry-0447",
+      "sha256": "dd9c13dafaf3eefb36b3bab8b98cd8bdbb6629e18f1ab2cf2fe884810891dda5",
+      "offset": 697344,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0448",
+      "key": "cb-fixture-entry-0448",
+      "sha256": "80c93de7bd063d10daa36bec4510d8677d21544dbe6ae62cef6a593b1a468a16",
+      "offset": 698880,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0449",
+      "key": "cb-fixture-entry-0449",
+      "sha256": "686196388037bc4c796c35f74316d7a53824af5e608c277778c691d4a3a224a7",
+      "offset": 700416,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0450",
+      "key": "cb-fixture-entry-0450",
+      "sha256": "7694863e68dd0d0aac8d6a1b930ebb0a331029b4b3fcf91564462d1851ba73ef",
+      "offset": 701952,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0451",
+      "key": "cb-fixture-entry-0451",
+      "sha256": "21ae2da8b132f93ff6a457abf08a5c0f807adb3c6b299097efdb6ee6ab9d1ce6",
+      "offset": 703488,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0452",
+      "key": "cb-fixture-entry-0452",
+      "sha256": "773b2f7393b8d3d5070b9998f63dfeefbcbd0c88110a264eb636de63a5d01b1f",
+      "offset": 705024,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0453",
+      "key": "cb-fixture-entry-0453",
+      "sha256": "236c362c974e77cdc5d4be92da5ac952a28454a63889dc7790707dc0a9e2bcbe",
+      "offset": 706560,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0454",
+      "key": "cb-fixture-entry-0454",
+      "sha256": "679b2f176d3cb6e49f7bdb5b2d94e8c376e385f786dc73bb00a22fdc88df76a1",
+      "offset": 708096,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0455",
+      "key": "cb-fixture-entry-0455",
+      "sha256": "7ab7a8cff7a17880b26d5052b6c64605b82bd4b9c218441f26669e1eb848837a",
+      "offset": 709632,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0456",
+      "key": "cb-fixture-entry-0456",
+      "sha256": "4ba3e2102ee8703817c416392c3002e18c18f1a1587a66d84fdde676d8d8e03f",
+      "offset": 711168,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0457",
+      "key": "cb-fixture-entry-0457",
+      "sha256": "714c4eec6f59addcee32f9701ba6379609b2b5af52e129c7805db8e04180b545",
+      "offset": 712704,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0458",
+      "key": "cb-fixture-entry-0458",
+      "sha256": "f82e76bc34e95810fe1c62ba9871037f2f2cbabe6a20514561bb1dce592666b2",
+      "offset": 714240,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0459",
+      "key": "cb-fixture-entry-0459",
+      "sha256": "ffdfcddf8d2a84ba20eca6808025add3bc578e64e11519ad2627944bcf6a88a8",
+      "offset": 715776,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0460",
+      "key": "cb-fixture-entry-0460",
+      "sha256": "96545c7088cd78d37f643222c75552def4262f9376d0ff0d216928a9c5bab409",
+      "offset": 717312,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0461",
+      "key": "cb-fixture-entry-0461",
+      "sha256": "a473a31fe659905909c3986d53841f7171b1d04149a2011c9f3b5fa484fdd204",
+      "offset": 718848,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0462",
+      "key": "cb-fixture-entry-0462",
+      "sha256": "550949a1112743b232589752b25e2c24c9baec5e60f8d2fb4dfd1bd89d8c10b3",
+      "offset": 720384,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0463",
+      "key": "cb-fixture-entry-0463",
+      "sha256": "d94f432d0d427f2554dbc4e52caaeb9427a3b0135e5eeb6381ec96399c20c017",
+      "offset": 721920,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0464",
+      "key": "cb-fixture-entry-0464",
+      "sha256": "0423903c7e9a09c6447a68744726284a72c0730bebbf83d32cc859295e28121b",
+      "offset": 723456,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0465",
+      "key": "cb-fixture-entry-0465",
+      "sha256": "b08085090733a0d3eaafb1549d53fb86925984476cf2a2b2ee1e2309e0a88047",
+      "offset": 724992,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0466",
+      "key": "cb-fixture-entry-0466",
+      "sha256": "1153758d18dff8e7948585e081879d1653dcff182b38e3e0eb0d753fd966d447",
+      "offset": 726528,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0467",
+      "key": "cb-fixture-entry-0467",
+      "sha256": "e9176f3bc006fed734cbea7c293c56f6012ff5d2c56c68a0e25f70acfdb0887d",
+      "offset": 728064,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0468",
+      "key": "cb-fixture-entry-0468",
+      "sha256": "4eef4ed9080748ad6bab36c9a2b08a61467e29d324423677c2db576dc5b29934",
+      "offset": 729600,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0469",
+      "key": "cb-fixture-entry-0469",
+      "sha256": "fbbdb8521d67cb1dbf6adb7687d35bd231f6bf4dffeba1b99b263a955d749e1d",
+      "offset": 731136,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0470",
+      "key": "cb-fixture-entry-0470",
+      "sha256": "7a32735297db2a87784eea788460b79f50fa915f9b1f0d11dd47e1f079b437cb",
+      "offset": 732672,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0471",
+      "key": "cb-fixture-entry-0471",
+      "sha256": "1edff071279713087d3608da2425c81645e5ea2e0fde70e10d0c64c7b4bd62ae",
+      "offset": 734208,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0472",
+      "key": "cb-fixture-entry-0472",
+      "sha256": "463f3268ec80fd2e043319f4b462f767c23d13b0748741855f0de540fa561864",
+      "offset": 735744,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0473",
+      "key": "cb-fixture-entry-0473",
+      "sha256": "ecfd341471927ba113979b2ee836dadffbdd4a640634dedce8d99cdcabfbbb02",
+      "offset": 737280,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0474",
+      "key": "cb-fixture-entry-0474",
+      "sha256": "93d0758d04b3a644fa30f3814f1af4125bc78fa72998462d5217fff2671c6fde",
+      "offset": 738816,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0475",
+      "key": "cb-fixture-entry-0475",
+      "sha256": "a7226bb0284e08b33d985222a4a0a1d8c2b3bce4ca669c1be673f9e11f0dac74",
+      "offset": 740352,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0476",
+      "key": "cb-fixture-entry-0476",
+      "sha256": "ccd6f7a67a4f864d22f431d5e0e093c6e131b2a986ac73dff927533bded5f7b4",
+      "offset": 741888,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0477",
+      "key": "cb-fixture-entry-0477",
+      "sha256": "bdef6a53522e5e6d29aff9b350ca8b88ceb6cadfa267ac866388cd3b72406ed9",
+      "offset": 743424,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0478",
+      "key": "cb-fixture-entry-0478",
+      "sha256": "6d86209b3bfc5056aa7b376a569d876cd5cc212ed1c6d8b5a18ac23e2ad35a54",
+      "offset": 744960,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0479",
+      "key": "cb-fixture-entry-0479",
+      "sha256": "3ad7b616d57e519a87d4c8cf110a86733baeef232b00acc37add5d695d91690e",
+      "offset": 746496,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0480",
+      "key": "cb-fixture-entry-0480",
+      "sha256": "4df238971cc03b1e5fac69f60e3feb6c0b9a1841326b00835aca185f3e25445e",
+      "offset": 748032,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0481",
+      "key": "cb-fixture-entry-0481",
+      "sha256": "b54d6e88d1494b163b4dd886e004a210fe9b1478c9a9613f7b792952e2b3f8f7",
+      "offset": 749568,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0482",
+      "key": "cb-fixture-entry-0482",
+      "sha256": "e357056d9b52dfa175c2636a4a21b7bd10d1fa05017079217e2b4bb76eb5ce5c",
+      "offset": 751104,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0483",
+      "key": "cb-fixture-entry-0483",
+      "sha256": "5d65b615be53a8f7c14eb02d3b4fb0b023e9c607d5cf4106678e5c77ba6601c0",
+      "offset": 752640,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0484",
+      "key": "cb-fixture-entry-0484",
+      "sha256": "391ec9509916071bba95eef4be4f7579d56170ca8bddc20e09e4ab62919e1e72",
+      "offset": 754176,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0485",
+      "key": "cb-fixture-entry-0485",
+      "sha256": "e86d749ae0c2fb996d28d660b97008dc75bb6f1cd04bda090aab9f6364281d08",
+      "offset": 755712,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0486",
+      "key": "cb-fixture-entry-0486",
+      "sha256": "eb4c310f7820768a5af13a39ef62238d98f24590b11283fb0b9d5785fc4c83fe",
+      "offset": 757248,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0487",
+      "key": "cb-fixture-entry-0487",
+      "sha256": "61dd8610e8800714d7d54ab48a9460fba2953a1151eea9a31c3cafebbd8a6e45",
+      "offset": 758784,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0488",
+      "key": "cb-fixture-entry-0488",
+      "sha256": "ae805597832d52f606633fca04507d30750c87cca2dce6a4dd873ea24db7f7b4",
+      "offset": 760320,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0489",
+      "key": "cb-fixture-entry-0489",
+      "sha256": "c22ee495ce381b9f33d4fc4b7745eeb87baee796a7b162a87013fde11cca2468",
+      "offset": 761856,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0490",
+      "key": "cb-fixture-entry-0490",
+      "sha256": "29aacfb2d02613d0176a4fd37139cae9dbe07c35d1bce6f9b29af4579d2efdbb",
+      "offset": 763392,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0491",
+      "key": "cb-fixture-entry-0491",
+      "sha256": "d00684bd7cc8c7d16056c0a06dbb08c537677bb5a82a2277f9f30b1d182c8886",
+      "offset": 764928,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0492",
+      "key": "cb-fixture-entry-0492",
+      "sha256": "30e58075198d37c840b637747d2d9ed5bcaac342951bbdc557ac66a802db286b",
+      "offset": 766464,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0493",
+      "key": "cb-fixture-entry-0493",
+      "sha256": "fdc36d496f76ec4e27b5adeb16b1dc148aa901a4d909758b0dd95774143fa763",
+      "offset": 768000,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0494",
+      "key": "cb-fixture-entry-0494",
+      "sha256": "c8c5aa5bb4de84ea7179631d97c3f8782ef39c0efe662f613d5a3e4dc6c094d8",
+      "offset": 769536,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0495",
+      "key": "cb-fixture-entry-0495",
+      "sha256": "9fef22661d7720c4092ec4f8af00bc2529cc85af5c7a917de7c8000290a6404b",
+      "offset": 771072,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0496",
+      "key": "cb-fixture-entry-0496",
+      "sha256": "bf923923e95c1705d6904ccc2f8fd493486365fcfa71abe9c24e6aa4917576b7",
+      "offset": 772608,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0497",
+      "key": "cb-fixture-entry-0497",
+      "sha256": "8501052b97943ac7aadec8aa460b4fa862d91f19895c7db09328895edb39ce01",
+      "offset": 774144,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0498",
+      "key": "cb-fixture-entry-0498",
+      "sha256": "3cf234bb0636969a507963cc7027e4c1b021b5b9a0f75e5d83e2d1cbe17edff3",
+      "offset": 775680,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0499",
+      "key": "cb-fixture-entry-0499",
+      "sha256": "fe4bdde21e7c518bc67c1b207b9cb2144332664923c5103dcd8ae23b25cba996",
+      "offset": 777216,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0500",
+      "key": "cb-fixture-entry-0500",
+      "sha256": "924a2ae5848b6c6734c13d11b725229c515e92608a0266fa1d74e5b8e5cb51d3",
+      "offset": 778752,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0501",
+      "key": "cb-fixture-entry-0501",
+      "sha256": "c04b71ee1fdffa89b87f0400fd2704b5d4ec7ce5aee33716f8a68c8647ebf0c6",
+      "offset": 780288,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0502",
+      "key": "cb-fixture-entry-0502",
+      "sha256": "26a0f0c2bc40de60661b7140c20d62b32a9fd0cb83f4a8ae6db04babc99070c2",
+      "offset": 781824,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0503",
+      "key": "cb-fixture-entry-0503",
+      "sha256": "47f32ce3054524228437d887b6d96bf0d94ba237f458ec3d2fb0a3f21e410361",
+      "offset": 783360,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0504",
+      "key": "cb-fixture-entry-0504",
+      "sha256": "1675b83ba0e7eac53754a7fa3f8d8779237a504ba757c2f5d3c5d4d732bd1663",
+      "offset": 784896,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0505",
+      "key": "cb-fixture-entry-0505",
+      "sha256": "2d86c2d8026697e6b02a2495b5469bd573e47aae13a0680ab073cfc8154e9f0a",
+      "offset": 786432,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0506",
+      "key": "cb-fixture-entry-0506",
+      "sha256": "54b155f0312de47c242a5c0c9b42267ac97bef243eadd3a6d8064b5ce5dcc272",
+      "offset": 787968,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0507",
+      "key": "cb-fixture-entry-0507",
+      "sha256": "390e41019afb39c12110253ea1588d3b5e7eb37ff112125fb399b0754dcd3cb0",
+      "offset": 789504,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0508",
+      "key": "cb-fixture-entry-0508",
+      "sha256": "eea623d9d11a53607b5398f1f046b955cbdc897b302cf4d37c7e1657d44d0336",
+      "offset": 791040,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0509",
+      "key": "cb-fixture-entry-0509",
+      "sha256": "74c12d9d8a0aca5054795a38173d2482c6725196834698d2595a8d3ba6a32ce2",
+      "offset": 792576,
+      "length": 1536
+    },
+    {
+      "text": "cb-fixture-entry-0510",
+      "key": "cb-fixture-entry-0510",
+      "sha256": "ec163c9f998ec8e4bed868ee0fa5d26fb36736d7cbdcb06f7d60be23b2ce3ad9",
+      "offset": 794112,
+      "length": 1536
+    }
+  ]
+}

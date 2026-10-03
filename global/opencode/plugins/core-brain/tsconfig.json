@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": []
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "engine/*.ts"]
 }

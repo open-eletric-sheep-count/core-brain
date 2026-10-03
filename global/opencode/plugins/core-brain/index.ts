@@ -1,12 +1,24 @@
 // index.ts — core-brain, OpenCode V2 plugin server entry (spec §7, §8).
 //
-// Registers exactly two things:
+// Registers exactly these things:
 //   - ONE tool, `core_memory`, which is the only path by which an agent reads
 //     or writes memory (who / store / recall — spec §7.2);
-//   - ONE inert `prompt` hook that only OBSERVES (it records the active agent
-//     for debug logging). It never mutates `event.prompt.text` and never
-//     pushes into `event.system`: context injection is OPT-IN and OFF by
-//     default (spec §8). There is NO `compaction` hook in v1.
+//   - THREE session hooks implementing the AUTOMATIC layer (Fatia 2,
+//     test/CONTRACT.md §9):
+//       * `context`    (A1) — injects the memory block into the model's system
+//         context. OPT-IN and OFF by default (`inject: true` in the agent row);
+//       * `prompt`     (A2) — learns from the USER prompt text. READ-ONLY: it
+//         never mutates `event.prompt`;
+//       * `compaction` (A3) — carries the block into the checkpoint transcript
+//         and learns from the discarded messages. It NEVER writes `event.result`.
+//     A4 (the closing ritual / session end) is UNKNOWN — the closed session-hook
+//     list has no session-end member, so no hook is registered for it (plan D5).
+//
+// Injection NEVER travels through `prompt.text`: it only pushes into the context
+// event's `system[]`, guarded by `Array.isArray(event?.system)`. The opt-in gate
+// runs BEFORE any recall (plan §2.1 D2), so a non-opted-in agent pays no read
+// cost; the `inject` flag is resolved by the engine (`Engine.resolvePolicy`),
+// never supplied by the caller.
 //
 // Identity (spec §7.1): the agent name is NEVER a tool input field. It is read
 // from the trusted session (`ctx.session.get({ sessionID })`, using the same
@@ -25,8 +37,9 @@
 // Sources: https://opencode.ai/v2/docs/build/plugins — tool transform
 // (`ctx.tool.transform`) and the session hooks (`ctx.session.hook`,
 // `ctx.session.get`); mirrored from this repo's `todo-list/index.ts`
-// (tool registration, session-id resolution) and `context-inject/index.ts`
-// (prompt hook, agent resolution through the beta envelope).
+// (tool registration, session-id resolution, the `system.push` guard) and
+// `context-inject/index.ts` (prompt hook, agent resolution through the beta
+// envelope).
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -54,11 +67,18 @@ interface ToolEditorLike {
   add(tool: ToolInfoLike): void;
 }
 
-interface PromptHookEvent {
+type SessionHookName = "prompt" | "context" | "compaction";
+
+interface SessionHookEvent {
   readonly sessionID?: unknown;
-  // Present on the event, deliberately never touched by this plugin (§8).
+  /** Admission prompt (A2) — read to learn, deliberately never mutated. */
   readonly prompt?: unknown;
+  /** Injection target (A1/A3) — the ONLY channel; pushed only when an array. */
   readonly system?: unknown;
+  /** Discarded transcript (A3) — `{ role, content, parts? }[]`. */
+  readonly messages?: unknown;
+  /** Host compaction summary (A3) — deliberately never written by us. */
+  readonly result?: unknown;
 }
 
 interface CoreBrainPluginContext {
@@ -75,8 +95,8 @@ interface CoreBrainPluginContext {
   };
   session?: {
     hook(
-      name: "prompt",
-      callback: (event: PromptHookEvent) => void | Promise<void>,
+      name: SessionHookName,
+      callback: (event: SessionHookEvent) => void | Promise<void>,
     ): Promise<Registration>;
     // "Read a session" (V2 plugin docs). The result shape is handled
     // defensively: the beta envelope may nest the payload under `data`.
@@ -90,13 +110,24 @@ interface CoreBrainPluginContext {
 
 const LOG_TAG = "[core-brain]";
 
-type CoreMemoryOp = "who" | "store" | "recall" | "forget" | "feedback";
+type CoreMemoryOp =
+  | "who"
+  | "store"
+  | "recall"
+  | "forget"
+  | "feedback"
+  | "episode"
+  | "timeline"
+  | "promote";
 const OPS: readonly CoreMemoryOp[] = [
   "who",
   "store",
   "recall",
   "forget",
   "feedback",
+  "episode",
+  "timeline",
+  "promote",
 ];
 
 const DEBUG_ENV = "CORE_BRAIN_DEBUG";
@@ -116,6 +147,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
     : null;
+}
+
+/** Keeps only the string members of an array field; `undefined` when absent. */
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter((item): item is string => typeof item === "string");
+  return strings;
 }
 
 function resolveSessionID(toolArg: unknown): string | null {
@@ -211,10 +249,20 @@ const TOOL_DESCRIPTION =
   "global access; writing into another agent's space is always refused); " +
   "recall — search the spaces this agent may read (its own space always, the " +
   "global space when it has global access, another agent's space only while " +
-  "that agent is public) ranked by cosine similarity, and report which spaces " +
-  "were scanned; forget — retire a record without deleting it (by 'id' or " +
+  "that agent is public) with a hybrid BM25 + vector search fused by RRF, and " +
+  "report which spaces were scanned and the ranking mode used; the optional " +
+  "cross-encoder reranker is OFF by default and is switched on with " +
+  "CORE_BRAIN_RERANKER=ms-marco (or by injecting a reranker); forget — retire " +
+  "a record without deleting it (by 'id' or " +
   "by 'query'); feedback — record whether a readable record was useful, " +
-  "which feeds the ranking tie-break. The calling agent's identity is " +
+  "which feeds the ranking tie-break; episode — append one dated episodic " +
+  "record (`summary`) to this agent's own space, or to the shared global space " +
+  "when it has global access, with the owner taken from the session; timeline — " +
+  "read the episodic diary over the same spaces recall may read, " +
+  "most-recent-first when no `query` is given and ranked by meaning by the same " +
+  "hybrid search when one is; promote — write a new memory derived from a " +
+  "readable episode (carrying `derivedFrom`) and list it in the episode's " +
+  "`engramIds`. The calling agent's identity is " +
   "taken from the running session — it is NOT an input field and cannot " +
   "be supplied or impersonated.";
 
@@ -231,7 +279,9 @@ const TOOL_SCHEMA: Record<string, unknown> = {
         "who — report this agent's policy; store — persist `text`; " +
         "recall — search the spaces this agent may read; forget — retire " +
         "a record without deleting it; feedback — record whether a " +
-        "readable record was useful.",
+        "readable record was useful; episode — append one dated episodic " +
+        "record (`summary`); timeline — read the episodic diary; promote — " +
+        "write a memory derived from a readable episode.",
     },
     id: {
       type: "string",
@@ -245,7 +295,9 @@ const TOOL_SCHEMA: Record<string, unknown> = {
     },
     text: {
       type: "string",
-      description: "store: the memory text to persist (non-empty).",
+      description:
+        "store: the memory text to persist (non-empty). promote: the text of " +
+        "the memory derived from the episode (non-empty).",
     },
     target: {
       type: "string",
@@ -253,7 +305,9 @@ const TOOL_SCHEMA: Record<string, unknown> = {
         "store: where to write — 'self' (default), 'global' (requires " +
         "global access), or 'agent:<name>' (always refused for another " +
         "agent); forget: which space to retire from — 'self' (default) or " +
-        "'global' (requires global access).",
+        "'global' (requires global access); episode: where to write the " +
+        "episode — 'self' (default) or 'global' (requires global access; " +
+        "'agent:<name>' is not accepted).",
     },
     meta: {
       type: "object",
@@ -262,20 +316,53 @@ const TOOL_SCHEMA: Record<string, unknown> = {
     query: {
       type: "string",
       description:
-        "recall: optional text to rank stored records against (cosine " +
-        "similarity). Omit to list the most recently updated records; " +
+        "recall: optional text to rank stored records against (hybrid BM25 " +
+        "+ vector search fused by RRF). Omit to list the most recently " +
+        "updated records; " +
         "forget: retire every record whose cosine to this text is at/above " +
-        "the match threshold (omit when using 'id').",
+        "the match threshold (omit when using 'id'); timeline: optional text " +
+        "to rank episodes by meaning (same hybrid search; omit for " +
+        "most-recent-first).",
     },
     limit: {
       type: "integer",
-      description: "recall: maximum number of results (default 5).",
+      description:
+        "recall: maximum number of results (default 5). timeline: maximum " +
+        "number of episodes.",
     },
     from: {
       type: "string",
       description:
-        "recall: which space to read — 'self', 'global' or 'agent:<name>'. " +
-        "Omitted = every space this agent is allowed to read.",
+        "recall/timeline: which space to read — 'self', 'global' or " +
+        "'agent:<name>'. Omitted = every space this agent is allowed to read.",
+    },
+    summary: {
+      type: "string",
+      description: "episode: the narrative — what happened (non-empty).",
+    },
+    sessionId: {
+      type: "string",
+      description: "episode: optional session id to record with the episode.",
+    },
+    episodeId: {
+      type: "string",
+      description:
+        "promote: the id of a readable episode to derive a memory from (required).",
+    },
+    tags: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "episode: optional tags stored with the episode; promote: optional tags " +
+        "stored in the memory's metadata; timeline: filter episodes by any of them.",
+    },
+    since: {
+      type: "string",
+      description: "timeline: optional ISO timestamp — keep episodes at/after it.",
+    },
+    until: {
+      type: "string",
+      description: "timeline: optional ISO timestamp — keep episodes at/before it.",
     },
   },
   required: ["op"],
@@ -373,6 +460,97 @@ function buildRequest(input: unknown): RequestParse {
     return { ok: true, request: { op: "feedback", id, useful: record.useful } };
   }
 
+  if (op === "episode") {
+    const summary = record.summary;
+    if (typeof summary !== "string" || summary.trim() === "") {
+      return { ok: false, error: "episode requires a non-empty string 'summary'." };
+    }
+    const tags = asStringArray(record.tags);
+    const sessionId =
+      typeof record.sessionId === "string" && record.sessionId.trim()
+        ? record.sessionId.trim()
+        : undefined;
+    const t =
+      typeof record.target === "string" && record.target.trim()
+        ? record.target.trim()
+        : undefined;
+    if (t !== undefined && t !== "self" && t !== "global") {
+      return { ok: false, error: "episode 'target' must be 'self' or 'global'." };
+    }
+    return {
+      ok: true,
+      request: {
+        op: "episode",
+        summary,
+        ...(tags !== undefined ? { tags } : {}),
+        ...(sessionId ? { sessionId } : {}),
+        ...(t ? { target: t as "self" | "global" } : {}),
+      },
+    };
+  }
+
+  if (op === "timeline") {
+    const tlQuery =
+      typeof record.query === "string" && record.query.trim() !== ""
+        ? record.query
+        : undefined;
+    const tlLimit =
+      typeof record.limit === "number" &&
+      Number.isInteger(record.limit) &&
+      record.limit > 0
+        ? record.limit
+        : undefined;
+    const tlFrom =
+      typeof record.from === "string" && record.from.trim()
+        ? (record.from.trim() as NamespaceTarget)
+        : undefined;
+    const since =
+      typeof record.since === "string" && record.since.trim()
+        ? record.since.trim()
+        : undefined;
+    const until =
+      typeof record.until === "string" && record.until.trim()
+        ? record.until.trim()
+        : undefined;
+    const tags = asStringArray(record.tags);
+    return {
+      ok: true,
+      request: {
+        op: "timeline",
+        ...(tlQuery !== undefined ? { query: tlQuery } : {}),
+        ...(since ? { since } : {}),
+        ...(until ? { until } : {}),
+        ...(tags !== undefined && tags.length > 0 ? { tags } : {}),
+        ...(tlLimit !== undefined ? { limit: tlLimit } : {}),
+        ...(tlFrom ? { from: tlFrom } : {}),
+      },
+    };
+  }
+
+  if (op === "promote") {
+    const episodeId =
+      typeof record.episodeId === "string" && record.episodeId.trim()
+        ? record.episodeId.trim()
+        : undefined;
+    if (!episodeId) {
+      return { ok: false, error: "promote requires a non-empty string 'episodeId'." };
+    }
+    const text = record.text;
+    if (typeof text !== "string" || text.trim() === "") {
+      return { ok: false, error: "promote requires a non-empty string 'text'." };
+    }
+    const tags = asStringArray(record.tags);
+    return {
+      ok: true,
+      request: {
+        op: "promote",
+        episodeId,
+        text,
+        ...(tags !== undefined ? { tags } : {}),
+      },
+    };
+  }
+
   const query =
     typeof record.query === "string" && record.query.trim() !== ""
       ? record.query
@@ -396,6 +574,84 @@ function buildRequest(input: unknown): RequestParse {
       ...(from ? { from } : {}),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Automatic layer (Fatia 2, test/CONTRACT.md §9): pure, I/O-free helpers.
+// Kept in this module (the ORACLE's brief names `index.ts` as the only allowed
+// file); they take/return plain values so the logic stays testable.
+// ---------------------------------------------------------------------------
+
+/**
+ * Stable marker carried by every injected block (plan §2.1 D4): it makes the
+ * injected text auditable and dedupes a carry when the live system context
+ * already holds the block.
+ */
+const INJECT_MARKER = "core-brain:auto:v1";
+
+/** Cues that mark a statement as durable (plan §3.2 / D3: no junk memory). */
+const DURABLE_CUE =
+  /\b(always|never|prefer|remember|convention|standard|rule|decided)\b/i;
+
+/**
+ * Extracts the durable statements from a USER prompt / a discarded message.
+ * Read-only (it never mutates its input) and empty on ordinary chatter
+ * (plan §7.1). The statement is kept whole so one prompt stores one record;
+ * the dedupe key is `text + origin` (plan D7).
+ */
+function extractLearnings(userText: string): string[] {
+  const text = userText.trim();
+  if (text.length === 0) return [];
+  if (!DURABLE_CUE.test(text)) return [];
+  return [text];
+}
+
+/** The recalled record texts, read defensively from a recall result. */
+function recalledTexts(result: unknown): string[] {
+  const results = (result as { results?: unknown } | null)?.results;
+  if (!Array.isArray(results)) return [];
+  const texts: string[] = [];
+  for (const hit of results) {
+    const text = (hit as { text?: unknown } | null)?.text;
+    if (typeof text === "string" && text.trim()) texts.push(text);
+  }
+  return texts;
+}
+
+/** Reads a message's text from `content` (string) and/or `parts[].text`. */
+function messageTexts(messages: unknown): string[] {
+  if (!Array.isArray(messages)) return [];
+  const texts: string[] = [];
+  for (const message of messages) {
+    const record = asRecord(message);
+    if (!record) continue;
+    const content = record.content;
+    if (typeof content === "string" && content.trim()) texts.push(content);
+    const parts = record.parts;
+    if (Array.isArray(parts)) {
+      for (const part of parts) {
+        const text = (part as { text?: unknown } | null)?.text;
+        if (typeof text === "string" && text.trim()) texts.push(text);
+      }
+    }
+  }
+  return texts;
+}
+
+/** Composes the injected block: the stable marker plus the recalled records. */
+function composeContextBlock(texts: string[], agentName: string): string {
+  const header = `[${INJECT_MARKER}] automatic memory context for ${agentName}:`;
+  if (texts.length === 0) return header;
+  return `${header}\n${texts.map((text) => `- ${text}`).join("\n")}`;
+}
+
+/** true when a system part list already carries the injected block marker. */
+function systemHasMarker(system: unknown): boolean {
+  if (!Array.isArray(system)) return false;
+  return system.some((part) => {
+    const text = (part as { text?: unknown } | null)?.text;
+    return typeof text === "string" && text.includes(INJECT_MARKER);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -479,7 +735,7 @@ export default {
         };
       }
       try {
-        return { content: JSON.stringify(engine.invoke(agentName, parsed.request)) };
+        return { content: JSON.stringify(await engine.invoke(agentName, parsed.request)) };
       } catch (error) {
         const message =
           error instanceof InvalidConfigurationError
@@ -489,18 +745,21 @@ export default {
       }
     }
 
-    let toolRegistration: Registration | undefined;
+    const registrations: Registration[] = [];
+
     try {
       const transform = ctx.tool?.transform;
       if (typeof transform === "function") {
-        toolRegistration = await transform.call(ctx.tool, (editor) => {
-          editor.add({
-            name: "core_memory",
-            description: TOOL_DESCRIPTION,
-            input: TOOL_SCHEMA,
-            execute,
-          });
-        });
+        registrations.push(
+          await transform.call(ctx.tool, (editor) => {
+            editor.add({
+              name: "core_memory",
+              description: TOOL_DESCRIPTION,
+              input: TOOL_SCHEMA,
+              execute,
+            });
+          }),
+        );
       } else {
         console.error(
           `${LOG_TAG} ctx.tool.transform is unavailable; core_memory was not registered.`,
@@ -510,46 +769,183 @@ export default {
       console.error(`${LOG_TAG} tool registration failed:`, error);
     }
 
-    // INERT prompt hook (spec §8): it records the active session/agent for
-    // debug logging only. `event.prompt.text` is NEVER edited and
-    // `event.system` is NEVER touched — v1 has no injection path at all.
-    let hookRegistration: Registration | undefined;
-    try {
-      const hook = ctx.session?.hook;
-      if (typeof hook === "function") {
-        hookRegistration = await hook.call(
-          ctx.session,
-          "prompt",
-          async (event) => {
-            const sessionID = event?.sessionID;
-            if (typeof sessionID !== "string" || !sessionID) return;
-            // Fallback for tool calls whose second argument carries no id.
-            activeSessionID = sessionID;
-            if (!debugEnabled) return;
-            try {
-              const agentName = await resolveSessionAgent(ctx, sessionID);
-              debugLog(
-                `prompt hook: sessionID=${sessionID} ` +
-                  `agent=${agentName ?? "<unresolved>"}`,
-              );
-            } catch (error) {
-              // The hook must never break prompt admission.
-              console.error(`${LOG_TAG} prompt hook failed:`, error);
-            }
-          },
-        );
-      } else {
-        console.error(
-          `${LOG_TAG} ctx.session.hook is unavailable; the prompt hook was not registered.`,
-        );
+    // -------------------------------------------------------------------
+    // Automatic layer (Fatia 2, test/CONTRACT.md §9): A1/A2/A3.
+    // `inject` is resolved by the engine (never by the caller) and the gate
+    // runs BEFORE any recall; every hook degrades instead of throwing.
+    // -------------------------------------------------------------------
+
+    const isOptedIn = (agentName: string): boolean => {
+      if (!engine) return false;
+      try {
+        return engine.resolvePolicy(agentName).inject === true;
+      } catch {
+        return false;
       }
-    } catch (error) {
-      console.error(`${LOG_TAG} prompt hook registration failed:`, error);
+    };
+
+    /** Recalls texts, or `null` when the read itself failed. */
+    const recallTexts = async (
+      agentName: string,
+      limit: number,
+      from?: "self",
+    ): Promise<string[] | null> => {
+      if (!engine) return null;
+      try {
+        const result =
+          from === "self"
+            ? await engine.invoke(agentName, { op: "recall", limit, from })
+            : await engine.invoke(agentName, { op: "recall", limit });
+        return recalledTexts(result);
+      } catch (error) {
+        debugLog(`recall failed for agent=${agentName}: ${describeError(error)}`);
+        return null;
+      }
+    };
+
+    /**
+     * Pushes the block into the context event's `system[]` — the ONLY injection
+     * channel. No-op when `system` is absent, not an array, or already carries
+     * the block (marker dedupe). `prompt.text` is never involved.
+     */
+    const injectBlock = (event: SessionHookEvent, block: string): boolean => {
+      const system = event?.system;
+      if (!Array.isArray(system) || systemHasMarker(system)) return false;
+      system.push({ type: "text", text: block });
+      return true;
+    };
+
+    /**
+     * Persists one durable learning, deduped on `text + origin` (plan D7): the
+     * same statement twice yields exactly one record. Rollback is
+     * `core_memory forget id=<id>` (the op already exists).
+     */
+    const storeLearning = async (
+      agentName: string,
+      text: string,
+      origin: "prompt" | "compaction",
+    ): Promise<void> => {
+      if (!engine) return;
+      const existing = await recallTexts(agentName, 100, "self");
+      if (existing !== null && existing.includes(text)) return;
+      const stored = await engine.invoke(agentName, {
+        op: "store",
+        text,
+        meta: { origin, dedupeKey: `${text}\n${origin}` },
+      });
+      const id = (stored as { id?: unknown } | null)?.id;
+      debugLog(
+        `learn: stored id=${typeof id === "string" ? id : "?"} origin=${origin} ` +
+          `agent=${agentName} chars=${text.length}`,
+      );
+    };
+
+    /** A1 — `context`: automatic injection (read side), opt-in gated. */
+    const onContext = async (event: SessionHookEvent): Promise<void> => {
+      try {
+        const sessionID = event?.sessionID;
+        if (typeof sessionID !== "string" || !sessionID) return;
+        const agentName = await resolveSessionAgent(ctx, sessionID);
+        if (!agentName) return;
+        if (!isOptedIn(agentName)) return; // gate BEFORE the recall
+        const texts = await recallTexts(agentName, 5);
+        if (texts === null) return;
+        const block = composeContextBlock(texts, agentName);
+        if (injectBlock(event, block)) {
+          debugLog(
+            `inject: session=${sessionID} agent=${agentName} chars=${block.length}`,
+          );
+        }
+      } catch (error) {
+        console.error(`${LOG_TAG} context hook failed:`, error);
+      }
+    };
+
+    /** A2 — `prompt`: automatic learning (write side), READ-ONLY over the event. */
+    const onPrompt = async (event: SessionHookEvent): Promise<void> => {
+      try {
+        const sessionID = event?.sessionID;
+        if (typeof sessionID !== "string" || !sessionID) return;
+        // Fallback for tool calls whose second argument carries no id.
+        activeSessionID = sessionID;
+        const prompt = asRecord(event?.prompt);
+        const text = typeof prompt?.text === "string" ? prompt.text : null;
+        if (!engine) return;
+        const agentName = await resolveSessionAgent(ctx, sessionID);
+        if (!agentName || !isOptedIn(agentName)) return;
+        if (text === null) return;
+        for (const learning of extractLearnings(text)) {
+          await storeLearning(agentName, learning, "prompt");
+        }
+      } catch (error) {
+        // The hook must never break prompt admission.
+        console.error(`${LOG_TAG} prompt hook failed:`, error);
+      }
+    };
+
+    /** A3 — `compaction`: carry the block + learn from the discarded messages. */
+    const onCompaction = async (event: SessionHookEvent): Promise<void> => {
+      try {
+        const sessionID = event?.sessionID;
+        if (typeof sessionID !== "string" || !sessionID) return;
+        const agentName = await resolveSessionAgent(ctx, sessionID);
+        if (!agentName) return;
+        if (!isOptedIn(agentName)) return;
+        const texts = await recallTexts(agentName, 5);
+        if (texts !== null) {
+          const block = composeContextBlock(texts, agentName);
+          if (injectBlock(event, block)) {
+            debugLog(
+              `compaction hook: carried agent=${agentName} chars=${block.length}`,
+            );
+          }
+        }
+        const discarded = new Set(messageTexts(event?.messages));
+        for (const messageText of discarded) {
+          for (const learning of extractLearnings(messageText)) {
+            await storeLearning(agentName, learning, "compaction");
+          }
+        }
+        // `event.result` is NEVER written: the host keeps its summary.
+      } catch (error) {
+        console.error(`${LOG_TAG} compaction hook failed:`, error);
+      }
+    };
+
+    // The three hooks share one defensive envelope: `typeof hook === "function"`
+    // inside `try/catch`, each `Registration` disposed by the returned disposer.
+    const hookHandlers: Array<{
+      name: SessionHookName;
+      handler: (event: SessionHookEvent) => Promise<void>;
+    }> = [
+      { name: "context", handler: onContext },
+      { name: "prompt", handler: onPrompt },
+      { name: "compaction", handler: onCompaction },
+    ];
+    const hook = ctx.session?.hook;
+    if (typeof hook === "function") {
+      for (const entry of hookHandlers) {
+        try {
+          registrations.push(
+            await hook.call(ctx.session, entry.name, entry.handler),
+          );
+        } catch (error) {
+          console.error(
+            `${LOG_TAG} ${entry.name} hook registration failed:`,
+            error,
+          );
+        }
+      }
+    } else {
+      console.error(
+        `${LOG_TAG} ctx.session.hook is unavailable; the automatic-layer hooks were not registered.`,
+      );
     }
 
     return () => {
-      void Promise.resolve(toolRegistration?.dispose?.()).catch(() => {});
-      void Promise.resolve(hookRegistration?.dispose?.()).catch(() => {});
+      for (const registration of registrations) {
+        void Promise.resolve(registration.dispose?.()).catch(() => {});
+      }
     };
   },
 };

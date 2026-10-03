@@ -11,6 +11,45 @@ Newest on top.
 
 ### Added
 
+- **core-brain gains the real retrieval engine — real semantic embedder, hybrid
+  BM25+vector fusion by RRF, a stamped index and an optional reranker**
+  (`global/opencode/plugins/core-brain/engine/`: `embedder.ts`, `fts.ts`,
+  `fusion.ts`, `reranker.ts`, plus the plugin wiring; spec
+  `docs/specs/fatia1-engine-plan.md`; USER, 2026-10-03): the retrieval path is
+  no longer the `hash-ngram-v1` stub — the active embedder is the real
+  sentence-transformer **`Xenova/bge-small-en-v1.5`** (`dim 384`, pooling
+  **`cls`**, `dtype fp32`, loaded through `@huggingface/transformers@4.3.0` from
+  a runtime provisioned outside the plugin tree). `recall` with a query is
+  **hybrid**: a **BM25** leg (`k1 = 1.2`, `b = 0.75`, tokenizer v4) and a
+  **vector** leg (cosine) fused by **Reciprocal Rank Fusion** (`k = 60`), with
+  two core-brain refinements the PLUR original does not have — a vector-leg
+  admission floor **`MIN_VECTOR_SIMILARITY = 0.05`** and a deterministic cosine
+  tie-break (absent-from-vector leg is worst, then `id` ascending); `mode`
+  (`hybrid` | `hybrid-degraded` | `bm25-only`), `reranked` and per-hit raw
+  `legs` are reported. An optional cross-encoder reranker
+  (`Xenova/ms-marco-MiniLM-L-6-v2`, **off by default**,
+  `CORE_BRAIN_RERANKER=ms-marco`) is wired; a reranker failure degrades to the
+  RRF order, never reorders silently. Every `vectors/<ns>/index.json` is
+  **stamped** (`{ embedder, dim, revision, vectors }`, `revision` = the
+  model-artifact fingerprint) and a namespace built by a different engine is
+  **refused** with `STALE_INDEX` naming `reindex`; `core_admin reindex` rebuilds
+  it and is idempotent. The engine seam became **asynchronous** — `invoke`
+  returns a `Promise`, awaited by `store`/`recall`. **License:** the four ported
+  `engine/` files derive from `@plur-ai/core@0.21.0` (Apache-2.0) alongside
+  core-brain's own MIT files, so the package is now declared **`(MIT AND
+  Apache-2.0)`** (`LICENSE`, `LICENSE-APACHE`, `NOTICE`). **Non-destructive:**
+  the isolation matrix stays **13/13 PASS, exit 0**, the **7/7** offline search
+  probes PASS, and the MCP check passes **19/19 Layer-A + 27/27 Layer-B**;
+  `tsc` on the plugin sources reports **0 errors**; the `hash-ngram-v1` double
+  is kept but only ever selected **explicitly** (offline fixture / v1 indexes),
+  never chosen implicitly by the real path. **What did NOT land (pending, not
+  claimed):** the engine runtime (`@huggingface/transformers@4.3.0` in
+  `~/.core-brain/runtime`) is **not provisioned** in this environment, so the
+  **E1** live run with the real model, the **AC8** offline verification and the
+  measured **E8** runtime/weights cost remain **PENDENTE** (the README E8 table
+  marks the two runtime lines `PENDENTE — not provisioned`; `install-runtime.sh`
+  is the USER-run step). Docs: the plugin's `README.md` (Engine section) and
+  `INSTALACAO.md` (§2).
 - **The `core-brain` MCP server — the administration surface, zero runtime dependencies**
   (`global/opencode/plugins/core-brain/mcp/server.js`, `mcp/jsonrpc.js`,
   `mcp/check.sh`, `mcp/test/transport.selftest.mjs`; spec

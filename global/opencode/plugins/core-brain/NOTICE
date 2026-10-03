@@ -1,0 +1,33 @@
+core-brain
+Copyright (c) 2026 open-eletric-sheep-count
+
+This product includes software developed at Plur AI (https://plur.ai).
+
+Portions of this product are derived from @plur-ai/core version 0.21.0
+(origin: https://github.com/plur-ai/plur, package directory: packages/core),
+Copyright 2026 PLUR (plur.ai), licensed under the Apache License, Version 2.0
+(see LICENSE-APACHE in this directory).
+
+The following files contain code ported from @plur-ai/core@0.21.0 and, in each
+case, modified for core-brain:
+
+  engine/fts.ts        (modified: adapted for core-brain)
+  engine/fusion.ts     (modified: adapted for core-brain)
+  engine/embedder.ts   (modified: adapted for core-brain)
+  engine/reranker.ts   (modified: adapted for core-brain)
+
+Filename mapping (ported file -> source in @plur-ai/core@0.21.0 dist):
+  engine/fts.ts        -> dist/chunk-TMRCNWX6.js lines 1-179
+  engine/fusion.ts     -> dist/index.js lines 3077-3096
+  engine/embedder.ts   -> dist/chunk-VNFYIPQL.js lines 5-50, 66-76, 292-346
+  engine/reranker.ts   -> dist/index.js lines 2919-2978, 2980-2982,
+                          3024-3036, 3150-3175
+
+Each ported file carries a header that states the port and its provenance. The
+exact list of copied symbols is recorded there and in
+docs/specs/fatia1-engine-plan.md (section 3, decision D2).
+
+Licensing: core-brain is distributed under the MIT License (see LICENSE). The
+four files listed above contain portions under the Apache License, Version 2.0
+(see LICENSE-APACHE). The package as a whole is therefore declared as
+"(MIT AND Apache-2.0)" in package.json.

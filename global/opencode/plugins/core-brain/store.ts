@@ -19,33 +19,61 @@ import type {
   DoctorResult,
   Engine,
   EngineOptions,
+  Episode,
+  EpisodeResult,
   FeedbackResult,
   ForgetResult,
   MemoryRecord,
+  PromoteResult,
   ReceiptResult,
   RecallHit,
+  RecallMode,
   RecallResult,
   StatusResult,
   StoreResult,
+  TimelineResult,
   WhoResult,
 } from "./types.ts";
+
+import { createBgeSmallEmbedder, type Embedder } from "./engine/embedder.ts";
+import { createMsMarcoReranker, resolveRerankerName, type Reranker } from "./engine/reranker.ts";
+import { searchHybrid, type SearchRecord } from "./engine/search.ts";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-export const EMBEDDER_ID = "hash-ngram-v1";
-export const EMBEDDING_DIM = 256;
+/**
+ * Active default model id + width (plan file 1.7, D2/C2): the real
+ * `Xenova/bge-small-en-v1.5`, pooling `cls`, fp32, 384 dims. The engine's
+ * ACTIVE embedder is resolved per engine (see `createEngine`); these constants
+ * name the default and are NOT the v1 stub's id/dim.
+ */
+export const EMBEDDER_ID = "Xenova/bge-small-en-v1.5";
+export const EMBEDDING_DIM = 384;
+
+/** The deterministic v1 double (`hash-ngram-v1`, 256 dims) — never implicit (D1). */
+export const FALLBACK_EMBEDDER_ID = "hash-ngram-v1";
+export const FALLBACK_EMBEDDING_DIM = 256;
+
 const DEFAULT_RECALL_LIMIT = 5;
+
+/**
+ * Default `timeline` result cap when the caller passes no positive integer
+ * limit. Not pinned by test/CONTRACT.md §10.2 (implementation choice); 50 keeps
+ * a diary read useful without returning an unbounded history.
+ */
+const DEFAULT_TIMELINE_LIMIT = 50;
 
 /** Cosine at/above which a `forget` query match is retired (spec §6). */
 const FORGET_MATCH_THRESHOLD = 0.35;
 
 /**
  * Default policy for an agent absent from `config.json`, and for a configured
- * row that omits `private` / `hasGlobalAccess` (spec §2/A2, §3/B1).
+ * row that omits `private` / `hasGlobalAccess` / `inject` (spec §2/A2, §3/B1;
+ * Fatia 2 CONTRACT §9.1 for `inject`).
  */
-const DEFAULT_POLICY = { private: false, hasGlobalAccess: true } as const;
+const DEFAULT_POLICY = { private: false, hasGlobalAccess: true, inject: false } as const;
 
 /** Directory of this module, used as the last config fallback (dev seed). */
 const PLUGIN_DIR = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +92,21 @@ export class InvalidConfigurationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "InvalidConfigurationError";
+  }
+}
+
+/**
+ * Thrown by `recall` when a namespace holds records but its index is not the
+ * one the active engine would build (D5/AC6, CONTRACT §8.4): the index is
+ * absent, or its `embedder`/`dim`/`revision` differ. Answering it silently is
+ * the v1 defect this refuses; the message names the namespace and `reindex`.
+ */
+export class StaleIndexError extends Error {
+  code: "STALE_INDEX" = "STALE_INDEX";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "StaleIndexError";
   }
 }
 
@@ -92,14 +135,14 @@ function fnv1a(value: string): number {
  * Deterministic, offline, dependency-free — a declared v1 stub (§5).
  */
 export function embed(text: string): number[] {
-  const vector: number[] = new Array(EMBEDDING_DIM).fill(0);
+  const vector: number[] = new Array(FALLBACK_EMBEDDING_DIM).fill(0);
   const collapsed = String(text).toLowerCase().replace(/\s+/g, " ").trim();
   const padded = ` ${collapsed} `;
 
   for (let n = 2; n <= 4; n += 1) {
     for (let i = 0; i + n <= padded.length; i += 1) {
       const gram = padded.slice(i, i + n);
-      const bucket = fnv1a(`i:${gram}`) % EMBEDDING_DIM;
+      const bucket = fnv1a(`i:${gram}`) % FALLBACK_EMBEDDING_DIM;
       const sign = (fnv1a(`s:${gram}`) & 1) === 0 ? 1 : -1;
       vector[bucket] += sign;
     }
@@ -150,6 +193,16 @@ function recordsFileFor(root: string, ns: Namespace): string {
     : join(root, "agents", ns.name, "memories.json");
 }
 
+/**
+ * §10.4: `global/episodes.json` | `agents/<name>/episodes.json` — the episodic
+ * diary lives beside memories, in the SAME namespace model.
+ */
+function episodesFileFor(root: string, ns: Namespace): string {
+  return ns.kind === "global"
+    ? join(root, "global", "episodes.json")
+    : join(root, "agents", ns.name, "episodes.json");
+}
+
 /** §4: `vectors/global/index.json` | `vectors/<name>/index.json`. */
 function vectorsFileFor(root: string, ns: Namespace): string {
   return join(root, "vectors", ns.kind === "global" ? "global" : ns.name, "index.json");
@@ -171,6 +224,41 @@ function readRecords(file: string): MemoryRecord[] {
   return Array.isArray(parsed) ? (parsed as MemoryRecord[]) : [];
 }
 
+/** `episodes.json` (whatever namespace) -> its episode array; `[]` when absent. */
+function readEpisodes(file: string): Episode[] {
+  const parsed = readJsonOrNull(file);
+  return Array.isArray(parsed) ? (parsed as Episode[]) : [];
+}
+
+/**
+ * A fresh episode id: `EP-<epoch ms>-<4 chars>` (CONTRACT §10.1/§10.2 — the
+ * readable, sortable PLUR shape). The 4-char suffix is `[A-Za-z0-9]` (hex taken
+ * from the uuid), so the id satisfies `/^EP-\d+-[A-Za-z0-9]{4}$/`.
+ */
+function newEpisodeId(): string {
+  const suffix = randomUUID().replace(/-/g, "").slice(0, 4);
+  return `EP-${Date.now()}-${suffix}`;
+}
+
+/**
+ * Builds an imported episode preserving the source fields VERBATIM (§10.5 rule
+ * 4): only the known `Episode` fields are copied, and only when present, so the
+ * importer invents nothing — an ownerless entry keeps no `agent` key. `id` is
+ * validated by the caller before this is called.
+ */
+function importedEpisodeFrom(row: Record<string, unknown>): Episode {
+  const episode: Partial<Episode> = {};
+  if (typeof row.id === "string") episode.id = row.id;
+  if (typeof row.at === "string") episode.at = row.at;
+  if (typeof row.summary === "string") episode.summary = row.summary;
+  if (typeof row.agent === "string" && row.agent !== "") episode.agent = row.agent;
+  if (Array.isArray(row.tags)) episode.tags = row.tags as string[];
+  if (typeof row.sessionId === "string") episode.sessionId = row.sessionId;
+  if (typeof row.channel === "string") episode.channel = row.channel;
+  if (Array.isArray(row.engramIds)) episode.engramIds = row.engramIds as string[];
+  return episode as Episode;
+}
+
 function writeFileAtomic(file: string, data: unknown): void {
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
@@ -178,17 +266,83 @@ function writeFileAtomic(file: string, data: unknown): void {
   renameSync(tmp, file);
 }
 
-/** Reads `{ id: number[] }`; drops the index when the embedder version changed. */
-function readVectors(file: string): Record<string, number[]> {
-  const parsed = readJsonOrNull(file) as { embedder?: unknown; vectors?: unknown } | null;
-  if (!parsed || typeof parsed !== "object") return {};
-  if (parsed.embedder !== EMBEDDER_ID) return {};
-  const vectors = parsed.vectors;
-  return vectors && typeof vectors === "object" ? (vectors as Record<string, number[]>) : {};
+/** The index header written by `writeVectors` (D5). */
+interface IndexHeader {
+  embedder: string;
+  dim: number;
+  revision: string;
 }
 
-function writeVectors(file: string, vectors: Record<string, number[]>): void {
-  writeFileAtomic(file, { embedder: EMBEDDER_ID, dim: EMBEDDING_DIM, vectors });
+/** The minimum the active embedder must expose for index read/write. */
+interface IndexEmbedder {
+  id: string;
+  dim: number;
+  revision: string;
+}
+
+/** Reads the raw index file: its header (if well-formed) and its vectors. */
+function readIndexFile(file: string): { header: IndexHeader | null; vectors: Record<string, number[]> } {
+  const parsed = readJsonOrNull(file) as
+    | { embedder?: unknown; dim?: unknown; revision?: unknown; vectors?: unknown }
+    | null;
+  if (!parsed || typeof parsed !== "object") return { header: null, vectors: {} };
+  const vectors =
+    parsed.vectors && typeof parsed.vectors === "object"
+      ? (parsed.vectors as Record<string, number[]>)
+      : {};
+  const header =
+    typeof parsed.embedder === "string" &&
+    typeof parsed.dim === "number" &&
+    typeof parsed.revision === "string"
+      ? { embedder: parsed.embedder, dim: parsed.dim, revision: parsed.revision }
+      : null;
+  return { header, vectors };
+}
+
+/**
+ * Reads a namespace's persisted vectors for the ACTIVE embedder: an index built
+ * by a different `embedder`/`dim`/`revision` is stale and yields `{}` (recall
+ * refuses it with `STALE_INDEX` separately, D5/AC6).
+ */
+function readVectors(file: string, active: IndexEmbedder): Record<string, number[]> {
+  const { header, vectors } = readIndexFile(file);
+  if (!header) return {};
+  if (header.embedder !== active.id || header.dim !== active.dim || header.revision !== active.revision) {
+    return {};
+  }
+  return vectors;
+}
+
+/** Writes the D5-stamped index: `{ embedder, dim, revision, vectors }`. */
+function writeVectors(file: string, vectors: Record<string, number[]>, active: IndexEmbedder): void {
+  writeFileAtomic(file, {
+    embedder: active.id,
+    dim: active.dim,
+    revision: active.revision,
+    vectors,
+  });
+}
+
+/** true when a namespace's index header matches the active engine exactly (D5). */
+function indexMatches(header: IndexHeader | null, active: IndexEmbedder): boolean {
+  return (
+    header !== null &&
+    header.embedder === active.id &&
+    header.dim === active.dim &&
+    header.revision === active.revision
+  );
+}
+
+/** The `STALE_INDEX` message: names the namespace and the `reindex` fix (AC6). */
+function staleIndexMessage(label: string, header: IndexHeader | null, active: IndexEmbedder): string {
+  const state = header
+    ? `was built by embedder '${header.embedder}' dim ${header.dim} revision '${header.revision}'`
+    : `is missing (the namespace has records but no index was written)`;
+  return (
+    `core_memory recall: namespace '${label}' index ${state}, but the active engine is ` +
+    `'${active.id}' dim ${active.dim} revision '${active.revision}' — ` +
+    `run core_admin { action: "reindex", args: { ns: "${label}" } } to rebuild it`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -224,8 +378,8 @@ const AGENT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**
  * Loads + validates `agents[]` at init, BEFORE any read/write (§6.4):
- * an absent `hasGlobalAccess`/`private` key takes the default (`true` / `false`);
- * a present non-boolean still throws; any resolved
+ * an absent `hasGlobalAccess`/`private`/`inject` key takes the default
+ * (`true` / `false` / `false`); a present non-boolean still throws; any resolved
  * `private:false && hasGlobalAccess:false` row aborts the engine.
  */
 function loadPolicies(configPath: string | null): AgentPolicy[] {
@@ -267,7 +421,12 @@ function loadPolicies(configPath: string | null): AgentPolicy[] {
         `core-brain config '${configPath}': every 'agents' entry must be an object`,
       );
     }
-    const row = entry as { name?: unknown; hasGlobalAccess?: unknown; private?: unknown };
+    const row = entry as {
+      name?: unknown;
+      hasGlobalAccess?: unknown;
+      private?: unknown;
+      inject?: unknown;
+    };
     const name = row.name;
     if (typeof name !== "string" || name.trim() === "") {
       throw new InvalidConfigurationError(
@@ -292,6 +451,13 @@ function loadPolicies(configPath: string | null): AgentPolicy[] {
         `core-brain config '${configPath}': agent '${name}' needs a boolean 'private'`,
       );
     }
+    // Fatia 2 (CONTRACT §9.1): the automatic-layer opt-in is a separate key.
+    const inject = row.inject === undefined ? DEFAULT_POLICY.inject : row.inject;
+    if (inject !== true && inject !== false) {
+      throw new InvalidConfigurationError(
+        `core-brain config '${configPath}': agent '${name}' needs a boolean 'inject'`,
+      );
+    }
     if (seen.has(name)) {
       throw new InvalidConfigurationError(
         `core-brain config '${configPath}': agent '${name}' is declared more than once`,
@@ -304,7 +470,7 @@ function loadPolicies(configPath: string | null): AgentPolicy[] {
       );
     }
     seen.add(name);
-    policies.push({ name, hasGlobalAccess, private: isPrivate });
+    policies.push({ name, hasGlobalAccess, private: isPrivate, inject });
   }
   return policies;
 }
@@ -317,19 +483,14 @@ type StoreRequest = Extract<CoreMemoryRequest, { op: "store" }>;
 type RecallRequest = Extract<CoreMemoryRequest, { op: "recall" }>;
 type ForgetRequest = Extract<CoreMemoryRequest, { op: "forget" }>;
 type FeedbackRequest = Extract<CoreMemoryRequest, { op: "feedback" }>;
+type EpisodeRequest = Extract<CoreMemoryRequest, { op: "episode" }>;
+type TimelineRequest = Extract<CoreMemoryRequest, { op: "timeline" }>;
+type PromoteRequest = Extract<CoreMemoryRequest, { op: "promote" }>;
 
 /** One namespace loaded during a recall scan, with its records in memory. */
 interface ScannedNamespace {
   ns: Namespace;
   records: MemoryRecord[];
-}
-
-/** One recall candidate before ranking. */
-interface RecallCandidate {
-  label: string;
-  record: MemoryRecord;
-  score: number;
-  updatedAt: number;
 }
 
 /**
@@ -444,9 +605,20 @@ export function createEngine(options: EngineOptions = {}): Engine {
   for (const policy of policies) policyByName.set(policy.name, policy);
   const lookup = (name: string): AgentPolicy | undefined => policyByName.get(name);
 
+  // D4 seams. `options.embedder` wins; otherwise the real bge-small embedder
+  // (fail-closed when the runtime is absent — never a silent hash-ngram
+  // fallback, D1). The reranker is OFF unless `options.reranker` is injected or
+  // `CORE_BRAIN_RERANKER=ms-marco` opts in (C1/D7).
+  const active: Embedder = options.embedder ?? createBgeSmallEmbedder();
+  const reranker: Reranker | undefined =
+    options.reranker ?? (resolveRerankerName() === "off" ? undefined : createMsMarcoReranker());
+
   /**
    * Resolves an agent's policy. A configured agent keeps its policy; an agent
    * absent from `config.json` gets the synthesized default (never throws).
+   * Exposed to the plugin as `Engine.resolvePolicy` (Fatia 2, CONTRACT §9.1):
+   * the automatic layer reads the `inject` opt-in from here, never from the
+   * caller.
    */
   function requirePolicy(agentName: string): AgentPolicy {
     return (
@@ -454,6 +626,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
         name: agentName,
         private: DEFAULT_POLICY.private,
         hasGlobalAccess: DEFAULT_POLICY.hasGlobalAccess,
+        inject: DEFAULT_POLICY.inject,
       }
     );
   }
@@ -468,7 +641,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
     };
   }
 
-  function storeOp(policy: AgentPolicy, request: StoreRequest): StoreResult {
+  async function storeOp(policy: AgentPolicy, request: StoreRequest): Promise<StoreResult> {
     if (typeof request.text !== "string" || request.text.trim() === "") {
       throw new Error("core_memory store: 'text' must be a non-empty string");
     }
@@ -487,20 +660,24 @@ export function createEngine(options: EngineOptions = {}): Engine {
       retrievals: 0,
     };
 
+    // Embed BEFORE writing: a failing embedder must not leave a record without
+    // a vector (fail-closed, D1) — the store is atomic on success.
+    const vector = await active.embed(record.text);
+
     const recordsFile = recordsFileFor(root, ns);
     const records = readRecords(recordsFile);
     records.push(record);
     writeFileAtomic(recordsFile, records);
 
     const vectorsFile = vectorsFileFor(root, ns);
-    const vectors = readVectors(vectorsFile);
-    vectors[record.id] = embed(record.text);
-    writeVectors(vectorsFile, vectors);
+    const vectors = readVectors(vectorsFile, active);
+    vectors[record.id] = vector;
+    writeVectors(vectorsFile, vectors, active);
 
     return { ok: true, id: record.id, scope: record.scope, ns: nsLabel(ns) };
   }
 
-  function recallOp(policy: AgentPolicy, request: RecallRequest): RecallResult {
+  async function recallOp(policy: AgentPolicy, request: RecallRequest): Promise<RecallResult> {
     const requestedLimit = request.limit;
     const limit =
       typeof requestedLimit === "number" && Number.isInteger(requestedLimit) && requestedLimit > 0
@@ -511,52 +688,128 @@ export function createEngine(options: EngineOptions = {}): Engine {
     const requested = authorizeRead(policy, from, policies, lookup);
     const scanned = requested.map(nsLabel);
 
-    const query = typeof request.query === "string" && request.query.trim() !== "" ? request.query : null;
-    const queryVector = query === null ? null : embed(query);
+    const query =
+      typeof request.query === "string" && request.query.trim() !== "" ? request.query : null;
 
+    // The corpus of BOTH legs is exactly the readable namespaces' active records
+    // (D6/AC5): the hybrid path never widens the read set.
     const buckets = new Map<string, ScannedNamespace>();
-    const candidates: RecallCandidate[] = [];
+    const byId = new Map<string, { label: string; record: MemoryRecord }>();
+    const corpus: (MemoryRecord & { vector?: number[] })[] = [];
 
     for (const ns of requested) {
       const label = nsLabel(ns);
       const records = readRecords(recordsFileFor(root, ns));
-      const vectors = readVectors(vectorsFileFor(root, ns));
+      const { header, vectors } = readIndexFile(vectorsFileFor(root, ns));
       buckets.set(label, { ns, records });
+
+      // D5/AC6: records + an index that is not the active engine's = stale.
+      if (records.length > 0 && !indexMatches(header, active)) {
+        throw new StaleIndexError(staleIndexMessage(label, header, active));
+      }
+
       for (const record of records) {
         if (typeof record.retiredAt === "string") continue;
         const vector = vectors[record.id];
-        const score = queryVector !== null && Array.isArray(vector) ? cosine(queryVector, vector) : 0;
-        const parsedUpdatedAt = Date.parse(String(record.updatedAt));
-        candidates.push({
-          label,
-          record,
-          score,
-          updatedAt: Number.isFinite(parsedUpdatedAt) ? parsedUpdatedAt : 0,
-        });
+        corpus.push({ ...record, vector: Array.isArray(vector) ? vector : undefined });
+        byId.set(String(record.id), { label, record });
       }
     }
 
-    candidates.sort(
-      (a, b) =>
-        b.score - a.score ||
-        (b.record.feedback?.useful ?? 0) - (a.record.feedback?.useful ?? 0) ||
-        b.record.retrievals - a.record.retrievals ||
-        b.updatedAt - a.updatedAt,
-    );
-    const top = candidates.slice(0, limit);
+    let ranked: {
+      id: string;
+      score: number;
+      rrf: number;
+      legs: { bm25: number | null; vector: number | null };
+    }[];
+    let mode: RecallMode;
+    let reranked: number;
+
+    if (query === null) {
+      // Query-less recall keeps the v1 behaviour (D6): no legs, ranked by the
+      // existing tie-break. CONTRACT §8.3 forbids labelling it `bm25-only`, so
+      // it reports `hybrid` with zero legs and `reranked: 0`.
+      const candidates = [...byId.values()].map((entry) => {
+        const parsedUpdatedAt = Date.parse(String(entry.record.updatedAt));
+        return { entry, updatedAt: Number.isFinite(parsedUpdatedAt) ? parsedUpdatedAt : 0 };
+      });
+      candidates.sort(
+        (a, b) =>
+          (b.entry.record.feedback?.useful ?? 0) - (a.entry.record.feedback?.useful ?? 0) ||
+          (Number(b.entry.record.retrievals) || 0) - (Number(a.entry.record.retrievals) || 0) ||
+          b.updatedAt - a.updatedAt,
+      );
+      ranked = candidates.slice(0, limit).map(({ entry }) => ({
+        id: String(entry.record.id),
+        score: 0,
+        rrf: 0,
+        legs: { bm25: null, vector: null },
+      }));
+      mode = "hybrid";
+      reranked = 0;
+    } else {
+      // AC5 (store-side): `feedback` is a STORE ranking signal — the engine
+      // stays pure. Two records with the same text score the same in both legs,
+      // yet a leg still gives the first one a better *rank* (position), so the
+      // fused `rrf` differs; a post-hoc tie-break alone can never reach them.
+      // Feeding the legs a feedback-ordered corpus lets the signal decide that
+      // leg-position tie, and the final order below keeps `rrf` first.
+      const legCorpus = corpus
+        .slice()
+        .sort(
+          (a, b) =>
+            (Number(b.feedback?.useful) || 0) - (Number(a.feedback?.useful) || 0),
+        );
+
+      // R9: `searchHybrid` is the ONE ranking implementation (D6/D7).
+      const result = await searchHybrid(legCorpus, query, limit, { embedder: active, reranker });
+
+      // With the reranker ON, `searchHybrid` already returns the hits in the
+      // reranker's order — that order is the authority and must be preserved
+      // exactly (no re-ordering here). The RRF-based final order below applies
+      // only when the reranker is OFF (`reranked === 0`, D6/D7).
+      // Final order: `rrf` desc; on an `rrf` tie the feedback signal wins, then
+      // the raw cosine desc, then `id` asc (the engine's own tie-break).
+      const ordered =
+        result.reranked > 0
+          ? result.hits
+          : result.hits.slice().sort((a, b) => {
+              if (b.rrf !== a.rrf) return b.rrf - a.rrf;
+              const feedbackA = Number(a.record.feedback?.useful) || 0;
+              const feedbackB = Number(b.record.feedback?.useful) || 0;
+              if (feedbackA !== feedbackB) return feedbackB - feedbackA;
+              const cosineA = a.legs.vector === null ? Number.NEGATIVE_INFINITY : a.legs.vector;
+              const cosineB = b.legs.vector === null ? Number.NEGATIVE_INFINITY : b.legs.vector;
+              if (cosineA !== cosineB) return cosineB - cosineA;
+              return a.record.id < b.record.id ? -1 : a.record.id > b.record.id ? 1 : 0;
+            });
+
+      ranked = ordered.map((hit) => ({
+        id: String(hit.record.id),
+        score: hit.score,
+        rrf: hit.rrf,
+        legs: hit.legs,
+      }));
+      mode = result.mode;
+      reranked = result.reranked;
+    }
 
     const dirty = new Set<string>();
     const results: RecallHit[] = [];
-    for (const hit of top) {
-      hit.record.retrievals = (Number(hit.record.retrievals) || 0) + 1;
-      dirty.add(hit.label);
+    for (const hit of ranked) {
+      const found = byId.get(hit.id);
+      if (!found) continue;
+      found.record.retrievals = (Number(found.record.retrievals) || 0) + 1;
+      dirty.add(found.label);
       results.push({
-        id: hit.record.id,
-        text: hit.record.text,
-        agent: typeof hit.record.agent === "string" ? hit.record.agent : hit.label,
-        scope: hit.record.scope === "global" ? "global" : "agent",
+        id: found.record.id,
+        text: found.record.text,
+        agent: typeof found.record.agent === "string" ? found.record.agent : found.label,
+        scope: found.record.scope === "global" ? "global" : "agent",
         score: Number(hit.score.toFixed(6)),
-        retrievals: hit.record.retrievals,
+        rrf: Number(hit.rrf.toFixed(6)),
+        legs: hit.legs,
+        retrievals: found.record.retrievals,
       });
     }
 
@@ -565,10 +818,10 @@ export function createEngine(options: EngineOptions = {}): Engine {
       if (bucket) writeFileAtomic(recordsFileFor(root, bucket.ns), bucket.records);
     }
 
-    return { results, scanned };
+    return { results, scanned, mode, reranked };
   }
 
-  function forgetOp(policy: AgentPolicy, request: ForgetRequest): ForgetResult {
+  async function forgetOp(policy: AgentPolicy, request: ForgetRequest): Promise<ForgetResult> {
     const target: string = typeof request.target === "string" ? request.target : "self";
     const ns = authorizeWrite(policy, target, lookup);
 
@@ -580,8 +833,8 @@ export function createEngine(options: EngineOptions = {}): Engine {
       const found = records.find((record) => record.id === request.id);
       matches = found ? [found] : [];
     } else if (typeof request.query === "string" && request.query.trim() !== "") {
-      const vectors = readVectors(vectorsFileFor(root, ns));
-      const queryVector = embed(request.query);
+      const vectors = readVectors(vectorsFileFor(root, ns), active);
+      const queryVector = await active.embed(request.query);
       matches = records.filter((record) => {
         if (typeof record.retiredAt === "string") return false;
         const vector = vectors[record.id];
@@ -654,6 +907,174 @@ export function createEngine(options: EngineOptions = {}): Engine {
   }
 
   /**
+   * `episode` (§10.2/§10.3, T2): append one episodic record to the caller's own
+   * space (default) or to `global` when it has global access. The owner
+   * (`agent`) is ALWAYS the caller's SESSION identity — a request field named
+   * `agent` is not an input and is ignored (the forged owner never changes the
+   * diary). `agent:<X>` is not a valid episode target (§10.2).
+   */
+  async function episodeOp(policy: AgentPolicy, request: EpisodeRequest): Promise<EpisodeResult> {
+    if (typeof request.summary !== "string" || request.summary.trim() === "") {
+      throw new Error("core_memory episode: 'summary' must be a non-empty string");
+    }
+    const target: string = typeof request.target === "string" ? request.target : "self";
+    if (target !== "self" && target !== "global") {
+      throw new Error(
+        `core_memory episode: 'target' must be 'self' or 'global' (got '${target}')`,
+      );
+    }
+    const ns = authorizeWrite(policy, target, lookup);
+
+    const episode: Episode = {
+      id: newEpisodeId(),
+      at: new Date().toISOString(),
+      agent: policy.name,
+      summary: request.summary,
+    };
+    if (Array.isArray(request.tags)) episode.tags = request.tags.slice();
+    if (typeof request.sessionId === "string" && request.sessionId !== "") {
+      episode.sessionId = request.sessionId;
+    }
+
+    const episodesFile = episodesFileFor(root, ns);
+    const episodes = readEpisodes(episodesFile);
+    episodes.push(episode);
+    writeFileAtomic(episodesFile, episodes);
+
+    return { ok: true, id: episode.id, ns: nsLabel(ns) };
+  }
+
+  /**
+   * `timeline` (§10.2/§10.6, T5): read episodes over the SAME readable union as
+   * a query-less `recall` — the identical `authorizeRead`, no exception. A blank
+   * query returns the diary most-recent-first (`at` desc); a query ranks by the
+   * Fatia 1 hybrid engine (search by meaning, AC-TL4) over exactly the readable
+   * episodes.
+   */
+  async function timelineOp(policy: AgentPolicy, request: TimelineRequest): Promise<TimelineResult> {
+    const from: string | null = typeof request.from === "string" ? request.from : null;
+    const requested = authorizeRead(policy, from, policies, lookup);
+    const scanned = requested.map(nsLabel);
+
+    const limit =
+      typeof request.limit === "number" && Number.isInteger(request.limit) && request.limit > 0
+        ? request.limit
+        : DEFAULT_TIMELINE_LIMIT;
+
+    const sinceMs =
+      typeof request.since === "string" && request.since.trim() !== ""
+        ? Date.parse(request.since)
+        : null;
+    const untilMs =
+      typeof request.until === "string" && request.until.trim() !== ""
+        ? Date.parse(request.until)
+        : null;
+    const tagFilter = Array.isArray(request.tags)
+      ? request.tags.filter((tag): tag is string => typeof tag === "string" && tag !== "")
+      : null;
+
+    // The corpus is exactly the readable namespaces' episodes (AC5 §10.6): the
+    // read path never widens the read set — same rule as recall.
+    const episodes: Episode[] = [];
+    for (const ns of requested) {
+      for (const episode of readEpisodes(episodesFileFor(root, ns))) {
+        if (!episode || typeof episode !== "object") continue;
+        if (sinceMs !== null) {
+          const at = Date.parse(String(episode.at));
+          if (!Number.isFinite(at) || at < sinceMs) continue;
+        }
+        if (untilMs !== null) {
+          const at = Date.parse(String(episode.at));
+          if (!Number.isFinite(at) || at > untilMs) continue;
+        }
+        if (tagFilter !== null && tagFilter.length > 0) {
+          const tags = Array.isArray(episode.tags) ? episode.tags : [];
+          if (!tagFilter.some((tag) => tags.includes(tag))) continue;
+        }
+        episodes.push(episode);
+      }
+    }
+
+    const query =
+      typeof request.query === "string" && request.query.trim() !== "" ? request.query : null;
+
+    if (query === null) {
+      // Query-less timeline is most-recent-first (`at` desc), per §10.2.
+      const sorted = episodes
+        .slice()
+        .sort((a, b) => (String(a.at) < String(b.at) ? 1 : String(a.at) > String(b.at) ? -1 : 0));
+      return { results: sorted.slice(0, limit), scanned };
+    }
+
+    // §10.2/§10.7 (AC-TL4): search by meaning with the ONE ranking engine (R9),
+    // exactly as `recall` does. Episodes carry no vector index, so the engine
+    // embeds `recordSearchText` from `summary` (+ `tags` meta) for each one.
+    const corpus: (SearchRecord & { episode: Episode })[] = episodes.map((episode) => ({
+      id: episode.id,
+      text: episode.summary,
+      meta: episode.tags ? { tags: episode.tags } : undefined,
+      episode,
+    }));
+    const result = await searchHybrid(corpus, query, limit, { embedder: active, reranker });
+    return { results: result.hits.map((hit) => hit.record.episode), scanned };
+  }
+
+  /**
+   * `promote` (§10.2/§10.3/§10.5, T2): write a NEW memory in the caller's own
+   * namespace carrying `meta.derivedFrom = <episodeId>`, then append that
+   * memory's id to the episode's `engramIds`. Nothing is copied from the
+   * episode — the caller supplies `text`. The episode must be readable by the
+   * caller (the same read matrix as `feedback`).
+   */
+  async function promoteOp(policy: AgentPolicy, request: PromoteRequest): Promise<PromoteResult> {
+    const episodeId = request.episodeId;
+    if (typeof episodeId !== "string" || episodeId.trim() === "") {
+      throw new Error("core_memory promote: 'episodeId' must be a non-empty string");
+    }
+    if (typeof request.text !== "string" || request.text.trim() === "") {
+      throw new Error("core_memory promote: 'text' must be a non-empty string");
+    }
+
+    // The episode must be READABLE by the caller (§10.6): search the readable
+    // union; a private namespace outside it hides the episode.
+    const readable = authorizeRead(policy, null, policies, lookup);
+    let foundNs: Namespace | null = null;
+    let foundEpisodes: Episode[] | null = null;
+    for (const ns of readable) {
+      const episodes = readEpisodes(episodesFileFor(root, ns));
+      if (episodes.some((episode) => String(episode.id) === episodeId)) {
+        foundNs = ns;
+        foundEpisodes = episodes;
+        break;
+      }
+    }
+    if (!foundNs || !foundEpisodes) {
+      throw new Error(
+        `core_memory promote: agent '${policy.name}' cannot promote episode '${episodeId}': ` +
+          `the episode is not readable by '${policy.name}' (private namespace or unknown id)`,
+      );
+    }
+
+    // The memory follows the write matrix (own space) and carries derivedFrom;
+    // `store` embeds before writing, so a failing embedder leaves no orphan.
+    const meta: Record<string, unknown> = { derivedFrom: episodeId };
+    if (Array.isArray(request.tags) && request.tags.length > 0) meta.tags = request.tags.slice();
+    const stored = await storeOp(policy, { op: "store", text: request.text, target: "self", meta });
+
+    // Append the memory id to the episode's engramIds; every other field stays
+    // exactly as stored (the episode is the record of truth, §10.4).
+    const episode = foundEpisodes.find((candidate) => String(candidate.id) === episodeId);
+    if (!episode) {
+      throw new Error(`core_memory promote: episode '${episodeId}' vanished mid-promote`);
+    }
+    const engramIds = Array.isArray(episode.engramIds) ? episode.engramIds : [];
+    episode.engramIds = engramIds.includes(stored.id) ? engramIds : [...engramIds, stored.id];
+    writeFileAtomic(episodesFileFor(root, foundNs), foundEpisodes);
+
+    return { ok: true, episodeId, memoryId: stored.id };
+  }
+
+  /**
    * Namespaces present on disk: always the shared global space, plus one agent
    * space per directory under `<root>/agents` whose name is filename-safe (§4).
    * A missing or unreadable agents directory yields only the global space — it
@@ -709,8 +1130,8 @@ export function createEngine(options: EngineOptions = {}): Engine {
     return {
       storageRoot: root,
       configPath,
-      embedder: EMBEDDER_ID,
-      dim: EMBEDDING_DIM,
+      embedder: active.id,
+      dim: active.dim,
       namespaces,
       totals: { records: totalRecords, retired: totalRetired, retrievals: totalRetrievals },
     };
@@ -826,7 +1247,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
     return { id, ok: true, detail: `${agents.length} agent row(s) valid` };
   }
 
-  /** `doctor` check 2 — every present index file declares the active embedder + dim. */
+  /** `doctor` check 2 — every present index declares the active embedder + dim + revision. */
   function embedderDimCheck(): DoctorCheck {
     const id = "embedder-dim";
     const problems: string[] = [];
@@ -842,16 +1263,21 @@ export function createEngine(options: EngineOptions = {}): Engine {
         continue;
       }
       if (parsed === null || typeof parsed !== "object") continue; // empty index -> skip
-      const index = parsed as { embedder?: unknown; dim?: unknown };
-      if (index.embedder !== EMBEDDER_ID || index.dim !== EMBEDDING_DIM) {
+      const index = parsed as { embedder?: unknown; dim?: unknown; revision?: unknown };
+      if (
+        index.embedder !== active.id ||
+        index.dim !== active.dim ||
+        index.revision !== active.revision
+      ) {
         problems.push(
-          `${label}: embedder='${String(index.embedder)}' (expected '${EMBEDDER_ID}')` +
-            `, dim='${String(index.dim)}' (expected ${EMBEDDING_DIM})`,
+          `${label}: embedder='${String(index.embedder)}' (expected '${active.id}')` +
+            `, dim='${String(index.dim)}' (expected ${active.dim})` +
+            `, revision='${String(index.revision)}' (expected '${active.revision}')`,
         );
       }
     }
     if (problems.length > 0) return { id, ok: false, detail: problems.join("; ") };
-    return { id, ok: true, detail: "all index files match the active embedder and dim" };
+    return { id, ok: true, detail: "all index files match the active embedder, dim and revision" };
   }
 
   /** `doctor` check 3 — the data root accepts a write; the probe is always removed. */
@@ -911,7 +1337,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
     return { id, ok: false, detail };
   }
 
-  /** `doctor` check 5 — every raw vector has exactly EMBEDDING_DIM components. */
+  /** `doctor` check 5 — every raw vector has exactly the active embedder's dim. */
   function vectorDimensionCheck(): DoctorCheck {
     const id = "vector-dimension";
     let total = 0;
@@ -920,14 +1346,14 @@ export function createEngine(options: EngineOptions = {}): Engine {
       const label = nsLabel(ns);
       const vectors = readRawVectors(ns);
       for (const [vectorId, vector] of Object.entries(vectors)) {
-        if (Array.isArray(vector) && vector.length !== EMBEDDING_DIM) {
+        if (Array.isArray(vector) && vector.length !== active.dim) {
           total += 1;
           if (bad.length < 5) bad.push(`${label}:${vectorId} (length ${vector.length})`);
         }
       }
     }
     if (total === 0) {
-      return { id, ok: true, detail: `all vectors are ${EMBEDDING_DIM}-dimensional` };
+      return { id, ok: true, detail: `all vectors are ${active.dim}-dimensional` };
     }
     return {
       id,
@@ -960,10 +1386,10 @@ export function createEngine(options: EngineOptions = {}): Engine {
    * naming the problem. Only the data root is written, except the `export`
    * file the caller names.
    */
-  function adminOp(
+  async function adminOp(
     policy: AgentPolicy,
     request: Extract<CoreMemoryRequest, { op: "admin" }>,
-  ): AdminResult {
+  ): Promise<AdminResult> {
     void policy; // admin ops are maintenance — the caller's policy is not consulted
     const args: Record<string, unknown> | undefined = request.args;
     const nsFilter = typeof args?.ns === "string" && args.ns !== "" ? args.ns : null;
@@ -1004,8 +1430,8 @@ export function createEngine(options: EngineOptions = {}): Engine {
         if (nsFilter !== null && label !== nsFilter) continue;
         const records = readRecords(recordsFileFor(root, ns));
         const vectors: Record<string, number[]> = {};
-        for (const record of records) vectors[String(record.id)] = embed(record.text);
-        writeVectors(vectorsFileFor(root, ns), vectors);
+        for (const record of records) vectors[String(record.id)] = await active.embed(record.text);
+        writeVectors(vectorsFileFor(root, ns), vectors, active);
         processed += 1;
         written += records.length;
       }
@@ -1032,7 +1458,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
         const label = nsLabel(ns);
         if (nsFilter !== null && label !== nsFilter) continue;
         const records = readRecords(recordsFileFor(root, ns));
-        const vectors = readVectors(vectorsFileFor(root, ns));
+        const vectors = readVectors(vectorsFileFor(root, ns), active);
         namespaces.push({ ns: label, records, vectors });
         totalRecords += records.length;
       }
@@ -1103,7 +1529,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
         const currentRecords = readRecords(recordsFile);
         const currentIds = new Set(currentRecords.map((record) => String(record.id)));
         const vectorsFile = vectorsFileFor(root, target);
-        const currentVectors = readVectors(vectorsFile);
+        const currentVectors = readVectors(vectorsFile, active);
 
         let namespaceImported = 0;
         for (const record of incomingRecords) {
@@ -1123,13 +1549,58 @@ export function createEngine(options: EngineOptions = {}): Engine {
         }
         if (namespaceImported > 0) {
           writeFileAtomic(recordsFile, currentRecords);
-          writeVectors(vectorsFile, currentVectors);
+          writeVectors(vectorsFile, currentVectors, active);
         }
       }
+
+      // --- episodes section (§10.5, T4): a FLAT Episode[] whose `ns` is derived
+      // from `agent` (present, non-empty -> `agent:<agent>` verbatim; absent ->
+      // global), deduped by `id` within its target namespace. A second run of
+      // the same document leaves every file byte-identical.
+      const docEpisodes = (parsed as { episodes?: unknown }).episodes;
+      let importedEpisodes = 0;
+      let skippedEpisodes = 0;
+      if (docEpisodes !== undefined) {
+        if (!Array.isArray(docEpisodes)) {
+          throw new Error(
+            `core-brain admin import: '${file}' has an 'episodes' key that is not an array`,
+          );
+        }
+        for (const entry of docEpisodes) {
+          if (!entry || typeof entry !== "object") continue;
+          const row = entry as Record<string, unknown>;
+          const id = row.id;
+          if (typeof id !== "string" || id === "") continue; // no dedupe key
+          const owner = row.agent;
+          let target: Namespace;
+          if (typeof owner === "string" && owner !== "") {
+            if (!AGENT_NAME_PATTERN.test(owner)) {
+              throw new Error(
+                `core-brain admin import: '${file}' carries an episode with an invalid owner '${owner}'`,
+              );
+            }
+            target = { kind: "agent", name: owner };
+          } else {
+            target = { kind: "global" };
+          }
+          const episodeFile = episodesFileFor(root, target);
+          const currentEpisodes = readEpisodes(episodeFile);
+          if (currentEpisodes.some((episode) => String(episode.id) === id)) {
+            skippedEpisodes += 1;
+            continue; // never overwrite an existing id (§10.5 rule 5)
+          }
+          currentEpisodes.push(importedEpisodeFrom(row));
+          writeFileAtomic(episodeFile, currentEpisodes);
+          importedEpisodes += 1;
+        }
+      }
+
       return {
         ok: true,
         action: "import",
-        detail: `imported ${imported} record(s), skipped ${skipped} existing`,
+        detail:
+          `imported ${imported} record(s), skipped ${skipped} existing; ` +
+          `imported ${importedEpisodes} episode(s), skipped ${skippedEpisodes} existing`,
       };
     }
 
@@ -1146,7 +1617,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
             .map((record) => String(record.id)),
         );
         const vectorsFile = vectorsFileFor(root, ns);
-        const currentVectors = readVectors(vectorsFile);
+        const currentVectors = readVectors(vectorsFile, active);
         const nextVectors: Record<string, number[]> = {};
         let namespaceDropped = 0;
         for (const [id, vector] of Object.entries(currentVectors)) {
@@ -1157,7 +1628,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
           }
         }
         if (namespaceDropped > 0) {
-          writeVectors(vectorsFile, nextVectors);
+          writeVectors(vectorsFile, nextVectors, active);
           dropped += namespaceDropped;
         }
       }
@@ -1170,7 +1641,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
     );
   }
 
-  function invoke(agentName: string, request: CoreMemoryRequest): CoreMemoryResult {
+  async function invoke(agentName: string, request: CoreMemoryRequest): Promise<CoreMemoryResult> {
     const policy = requirePolicy(agentName);
     if (!request || typeof request !== "object") {
       throw new Error("core_memory: request must be an object");
@@ -1180,6 +1651,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
     if (request.op === "recall") return recallOp(policy, request);
     if (request.op === "forget") return forgetOp(policy, request);
     if (request.op === "feedback") return feedbackOp(policy, request);
+    if (request.op === "episode") return episodeOp(policy, request);
+    if (request.op === "timeline") return timelineOp(policy, request);
+    if (request.op === "promote") return promoteOp(policy, request);
     if (request.op === "status") return statusOp(request);
     if (request.op === "receipt") return receiptOp(request);
     if (request.op === "doctor") return doctorOp(request);
@@ -1188,5 +1662,5 @@ export function createEngine(options: EngineOptions = {}): Engine {
     throw new Error(`core_memory: unknown op '${unknownOp}'`);
   }
 
-  return { invoke };
+  return { invoke, resolvePolicy: requirePolicy };
 }

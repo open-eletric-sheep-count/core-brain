@@ -22,8 +22,16 @@ const line = (ok, text) => {
   else { fail += 1; console.log(`FAIL ${n} ${text}`); }
 };
 
+// D4: the child process is put on the deterministic offline fixture so it
+// never downloads a model (the env route exists exactly for this child).
+const FIXTURE_DIR = join(HERE, "..", "..", "test", "fixtures");
 const child = spawn("node", [SERVER], {
-  env: { ...process.env, CORE_BRAIN_HOME: root },
+  env: {
+    ...process.env,
+    CORE_BRAIN_HOME: root,
+    CORE_BRAIN_EMBEDDER: process.env.CORE_BRAIN_EMBEDDER || "fixture",
+    CORE_BRAIN_FIXTURE_DIR: FIXTURE_DIR,
+  },
   stdio: ["pipe", "pipe", "pipe"],
 });
 
@@ -75,6 +83,16 @@ try {
     `tools/list advertises exactly the five tools: ${names.join(", ")}`,
   );
   line(tools.every((tool) => tool.inputSchema?.type === "object" && tool.inputSchema?.additionalProperties === false), "every tool inputSchema is a closed object");
+
+  // D3 — the async seam must NOT reorder responses: two requests written
+  // back-to-back must answer in the order they were written.
+  const pA = request("tools/call", { name: "core_status", arguments: {} });
+  const pB = request("tools/call", { name: "core_status", arguments: {} });
+  const [rA, rB] = await Promise.all([pA, pB]);
+  line(
+    rA?.id === 3 && rB?.id === 4,
+    `two back-to-back requests answer in order (ids ${rA?.id}/${rB?.id}, expected 3/4)`,
+  );
 
   const recallTool = tools.find((tool) => tool.name === "core_recall") ?? {};
   line(

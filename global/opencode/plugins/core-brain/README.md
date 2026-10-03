@@ -2,9 +2,11 @@
 
 Per-agent memory isolation for OpenCode V2: **one tool** (`core_memory`), a
 **private namespace per agent**, and an **optional shared global namespace** —
-driven entirely by a small `config.json`. Real per-namespace vector storage,
-in-process cosine ranking, and a deterministic offline embedder with **zero
-runtime dependencies** (Node builtins only).
+driven entirely by a small `config.json`. Real per-namespace vector storage and
+hybrid retrieval (BM25 + vector, fused by RRF) with a real semantic embedder
+(`Xenova/bge-small-en-v1.5`); the Node engine runtime is provisioned once,
+outside the plugin tree. See [Engine](#engine--hybrid-retrieval) and
+[`INSTALACAO.md`](INSTALACAO.md).
 
 | | |
 |---|---|
@@ -13,8 +15,8 @@ runtime dependencies** (Node builtins only).
 | Version | `0.1.0` |
 | Data root | `~/.core-brain/` (override with `CORE_BRAIN_HOME`) |
 | Tool | `core_memory` (`who` \| `store` \| `recall` \| `forget` \| `feedback`) |
-| Runtime deps | **none** — `node:fs`, `node:path`, `node:os`, `node:crypto`, `node:url` |
-| **License** | **MIT License** — see [`LICENSE`](LICENSE) and the repository root |
+| Runtime deps | `@huggingface/transformers` **4.3.0** — the engine runtime, provisioned into `~/.core-brain/runtime` (never inside the plugin tree); the plugin itself imports only `node:*` builtins |
+| **License** | **(MIT AND Apache-2.0)** — MIT for core-brain's own files; Apache-2.0 for the four ported `engine/` files — see [`LICENSE`](LICENSE), [`LICENSE-APACHE`](LICENSE-APACHE) and [`NOTICE`](NOTICE) |
 
 ## Acknowledgment — a fork/substitute built on PLUR Memory
 
@@ -39,9 +41,9 @@ agent calls to remember and to recall:
 - **`who`** — report the calling agent's configured policy.
 - **`store`** — persist a text record into `self` (its own namespace) or into
   `global` (the shared namespace), when the policy allows it.
-- **`recall`** — search the namespaces the calling agent is allowed to read,
-  rank the records by cosine similarity, and report which namespaces were
-  scanned.
+- **`recall`** — search the namespaces the calling agent is allowed to read
+  (hybrid BM25 + vector, fused by RRF; see [Engine](#engine--hybrid-retrieval)),
+  and report which namespaces were scanned and the ranking mode used.
 - **`forget`** — soft-retire a record by `id` or by `query`; the record leaves
   recall but its text stays on disk.
 - **`feedback`** — increment a usefulness counter on a record the caller may
@@ -161,8 +163,10 @@ Results — the tool returns this JSON as its content:
 
 // recall
 { "results": [ { "id": "<uuid>", "text": "…", "agent": "agent_beta",
-                 "scope": "agent", "score": 0.87, "retrievals": 3 } ],
-  "scanned": ["agent:agent_beta", "global"] }
+                 "scope": "agent", "score": 0.0325, "rrf": 0.0325,
+                 "legs": { "bm25": 5.269, "vector": 0.997 }, "retrievals": 3 } ],
+  "scanned": ["agent:agent_beta", "global"],
+  "mode": "hybrid", "reranked": 0 }
 ```
 
 A refusal is a clear `ERROR:` line, never a silent empty result — for example:
@@ -171,10 +175,13 @@ A refusal is a clear `ERROR:` line, never a silent empty result — for example:
 ERROR: core_memory store: agent 'CB_GAMMA' cannot write to 'global': no global access
 ```
 
-`recall` ranks by cosine similarity with the full tie-break
-`score desc → feedback.useful desc → retrievals desc → updatedAt desc`,
-increments `retrievals` on every returned hit, and always reports `scanned` so
-the caller can see which namespaces were consulted.
+`recall` ranks by the fused RRF score; the final tie-break is
+`rrf desc → feedback.useful desc → raw cosine desc → id asc`. A recall **without
+a query** keeps the v1 behaviour (`feedback.useful desc → retrievals desc →
+updatedAt desc`) and reports `mode: "hybrid"` with
+`legs: { bm25: null, vector: null }` and `reranked: 0`. `recall` increments
+`retrievals` on every returned hit, and always reports `scanned` so the caller
+can see which namespaces were consulted.
 
 ## Storage
 
@@ -193,7 +200,7 @@ shares one memory store, and nothing is ever written into the project tree.
     <name>/
       memories.json            # agent_db records, one directory per agent
   vectors/
-    global/index.json          # { embedder, dim, vectors: { "<id>": number[256] } }
+    global/index.json          # { embedder, dim, revision, vectors: { "<id>": number[384] } }
     <name>/index.json
 ```
 
@@ -215,20 +222,118 @@ YAML, no external dependency.
 record written by v0.1.0 carries neither and still reads as **active** (no
 `retiredAt`) and **neutral** (no `feedback`).
 
-## Embedder — `hash-ngram-v1` (declared stub)
+## Engine — hybrid retrieval
 
-v1 ships a **deterministic, offline, dependency-free** embedder: `text →
-number[256]` by feature hashing of character n-grams (n = 2..4, lowercased,
-whitespace-collapsed, space-padded), double-hashed into 256 buckets with a
-signed second hash, then L2-normalised. The embedder id and the dimension are
-stamped in every `vectors/<ns>/index.json`, so swapping the embedder invalidates
-old vectors instead of silently mixing them.
+### Real embedder — `Xenova/bge-small-en-v1.5`
 
-**It is a stub, and it is declared as one.** It is good enough for isolation and
-determinism — the access matrix and top-k retrieval run for real, in-process,
-over real stored vectors — but it is **not** good enough for semantic search
-quality. A production semantic embedder is a declared follow-up (see
-[v1 vs roadmap](#v1-vs-roadmap)).
+The active embedder is the real sentence-transformer `Xenova/bge-small-en-v1.5`,
+loaded through `@huggingface/transformers@4.3.0`:
+
+| | |
+|---|---|
+| Model id | `Xenova/bge-small-en-v1.5` |
+| Dimension | **384** |
+| Pooling | **`cls`** (not `mean`) |
+| dtype | `fp32` |
+| ONNX artifact (download) | **133,093,490 B** (`onnx/model.onnx`, measured) |
+| Weights cache | `~/.core-brain/models` (override `CORE_BRAIN_MODELS_DIR`, alias `CORE_BRAIN_MODELS`) |
+| Runtime | `~/.core-brain/runtime` (override `CORE_BRAIN_RUNTIME_DIR`; provisioned by `install-runtime.sh`) |
+
+The runtime and the weights live **outside** the plugin tree and the mirror, and
+the engine **fails closed**: if the runtime is absent, `store`/`recall` throw a
+named `EngineUnavailableError` naming `install-runtime.sh` — there is no silent
+fallback. The deterministic `hash-ngram-v1` double (`text → number[256]`) is
+kept, but it is only ever selected **explicitly** (offline fixture / v1 indexes),
+never chosen implicitly by the real path. See [`INSTALACAO.md`](INSTALACAO.md) §2.
+
+### Hybrid search — BM25 + vector, fused by RRF
+
+The corpus of **both** legs is exactly the set of namespaces `recall` is allowed
+to read — the hybrid path never widens the read set.
+
+- **BM25 leg** — `k1 = 1.2`, `b = 0.75`, tokenizer version 4 (ported from PLUR
+  `@plur-ai/core@0.21.0`); top `min(corpus, limit × 3)`.
+- **Vector leg** — cosine of the embedded query against each record vector; top
+  `min(corpus, limit × 2)`.
+- **Fusion** — Reciprocal Rank Fusion, `k = 60`: each ranked item contributes
+  `1 / (k + rank + 1)`, summed per id, highest first. `limit` defaults to 5.
+
+**Two core-brain constants are refinements the PLUR does NOT have** (declared,
+not hidden — they exist to satisfy AC1, the semantic probe):
+
+1. **`MIN_VECTOR_SIMILARITY = 0.05`** — a vector-leg admission floor. A cosine at
+   or below the floor is orthogonal (no semantic relation) and must not buy a
+   rank; without it an irrelevant record that matches both legs outscores a
+   semantically correct record that matches only one.
+2. **Deterministic tie-break** — equal `rrf` is broken by the raw cosine
+   (descending; absent from the vector leg is worst), then by `id` ascending, so
+   the order never depends on map insertion order.
+
+`recall` also reports `mode` (`hybrid` | `hybrid-degraded` | `bm25-only`),
+`reranked` (the number of items the reranker reordered) and, per hit, `rrf` plus
+the raw `legs` (`{ bm25, vector }`) so an external caller can recompute the
+fusion.
+
+### Reranker — OFF by default
+
+An optional cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`, dtype `q8`, head
+`topK = 50`) can reorder the RRF result. It is **off by default** — turn it on
+with `CORE_BRAIN_RERANKER=ms-marco` (or by injecting a `Reranker`). A reranker
+failure never reorders silently: it returns the RRF order unchanged, reports
+`reranked: 0` and sets `mode: "hybrid-degraded"`.
+
+### Known bound — the literal AC1 criterion is a declared spec defect (not demonstrated)
+
+AC1 asks the engine to rank a **no-shared-word paraphrase above a lexical decoy**
+(a record that shares words but is about a different thing). With the **real**
+embedder (`Xenova/bge-small-en-v1.5`, pooling `cls`) that literal criterion is
+**not demonstrable**, and it is recorded here as a **declared spec defect — not a
+resolved behaviour**:
+
+- **The BGE cosine is compressed at the top.** A text with **no relation at all**
+  already scores **0.3908**, so the `MIN_VECTOR_SIMILARITY = 0.05` floor admits
+  everything and filters nothing.
+- **The model prefers lexical neighbours.** A decoy that shares words with the
+  query scores **0.5652** — inside, not below, the range of genuine paraphrases
+  (**0.6601–0.7811**).
+- **RRF counts presence, not score.** A record that appears in **both** legs
+  outranks one that appears in a single leg. As long as the decoy clears the
+  floor it sits in both legs (`1/61` BM25 + `1/(61+r)` vector), which is strictly
+  more than the `1/61` a vector-only paraphrase can score.
+- **The reranker does not correct this.** Measured with
+  `CORE_BRAIN_RERANKER=ms-marco` (weights downloaded), the order is unchanged and
+  the decoy stays at rank 0.
+
+The offline fixture probe (`--probe semantic`, fixture embedder) stays green
+because the fixture is a **designed double**; the **real** run fails. What *is*
+demonstrated — real hybrid retrieval, the stamped index with the `STALE_INDEX`
+refusal, idempotent reindex and the 13/13 isolation matrix — is listed under
+[Verified in the real environment](#verified-in-the-real-environment-2026-10-01-re-measured-2026-10-03).
+
+### Stamped index — stale indexes are refused
+
+Every `vectors/<ns>/index.json` header is
+`{ embedder, dim, revision, vectors }`, where `revision` is the model-artifact
+fingerprint `<modelId>@<dtype>@<first 16 hex of sha256(onnx/model.onnx)>`. If a
+namespace holds records but its index was built by a different engine, `recall`
+**throws** `STALE_INDEX` (naming the namespace and `reindex`) instead of
+silently answering with the wrong vectors. `admin reindex` rebuilds the index
+with the active engine and is idempotent (two consecutive runs produce a
+byte-identical `index.json`).
+
+### Measured cost (E8)
+
+`du -sb` figures are apparent bytes; `du -sh` (allocated disk) is a different
+measure and is never mixed in. No composite total is stated — every line below
+is a single measured value.
+
+| Component | Command | Value |
+|---|---|---|
+| Engine runtime dir | `du -sb "$CORE_BRAIN_RUNTIME_DIR"` | **767,972,854 B** (`~/.core-brain/runtime` — `@huggingface/transformers@4.3.0` and its closure; `du -sb`, measured 2026-10-04) |
+| Model weights dir | `du -sb "$CORE_BRAIN_MODELS_DIR"` | **157,662,896 B** (`~/.core-brain/models` — the `bge-small-en-v1.5` embedder **and** the `ms-marco` reranker; `du -sb`, measured 2026-10-04) |
+| `bge-small` fp32 `onnx/model.onnx` (download) | measured artifact | **133,093,490 B** |
+| `onnxruntime-node` prune (linux/x64 only) | `du -sb` before/after on a copy | **254,789,872 B saved** (574,221,664 B → 319,431,792 B; Fatia 0 / B3 measurement, reproduced by `prune-runtime.sh`) |
+| Weights inside the plugin tree | `find … -name '*.onnx' \| wc -l` | **0** (by design: runtime and weights live under `~/.core-brain/`) |
 
 ---
 ## MCP server — `core-brain`
@@ -309,33 +414,39 @@ distinct.
 | Plugin id | `plur-memory` | `core-brain` | No |
 | Plugin dir | `~/.config/opencode/plugins/plur-memory/` | `~/.config/opencode/plugins/core-brain/` | No |
 | npm name | `opencode-plur-memory` | `@oesc/core-brain` | No |
-| Runtime dependency | `@plur-ai/core` (postgres / sharp / onnxruntime-web / zod) | **none** — Node builtins only | No |
+| Runtime dependency | `@plur-ai/core` (postgres / sharp / onnxruntime-web / zod) | `@huggingface/transformers` 4.3.0 — an own copy in `~/.core-brain/runtime` (not in the plugin tree, not in the mirror) | No |
 | Data dir | `~/.plur/` | `~/.core-brain/` | No |
 | Config file | `~/.plur/config.yaml` | `~/.core-brain/config.json` | No |
-| Env vars | `PLUR_DEBUG`, `PLUR_PATH` | `CORE_BRAIN_DEBUG`, `CORE_BRAIN_HOME` | No |
+| Env vars | `PLUR_DEBUG`, `PLUR_PATH` | `CORE_BRAIN_DEBUG`, `CORE_BRAIN_HOME`, `CORE_BRAIN_RUNTIME_DIR`, `CORE_BRAIN_MODELS_DIR`, `CORE_BRAIN_OFFLINE`, `CORE_BRAIN_EMBEDDER`, `CORE_BRAIN_RERANKER` | No |
 | Network server / port / PID | yes — MCP server + `server.pid` | **none** — in-process tool | No |
 | Embeddings cache | `~/.plur/.embeddings-cache.json` | `~/.core-brain/vectors/<ns>/index.json` | No |
 | Tool namespace | `plur_*` (`plur_admin`, `plur_learn`, …) | `core_memory` (single tool) | No |
-| License | Apache-2.0 | MIT | No |
+| License | Apache-2.0 | (MIT AND Apache-2.0) | No |
 
 ## v1 vs roadmap
 
 **In v1:** per-agent isolated namespaces plus the shared global namespace; the
-authorizer and the error shapes above; real atomic JSON persistence; real
-in-process cosine top-k; the `hash-ngram-v1` stub embedder; one tool; an
-**inert** `prompt` hook that only records the active agent for debug logging (it
-never edits the user's prompt and never injects into the system block); **no**
-`compaction` hook; and **tools-only** behaviour, so an agent that is not listed
-in the config gets the default policy (`private:false` + `hasGlobalAccess:true`)
-the moment it calls `core_memory` — the `prompt` hook stays inert for it.
+authorizer and the error shapes above; real atomic JSON persistence; the **real
+semantic embedder** (`Xenova/bge-small-en-v1.5`, `dim 384`, `cls` pooling,
+`fp32`) loaded from the provisioned runtime; **hybrid retrieval** (BM25 + vector)
+fused by **RRF** (`k = 60`) with the `MIN_VECTOR_SIMILARITY = 0.05` admission
+floor and a deterministic cosine tie-break; the **stamped index** with the
+`STALE_INDEX` refusal and an idempotent `reindex`; an **off-by-default**
+cross-encoder reranker; one tool; an **inert** `prompt` hook that only records
+the active agent for debug logging (it never edits the user's prompt and never
+injects into the system block); **no** `compaction` hook; and **tools-only**
+behaviour, so an agent that is not listed in the config gets the default policy
+(`private:false` + `hasGlobalAccess:true`) the moment it calls `core_memory` —
+the `prompt` hook stays inert for it. The deterministic `hash-ngram-v1` double
+(`text → number[256]`) is still shipped, but only as an **explicit** offline
+fixture — never chosen implicitly by the real path.
 
-**Roadmap (declared, not v1 gaps):** a production semantic embedder (local
-sentence-transformer or API-backed) replacing the stub; opt-in context injection
-for selected agents (`inject: true`, off by default); a `compaction` hook that
-stores salient facts; optional multi-process safety (a file lock) when two
-agents write the same namespace concurrently; automated Layer B smoke in CI.
+**Roadmap (declared, not v1 gaps):** opt-in context injection for selected agents
+(`inject: true`, off by default); a `compaction` hook that stores salient facts;
+optional multi-process safety (a file lock) when two agents write the same
+namespace concurrently; automated Layer B smoke in CI.
 
-## Verified in the real environment (2026-10-01)
+## Verified in the real environment (2026-10-01; re-measured 2026-10-03)
 
 Measured on a live OpenCode V2 install (Node v24.15.0), not simulated:
 
@@ -343,18 +454,26 @@ Measured on a live OpenCode V2 install (Node v24.15.0), not simulated:
   `~/.config/opencode/plugins/core-brain/index.ts`;
 - `opencode2 debug agents` → **23 → 27**: `CB_ALPHA`, `CB_BETA`, `CB_GAMMA` and
   `CB_DELTA` added, **none removed**, the 23 pre-existing agents byte-identical;
-- `bash global/opencode/plugins/core-brain/check.sh` → **13/13 matrix lines PASS**,
-  exit code `0` (8 lines at the 2026-10-01 baseline; 5 default-policy lines added
-  2026-10-02) — the access-isolation matrix, in-process, on a disposable
+- `bash global/opencode/plugins/core-brain/check.sh` → **13/13 matrix lines PASS**
+  and **7/7 offline search probes PASS**, exit code `0` (8 lines at the
+  2026-10-01 baseline; 5 default-policy lines added 2026-10-02) — the
+  access-isolation matrix plus the hybrid probes, in-process, on a disposable
   `CORE_BRAIN_HOME`;
+- `bash global/opencode/plugins/core-brain/mcp/check.sh` → **19/19 Layer-A lines
+  PASS** and **27/27 Layer-B lines PASS**, exit code `0` (the real stdio
+  transport, `initialize` → `tools/list` → `tools/call`);
+- `tsc` on the plugin sources → **0 errors**;
 - three real headless smokes (`opencode2 run --agent <X> --auto "…"`):
   `CB_BETA` stored and recalled its own record; `CB_GAMMA` was refused on
   `store target:"global"` with `no global access`; `CB_ALPHA` wrote and read the
   global space and was refused on `store target:"agent:CB_BETA"` with
   `target is private — cross-agent write not allowed`;
 - persistence confirmed under `~/.core-brain/`: `global/memories.json`,
-  `agents/<name>/memories.json`, `vectors/<ns>/index.json` with
-  `embedder=hash-ngram-v1` and `dim=256`;
+  `agents/<name>/memories.json`, `vectors/<ns>/index.json`, the latter stamped
+  `{ embedder, dim, revision, vectors }`. The offline fixture path stamps
+  `hash-ngram-v1` / `dim 256`; the real `Xenova/bge-small-en-v1.5` stamp
+  (`dim 384`) is **PENDENTE — runtime not provisioned** (see
+  [Engine](#engine--hybrid-retrieval));
 - coexistence: `~/.plur/` untouched and the `plur` MCP still `connected`.
 
 ## Install
@@ -364,4 +483,9 @@ configure, reload, verify, coexistence check and troubleshooting.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+**(MIT AND Apache-2.0)** — MIT for core-brain's own files (see
+[`LICENSE`](LICENSE)); Apache-2.0 for the four files ported from
+`@plur-ai/core@0.21.0` — `engine/fts.ts`, `engine/fusion.ts`,
+`engine/embedder.ts`, `engine/reranker.ts` — (see
+[`LICENSE-APACHE`](LICENSE-APACHE) and [`NOTICE`](NOTICE)). The package as a
+whole is declared `"(MIT AND Apache-2.0)"` in `package.json`.

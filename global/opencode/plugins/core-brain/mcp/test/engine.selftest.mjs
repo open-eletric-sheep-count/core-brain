@@ -6,13 +6,24 @@
 // calls the engine, and asserts exact values — so a green run means the
 // DETECTION works, not only the happy path.
 //
+// SLICE 1 (plan D3/D4): the seam is ASYNC (`await engine.invoke(...)`) and the
+// engine is built with the deterministic offline fixture injector
+// (test/fixtures/embedder.mjs), so no model is downloaded. The assertions are
+// unchanged.
+//
 // Zero dependencies (node:* only). Run through mcp/check.sh or directly:
 //   node mcp/test/engine.selftest.mjs
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { createEngine, EMBEDDER_ID, EMBEDDING_DIM } from "../../store.ts";
+import { createEngine } from "../../store.ts";
+import {
+  FIXTURE_DIM,
+  FIXTURE_EMBEDDER_ID,
+  FIXTURE_REVISION,
+  createFixtureEmbedder,
+} from "../../test/fixtures/embedder.mjs";
 
 // The seed config (spec §2/A2, §3/B1): CB_ALPHA public+global, CB_BETA
 // private+global, CB_GAMMA private+no-global.
@@ -23,6 +34,9 @@ const CONFIG = {
     { name: "CB_GAMMA", hasGlobalAccess: false, private: true },
   ],
 };
+
+// One deterministic offline embedder for every engine built here (D4).
+const SEAM = { embedder: createFixtureEmbedder() };
 
 // The shell may export CORE_BRAIN_HOME: remember it so every scenario can set
 // its own root and hand the process back exactly as it found it.
@@ -41,10 +55,10 @@ function line(ok, text) {
   }
 }
 
-/** Runs one scenario, turning an unexpected throw into a counted FAIL. */
-function scenario(name, fn) {
+/** Runs one (async) scenario, turning an unexpected throw into a counted FAIL. */
+async function scenario(name, fn) {
   try {
-    fn();
+    await fn();
   } catch (error) {
     line(false, `${name} crashed: ${error && error.message ? error.message : error}`);
   }
@@ -63,17 +77,16 @@ function readJsonFile(file) {
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
-/** A fresh disposable data root (removed by `withRoot`). */
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "core-brain-engine-selftest."));
 }
 
-/** Runs `fn(root)` with CORE_BRAIN_HOME pointed at a fresh root, then cleans up. */
-function withRoot(fn) {
+/** Runs `await fn(root)` with CORE_BRAIN_HOME pointed at a fresh root, then cleans up. */
+async function withRoot(fn) {
   const root = makeRoot();
   process.env.CORE_BRAIN_HOME = root;
   try {
-    return fn(root);
+    return await fn(root);
   } finally {
     if (previousHome === undefined) delete process.env.CORE_BRAIN_HOME;
     else process.env.CORE_BRAIN_HOME = previousHome;
@@ -83,6 +96,11 @@ function withRoot(fn) {
 
 function seedConfig(root, agents = CONFIG.agents) {
   writeJson(join(root, "config.json"), { agents });
+}
+
+/** The engine under test, always with the offline fixture seam. */
+function makeEngine(root, extra = {}) {
+  return createEngine({ home: root, configPath: join(root, "config.json"), ...SEAM, ...extra });
 }
 
 function memoriesFile(root, name) {
@@ -102,34 +120,35 @@ function record(id, agent, scope, text, extra = {}) {
 }
 
 /** The requested doctor check, by id, from a full `doctor` run. */
-function checkOf(engine, id) {
-  return engine.invoke("CB_ALPHA", { op: "doctor" }).checks.find((check) => check.id === id);
+async function checkOf(engine, id) {
+  const doctor = await engine.invoke("CB_ALPHA", { op: "doctor" });
+  return doctor.checks.find((check) => check.id === id);
 }
 
 // ---------------------------------------------------------------------------
 // AC4 — forget is a soft retire, through CB_BETA's own namespace.
 // ---------------------------------------------------------------------------
 
-scenario("AC4", () =>
-  withRoot((root) => {
+await scenario("AC4", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
-    const stored = engine.invoke("CB_BETA", { op: "store", text: "beta forget me now", target: "self" });
+    const stored = await engine.invoke("CB_BETA", { op: "store", text: "beta forget me now", target: "self" });
 
-    const forgotten = engine.invoke("CB_BETA", { op: "forget", id: stored.id });
+    const forgotten = await engine.invoke("CB_BETA", { op: "forget", id: stored.id });
     line(
       Array.isArray(forgotten.retired) && forgotten.retired.includes(stored.id),
       "AC4 forget by id reports the id as retired",
     );
 
-    const afterForget = engine.invoke("CB_BETA", { op: "recall", query: "beta forget me now", from: "self" });
+    const afterForget = await engine.invoke("CB_BETA", { op: "recall", query: "beta forget me now", from: "self" });
     line(
       !afterForget.results.some((hit) => hit.id === stored.id),
       "AC4 a retired record is absent from recall",
     );
 
-    const status = engine.invoke("CB_BETA", { op: "status", ns: "agent:CB_BETA" });
+    const status = await engine.invoke("CB_BETA", { op: "status", ns: "agent:CB_BETA" });
     const beta = status.namespaces.find((entry) => entry.ns === "agent:CB_BETA");
     line(Boolean(beta) && beta.retired >= 1, "AC4 status reports retired >= 1 for the namespace");
 
@@ -145,22 +164,22 @@ scenario("AC4", () =>
 // AC5 — feedback moves the ranking; unreadable feedback is refused.
 // ---------------------------------------------------------------------------
 
-scenario("AC5", () =>
-  withRoot((root) => {
+await scenario("AC5", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
-    const first = engine.invoke("CB_ALPHA", { op: "store", text: "identical ranking text", target: "self" });
-    const second = engine.invoke("CB_ALPHA", { op: "store", text: "identical ranking text", target: "self" });
+    const first = await engine.invoke("CB_ALPHA", { op: "store", text: "identical ranking text", target: "self" });
+    const second = await engine.invoke("CB_ALPHA", { op: "store", text: "identical ranking text", target: "self" });
 
-    const feedback = engine.invoke("CB_ALPHA", { op: "feedback", id: second.id, useful: true });
+    const feedback = await engine.invoke("CB_ALPHA", { op: "feedback", id: second.id, useful: true });
     line(
       feedback.ok === true && feedback.usefulness.useful === 1 && feedback.usefulness.useless === 0,
       "AC5 feedback records useful=1 on the target record",
     );
 
     // The FIRST recall is the decisive one (recall mutates `retrievals`).
-    const ranked = engine.invoke("CB_ALPHA", { op: "recall", query: "identical ranking text", from: "self" });
+    const ranked = await engine.invoke("CB_ALPHA", { op: "recall", query: "identical ranking text", from: "self" });
     line(
       ranked.results.length >= 2 &&
         ranked.results[0].id === second.id &&
@@ -169,10 +188,10 @@ scenario("AC5", () =>
     );
 
     // CB_BETA is private: a CB_GAMMA id in that namespace is not readable.
-    const betaRecord = engine.invoke("CB_BETA", { op: "store", text: "closed beta memory", target: "self" });
+    const betaRecord = await engine.invoke("CB_BETA", { op: "store", text: "closed beta memory", target: "self" });
     let refusal = "";
     try {
-      engine.invoke("CB_GAMMA", { op: "feedback", id: betaRecord.id, useful: true });
+      await engine.invoke("CB_GAMMA", { op: "feedback", id: betaRecord.id, useful: true });
     } catch (error) {
       refusal = String(error.message);
     }
@@ -185,35 +204,35 @@ scenario("AC5", () =>
 // ---------------------------------------------------------------------------
 
 // Clean root: doctor is ok and all five checks pass.
-scenario("AC6-clean", () =>
-  withRoot((root) => {
+await scenario("AC6-clean", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
-    const doctor = engine.invoke("CB_ALPHA", { op: "doctor" });
+    const engine = makeEngine(root);
+    const doctor = await engine.invoke("CB_ALPHA", { op: "doctor" });
     line(doctor.ok === true, "AC6 clean root: doctor ok is true");
     line(doctor.checks.length === 5 && doctor.checks.every((check) => check.ok), "AC6 clean root: 5/5 checks ok");
   }),
 );
 
 // 1. config-rows — rewrite the config AFTER init; doctor re-reads the file.
-scenario("AC6-config-rows", () =>
-  withRoot((root) => {
+await scenario("AC6-config-rows", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
     seedConfig(root, [...CONFIG.agents, { name: "BAD_ROW", private: false, hasGlobalAccess: false }]);
-    const check = checkOf(engine, "config-rows");
+    const check = await checkOf(engine, "config-rows");
     line(check.ok === false && check.detail.includes("BAD_ROW"), "AC6 config-rows detects a public row without global access");
   }),
 );
 
 // 1b. the engine-level invariant: that row from the start aborts init.
-scenario("AC6-config-rows-init", () =>
-  withRoot((root) => {
+await scenario("AC6-config-rows-init", () =>
+  withRoot(async (root) => {
     seedConfig(root, [{ name: "BAD_ROW", private: false, hasGlobalAccess: false }]);
     let threw = false;
     let errorName = "";
     try {
-      createEngine();
+      makeEngine(root);
     } catch (error) {
       threw = true;
       errorName = error?.name ?? "";
@@ -226,26 +245,26 @@ scenario("AC6-config-rows-init", () =>
 );
 
 // 2. embedder-dim — a present index with a stale dim.
-scenario("AC6-embedder-dim", () =>
-  withRoot((root) => {
+await scenario("AC6-embedder-dim", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_ALPHA"), []);
-    writeJson(vectorsFile(root, "CB_ALPHA"), { embedder: EMBEDDER_ID, dim: 128, vectors: {} });
-    const engine = createEngine();
-    const check = checkOf(engine, "embedder-dim");
+    writeJson(vectorsFile(root, "CB_ALPHA"), { embedder: FIXTURE_EMBEDDER_ID, dim: 128, vectors: {} });
+    const engine = makeEngine(root);
+    const check = await checkOf(engine, "embedder-dim");
     line(check.ok === false && check.detail.includes("agent:CB_ALPHA"), "AC6 embedder-dim detects a stale index and names the namespace");
   }),
 );
 
 // 3. store-writable — an unwritable root, restored in finally.
-scenario("AC6-store-writable", () =>
-  withRoot((root) => {
+await scenario("AC6-store-writable", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
     let check;
     chmodSync(root, 0o500);
     try {
-      check = checkOf(engine, "store-writable");
+      check = await checkOf(engine, "store-writable");
     } finally {
       chmodSync(root, 0o755);
     }
@@ -257,17 +276,18 @@ scenario("AC6-store-writable", () =>
 );
 
 // 4. vector-record-pairing — an orphan vector AND a record with no vector.
-scenario("AC6-vector-record-pairing", () =>
-  withRoot((root) => {
+await scenario("AC6-vector-record-pairing", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_BETA"), [record("rec-no-vector", "CB_BETA", "agent", "a record with no vector")]);
     writeJson(vectorsFile(root, "CB_BETA"), {
-      embedder: EMBEDDER_ID,
-      dim: EMBEDDING_DIM,
-      vectors: { "vec-no-record": new Array(EMBEDDING_DIM).fill(0) },
+      embedder: FIXTURE_EMBEDDER_ID,
+      dim: FIXTURE_DIM,
+      revision: FIXTURE_REVISION,
+      vectors: { "vec-no-record": new Array(FIXTURE_DIM).fill(0) },
     });
-    const engine = createEngine();
-    const check = checkOf(engine, "vector-record-pairing");
+    const engine = makeEngine(root);
+    const check = await checkOf(engine, "vector-record-pairing");
     line(
       check.ok === false && check.detail.includes("rec-no-vector") && check.detail.includes("vec-no-record"),
       "AC6 vector-record-pairing detects both broken directions and names the ids",
@@ -275,18 +295,19 @@ scenario("AC6-vector-record-pairing", () =>
   }),
 );
 
-// 5. vector-dimension — a vector whose length is not EMBEDDING_DIM.
-scenario("AC6-vector-dimension", () =>
-  withRoot((root) => {
+// 5. vector-dimension — a vector whose length is not FIXTURE_DIM.
+await scenario("AC6-vector-dimension", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_BETA"), [record("bad-dim", "CB_BETA", "agent", "a record with a short vector")]);
     writeJson(vectorsFile(root, "CB_BETA"), {
-      embedder: EMBEDDER_ID,
-      dim: EMBEDDING_DIM,
+      embedder: FIXTURE_EMBEDDER_ID,
+      dim: FIXTURE_DIM,
+      revision: FIXTURE_REVISION,
       vectors: { "bad-dim": [1, 2, 3] },
     });
-    const engine = createEngine();
-    const check = checkOf(engine, "vector-dimension");
+    const engine = makeEngine(root);
+    const check = await checkOf(engine, "vector-dimension");
     line(check.ok === false && check.detail.includes("bad-dim"), "AC6 vector-dimension detects a short vector and names it");
   }),
 );
@@ -295,15 +316,15 @@ scenario("AC6-vector-dimension", () =>
 // S7 / core_admin — the full matrix, all through engine.invoke(..., admin).
 // ---------------------------------------------------------------------------
 
-scenario("S7-purge", () =>
-  withRoot((root) => {
+await scenario("S7-purge", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_BETA"), [record("beta-1", "CB_BETA", "agent", "private beta memory")]);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
     let refusal = "";
     try {
-      engine.invoke("CB_ALPHA", { op: "admin", action: "purge", args: { ns: "agent:CB_BETA" } });
+      await engine.invoke("CB_ALPHA", { op: "admin", action: "purge", args: { ns: "agent:CB_BETA" } });
     } catch (error) {
       refusal = String(error.message);
     }
@@ -312,7 +333,7 @@ scenario("S7-purge", () =>
       "S7 purge refuses a private namespace without force",
     );
 
-    const purged = engine.invoke("CB_ALPHA", { op: "admin", action: "purge", args: { ns: "agent:CB_BETA", force: true } });
+    const purged = await engine.invoke("CB_ALPHA", { op: "admin", action: "purge", args: { ns: "agent:CB_BETA", force: true } });
     line(
       purged.ok === true && !existsSync(memoriesFile(root, "CB_BETA")),
       "S7 purge with force removes the private namespace records",
@@ -320,7 +341,7 @@ scenario("S7-purge", () =>
 
     let unknownMessage = "";
     try {
-      engine.invoke("CB_ALPHA", { op: "admin", action: "bogus" });
+      await engine.invoke("CB_ALPHA", { op: "admin", action: "bogus" });
     } catch (error) {
       unknownMessage = String(error.message);
     }
@@ -328,15 +349,15 @@ scenario("S7-purge", () =>
   }),
 );
 
-scenario("S7-reindex", () =>
-  withRoot((root) => {
+await scenario("S7-reindex", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_ALPHA"), [record("alpha-1", "CB_ALPHA", "agent", "reindex me")]);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
-    const first = engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
+    const first = await engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
     const afterFirst = readFileSync(vectorsFile(root, "CB_ALPHA"), "utf8");
-    const second = engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
+    const second = await engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
     const afterSecond = readFileSync(vectorsFile(root, "CB_ALPHA"), "utf8");
 
     line(first.ok === true && second.ok === true && existsSync(vectorsFile(root, "CB_ALPHA")), "S7 reindex rebuilds the namespace vector index");
@@ -344,15 +365,15 @@ scenario("S7-reindex", () =>
   }),
 );
 
-scenario("S7-export-import", () =>
-  withRoot((root) => {
+await scenario("S7-export-import", () =>
+  withRoot(async (root) => {
     seedConfig(root);
     writeJson(memoriesFile(root, "CB_ALPHA"), [record("alpha-keep", "CB_ALPHA", "agent", "original text")]);
-    const engine = createEngine();
-    engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
+    const engine = makeEngine(root);
+    await engine.invoke("CB_ALPHA", { op: "admin", action: "reindex" });
 
     const exportFile = join(root, "backup.json");
-    const exported = engine.invoke("CB_ALPHA", { op: "admin", action: "export", args: { file: exportFile } });
+    const exported = await engine.invoke("CB_ALPHA", { op: "admin", action: "export", args: { file: exportFile } });
     const document = readJsonFile(exportFile);
     line(
       exported.ok === true && existsSync(exportFile) && Array.isArray(document.namespaces),
@@ -365,7 +386,7 @@ scenario("S7-export-import", () =>
     before.find((row) => row.id === "alpha-keep").text = "locally edited text";
     writeJson(memoriesFile(root, "CB_ALPHA"), before);
 
-    const imported = engine.invoke("CB_ALPHA", { op: "admin", action: "import", args: { file: exportFile } });
+    const imported = await engine.invoke("CB_ALPHA", { op: "admin", action: "import", args: { file: exportFile } });
     const after = readJsonFile(memoriesFile(root, "CB_ALPHA"));
     line(imported.ok === true, "S7 import of a valid export document succeeds");
     line(
@@ -375,17 +396,17 @@ scenario("S7-export-import", () =>
   }),
 );
 
-scenario("S7-compact", () =>
-  withRoot((root) => {
+await scenario("S7-compact", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
-    const live = engine.invoke("CB_ALPHA", { op: "store", text: "live memory", target: "self" });
-    const doomed = engine.invoke("CB_ALPHA", { op: "store", text: "doomed memory", target: "self" });
-    engine.invoke("CB_ALPHA", { op: "forget", id: doomed.id });
+    const live = await engine.invoke("CB_ALPHA", { op: "store", text: "live memory", target: "self" });
+    const doomed = await engine.invoke("CB_ALPHA", { op: "store", text: "doomed memory", target: "self" });
+    await engine.invoke("CB_ALPHA", { op: "forget", id: doomed.id });
 
     const before = readJsonFile(vectorsFile(root, "CB_ALPHA")).vectors;
-    const compacted = engine.invoke("CB_ALPHA", { op: "admin", action: "compact" });
+    const compacted = await engine.invoke("CB_ALPHA", { op: "admin", action: "compact" });
     const after = readJsonFile(vectorsFile(root, "CB_ALPHA")).vectors;
 
     line(
@@ -405,19 +426,19 @@ scenario("S7-compact", () =>
 // can write both in its own space and in global.
 // ---------------------------------------------------------------------------
 
-scenario("criterion-17", () =>
-  withRoot((root) => {
+await scenario("criterion-17", () =>
+  withRoot(async (root) => {
     seedConfig(root);
-    const engine = createEngine();
+    const engine = makeEngine(root);
 
-    const who = engine.invoke("CB_UNKNOWN", { op: "who" });
+    const who = await engine.invoke("CB_UNKNOWN", { op: "who" });
     line(
       who.private === false && who.hasGlobalAccess === true,
       "criterion 17 an unconfigured agent gets {private:false, hasGlobalAccess:true}",
     );
 
-    const selfStore = engine.invoke("CB_UNKNOWN", { op: "store", text: "unknown self", target: "self" });
-    const globalStore = engine.invoke("CB_UNKNOWN", { op: "store", text: "unknown global", target: "global" });
+    const selfStore = await engine.invoke("CB_UNKNOWN", { op: "store", text: "unknown self", target: "self" });
+    const globalStore = await engine.invoke("CB_UNKNOWN", { op: "store", text: "unknown global", target: "global" });
     line(
       selfStore.ok === true && selfStore.scope === "agent" && globalStore.ok === true && globalStore.scope === "global",
       "criterion 17 an unconfigured agent can store in self and global",

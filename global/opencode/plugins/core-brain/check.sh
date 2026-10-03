@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 #
-# check.sh — executable isolation matrix for the core-brain plugin (spec §9.2, Layer A).
+# check.sh — the executable suites for the core-brain plugin.
 #
-# What it does:
-#   1. Creates a disposable data root: CORE_BRAIN_HOME="$(mktemp -d)".
-#   2. Writes config.json with the 4 configured agents (§9.1):
-#        CB_ALPHA public+global, CB_BETA private+global,
-#        CB_GAMMA private+no-global, CB_DELTA public+no-global (INVALID row).
-#   3. Runs test/matrix.selftest.mjs against that root (native TS type-stripping).
-#   4. Prints the matrix table `7 PASS … 19 PASS`.
-#   5. Removes the temp root on exit (AGENTS.md rule 21 / spec §15.3).
-#   6. Exits 0 only if every line PASSes; non-zero otherwise.
+#   Suite A (test/matrix.selftest.mjs): the isolation matrix (spec §9.2) —
+#     13 rows, `7 PASS … 19 PASS`, same observables as before (plan D3: async).
+#   Suite B (test/search.selftest.mjs): the AC probe runner (plan §9) —
+#     semantic, fusion, fusion-verbose, rerank, isolation-hybrid, stale-index,
+#     reindex. The two weight-dependent probes (`rerank-real`, `offline`) are
+#     NOT run here; their AC commands set CORE_BRAIN_EMBEDDER=real explicitly.
+#   Suite C (test/hooks.selftest.mjs): the automatic layer (Fatia 2) —
+#     A1 context / A2 prompt / A3 compaction; A4 SKIP (UNKNOWN).
+#   Suite D (test/timeline.selftest.mjs): the episodic timeline (Fatia 3,
+#     CONTRACT.md §10) — TL1..TL6. RED until the ops land (declared).
 #
-# Run:  bash check.sh        (or: chmod +x check.sh && ./check.sh)
+# The engine seam is injected with the offline fixture by default
+# (CORE_BRAIN_EMBEDDER=fixture); `CORE_BRAIN_EMBEDDER=real bash check.sh` runs
+# the same suites against the cached model (plan §8 step 3 / AC4).
 #
-# STATUS (updated 2026-10-02): the plugin implementation EXISTS (../store.ts,
-# ../types.ts, ../index.ts) and the default-policy slice is IMPLEMENTED (spec §2/§3).
-# All lines 7–19 were executed by the ORACLE: 13/13 PASS, exit code 0, Node v24.15.0.
-# Lines 15–19 pin docs/specs/core-brain-default-policy-spec.md §7 and are GREEN.
-# Step 3 below drives the real store + authorizer.
+# Removes the temp root on exit (rule 21). Exits 0 only when EVERY matrix row,
+# EVERY probe, EVERY hook ledger and EVERY timeline ledger passes.
+#
+# Run:  bash check.sh
 
 set -euo pipefail
 
@@ -50,31 +52,83 @@ if ! command -v "$NODE_BIN" >/dev/null 2>&1; then
   exit 127
 fi
 
-LOG="$CORE_BRAIN_HOME/selftest.log"
+# --- 3. feature-detect the type-stripping flag (Node >= 22.6) --------------
+STRIP_FLAG=""
+if "$NODE_BIN" --experimental-strip-types -e 'process.exit(0)' >/dev/null 2>&1; then
+  STRIP_FLAG="--experimental-strip-types"
+fi
 
-# --- 3. run the selftest (feature-detect the type-stripping flag) ----------
-# Node >= 22.6 needs --experimental-strip-types; Node >= 23.6 strips by default.
-# First try WITH the flag; if the build rejects the flag ("bad option"), retry
-# plain. Any other failure (incl. the missing implementation) is a real failure.
-run_node() {
-  "$NODE_BIN" "$@" "$DIR/test/matrix.selftest.mjs" >"$LOG" 2>&1
+# --- 4. the embedder seam (fixture by default; AC4 overrides with `real`) --
+export CORE_BRAIN_EMBEDDER="${CORE_BRAIN_EMBEDDER:-fixture}"
+
+run_script() { # <script> <logfile> [args...]
+  local script="$1" logfile="$2"
+  shift 2
+  if [ -n "$STRIP_FLAG" ]; then
+    "$NODE_BIN" "$STRIP_FLAG" "$script" "$@" >"$logfile" 2>&1
+  else
+    "$NODE_BIN" "$script" "$@" >"$logfile" 2>&1
+  fi
 }
 
 status=0
-if run_node --experimental-strip-types; then
-  status=0
-elif grep -qiE "bad option|unknown argument|unrecognized option|not recognized" "$LOG"; then
-  run_node || status=$?
-else
+
+# --- 5. Suite A: the 13-row isolation matrix ------------------------------
+MATRIX_LOG="$CORE_BRAIN_HOME/matrix.log"
+if ! run_script "$DIR/test/matrix.selftest.mjs" "$MATRIX_LOG"; then
   status=1
 fi
-
-# --- 4. report ------------------------------------------------------------
-cat "$LOG"
-
+cat "$MATRIX_LOG"
 if [ "$status" -ne 0 ]; then
-  echo "core-brain check.sh: FAILED (exit $status)" >&2
+  echo "core-brain check.sh: matrix FAILED" >&2
   exit "$status"
 fi
 
-echo "core-brain check.sh: all matrix lines PASS (CORE_BRAIN_HOME cleaned up)"
+# --- 6. Suite B: the AC probes (offline subset) ---------------------------
+PROBES="semantic fusion fusion-verbose rerank isolation-hybrid stale-index reindex"
+for probe in $PROBES; do
+  PROBE_LOG="$CORE_BRAIN_HOME/probe-$probe.log"
+  if ! run_script "$DIR/test/search.selftest.mjs" "$PROBE_LOG" --probe "$probe"; then
+    status=1
+  fi
+  cat "$PROBE_LOG"
+done
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: probes FAILED (see the probe logs above)" >&2
+  exit "$status"
+fi
+
+# --- 7. Suite C: the automatic-layer hooks (Fatia 2, CONTRACT.md §9) -------
+# A1 context injection / A2 prompt learning / A3 compaction carry; A4 SKIP
+# (UNKNOWN). RED until the DEVELOPER lands the layer. Needs the engine
+# embedder (the provisioned runtime, or CORE_BRAIN_EMBEDDER=fixture honoured
+# by the plugin path). Creates and removes its own temp root (rule 21).
+HOOKS_LOG="$CORE_BRAIN_HOME/hooks.log"
+if ! run_script "$DIR/test/hooks.selftest.mjs" "$HOOKS_LOG"; then
+  status=1
+fi
+cat "$HOOKS_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: hooks FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+# --- 8. Suite D: the episodic timeline (Fatia 3, CONTRACT.md §10) -----------
+# TL1 episode / TL2 isolation / TL3 import / TL4 search by meaning / TL5
+# promote; TL6 SKIP (the backup mirror is UNKNOWN, another repo). RED until
+# the DEVELOPER lands the `episode`/`timeline`/`promote` ops; the suite makes
+# and removes its own temp root (rule 21).
+TIMELINE_LOG="$CORE_BRAIN_HOME/timeline.log"
+if ! run_script "$DIR/test/timeline.selftest.mjs" "$TIMELINE_LOG"; then
+  status=1
+fi
+cat "$TIMELINE_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: timeline FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+echo "core-brain check.sh: matrix 13/13 PASS + probes PASS + hooks PASS + timeline PASS (CORE_BRAIN_HOME cleaned up)"

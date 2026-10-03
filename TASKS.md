@@ -103,10 +103,30 @@ MVP plan in [README.md](README.md).
     pre-existing agents byte-identical; three real headless smokes (`CB_BETA`,
     `CB_GAMMA`, `CB_ALPHA`) returned the expected results and refusals;
     `~/.plur/` untouched and the `plur` MCP still `connected`.
-  - Follow-ups (declared, non-blocking): production semantic embedder replacing
-    the stub; opt-in context injection (`inject: true`, off by default); a
-    `compaction` hook; optional multi-process file lock; automated Layer B smoke
-    in CI.
+  - Follow-ups (declared, non-blocking): opt-in context injection (`inject: true`,
+    off by default); a `compaction` hook; optional multi-process file lock;
+    automated Layer B smoke in CI.
+
+- [x] **Real retrieval engine — real embedder + hybrid BM25/vector (RRF) + stamped
+  index + optional reranker (2026-10-03).**
+  `global/opencode/plugins/core-brain/engine/` (`embedder.ts`, `fts.ts`,
+  `fusion.ts`, `reranker.ts`): real semantic embedder `Xenova/bge-small-en-v1.5`
+  (`dim 384`, pooling `cls`, `fp32`, via `@huggingface/transformers@4.3.0` from a
+  runtime outside the plugin tree); hybrid BM25 (`k1 = 1.2`, `b = 0.75`) + vector
+  cosine fused by RRF (`k = 60`) with `MIN_VECTOR_SIMILARITY = 0.05` and a
+  deterministic cosine tie-break; optional cross-encoder reranker (`ms-marco`,
+  off by default); stamped index with the `STALE_INDEX` refusal and an idempotent
+  `reindex`; the engine seam is asynchronous (`invoke` returns a `Promise`).
+  License is now `(MIT AND Apache-2.0)` — the four `engine/` files are ported
+  from `@plur-ai/core@0.21.0`.
+  - Evidence (2026-10-03): `check.sh` **13/13** matrix + **7/7** probes, exit 0;
+    `mcp/check.sh` **19/19** Layer-A + **27/27** Layer-B, exit 0; `tsc` **0**
+    errors.
+  - **PENDENTE (not provisioned):** the engine runtime
+    (`@huggingface/transformers@4.3.0` in `~/.core-brain/runtime`) has not been
+    installed in this environment, so the **E1** live run with the real model,
+    the **AC8** offline verification and the measured **E8** runtime/weights cost
+    remain open (`install-runtime.sh` is the USER-run step).
 
 ---
 

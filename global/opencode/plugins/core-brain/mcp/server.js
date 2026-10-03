@@ -28,7 +28,9 @@ const TOOLS = [
   {
     name: "core_recall",
     description:
-      "Recall memories from the global namespace. " +
+      "Recall memories from the global namespace with a hybrid BM25 + vector search " +
+      "fused by RRF (the cross-encoder reranker is OFF by default; switch it on with " +
+      "CORE_BRAIN_RERANKER=ms-marco). " +
       "global namespace only — this is not an agent view; per-agent recall goes through the `core_memory` tool.",
     inputSchema: {
       type: "object",
@@ -111,9 +113,9 @@ const TOOLS = [
  *
  * @param {string} name
  * @param {object} [args]
- * @returns {{ content: Array<{ type: string; text: string }>, isError?: boolean }}
+ * @returns {Promise<{ content: Array<{ type: string; text: string }>, isError?: boolean }>}
  */
-function callTool(name, args = {}) {
+async function callTool(name, args = {}) {
   const t0 = Date.now();
 
   // -- validate and build the request (throws on bad input) -----------------
@@ -193,7 +195,7 @@ function callTool(name, args = {}) {
   // -- invoke the engine ----------------------------------------------------
   let result;
   try {
-    result = engine.invoke(ADMIN, request);
+    result = await engine.invoke(ADMIN, request);
   } catch (err) {
     const ms = Date.now() - t0;
     if (DEBUG) console.error(`[core-brain mcp] ${name} error ${ms}ms`);
@@ -215,9 +217,9 @@ function callTool(name, args = {}) {
 /**
  * @param {string} method
  * @param {object} [params]
- * @returns {object}
+ * @returns {Promise<object>}
  */
-function handle(method, params = {}) {
+async function handle(method, params = {}) {
   switch (method) {
     case "initialize":
       return {
