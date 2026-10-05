@@ -14,9 +14,7 @@ MVP plan in [README.md](README.md).
 
 ## Phase 0 — Spec (blocking, do not implement before this)
 
-- [ ] **0.0 — Evaluate [`troca-ferramenta.md`](docs/troca-ferramenta.md)** (memory-tool swap: `opencode-mem` → PLUR).
-  - Confirm what carries over and what is now stale (README §3.3/§3.4, Phase 1 references to `opencode-mem`).
-  - Decide which challenges (C1–C7: triggers, sleep/dreams, tiers, mental map, integration gaps, hygiene, doc sync) become **requirements** for the Phase 0 spec.
+- [x] **0.0 — Evaluate `troca-ferramenta.md`** (memory-tool swap: `opencode-mem` → PLUR). — **Closed 2026-10-04 (USER):** both legacy memory tools were removed from the system and the swap doc was deleted.
 - [ ] **0.1 — Run a `grill-me` session to produce the spec.**
   - Move Taulukko dependences for OESC tree.
   - Document or recreate external dependences like opencode-mem
@@ -91,7 +89,7 @@ MVP plan in [README.md](README.md).
   `docs/core_brain_specification.md` implemented exactly (a private namespace per
   agent, an optional shared `global` namespace, cross-agent writes refused,
   absent rows defaulted to `private:false` + `hasGlobalAccess:true` instead of
-  fail-closed), atomic JSON persistence under `~/.core-brain/`
+  fail-closed), atomic JSON persistence under `~/.config/core-brain/`
   (override `CORE_BRAIN_HOME`) and a declared offline stub embedder
   (`hash-ngram-v1`, 256 dims).
   - Four dedicated test agents: `global/opencode/agent/CB_{ALPHA,BETA,GAMMA,DELTA}.md`
@@ -123,7 +121,7 @@ MVP plan in [README.md](README.md).
     `mcp/check.sh` **19/19** Layer-A + **27/27** Layer-B, exit 0; `tsc` **0**
     errors.
   - **PENDENTE (not provisioned):** the engine runtime
-    (`@huggingface/transformers@4.3.0` in `~/.core-brain/runtime`) has not been
+    (`@huggingface/transformers@4.3.0` in `~/.config/core-brain/runtime`) has not been
     installed in this environment, so the **E1** live run with the real model,
     the **AC8** offline verification and the measured **E8** runtime/weights cost
     remain open (`install-runtime.sh` is the USER-run step).

@@ -132,7 +132,7 @@ const OPS: readonly CoreMemoryOp[] = [
 
 const DEBUG_ENV = "CORE_BRAIN_DEBUG";
 const HOME_ENV = "CORE_BRAIN_HOME";
-const DEFAULT_DATA_DIR_NAME = ".core-brain";
+const DEFAULT_DATA_DIR_NAME = ".config/core-brain";
 
 // ---------------------------------------------------------------------------
 // Session id resolution (mirrors todo-list): the tool's second argument shape
@@ -215,7 +215,7 @@ async function resolveSessionAgent(
   }
 }
 
-/** Data root: `options.home` > `CORE_BRAIN_HOME` > `~/.core-brain` (spec Q4). */
+/** Data root: `options.home` > `CORE_BRAIN_HOME` > `~/.config/core-brain` (spec Q4). */
 function resolveDataRoot(ctx: CoreBrainPluginContext): string {
   const option = ctx.options?.home;
   if (typeof option === "string" && option.trim()) {

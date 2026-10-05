@@ -21,7 +21,7 @@
 #   bash prune-runtime.sh --help
 #
 # Environment:
-#   CORE_BRAIN_RUNTIME_DIR  default source (default: ~/.core-brain/runtime)
+#   CORE_BRAIN_RUNTIME_DIR  default source (default: ~/.config/core-brain/runtime)
 #
 # Rollback: rm -rf "$DEST" (the source was never touched).
 
@@ -75,7 +75,7 @@ canon() {
   printf '%s%s\n' "$(cd -- "$p" && pwd)" "$suffix"
 }
 
-SRC="$(expand_tilde "${SRC:-${CORE_BRAIN_RUNTIME_DIR:-$HOME/.core-brain/runtime}}")"
+SRC="$(expand_tilde "${SRC:-${CORE_BRAIN_RUNTIME_DIR:-$HOME/.config/core-brain/runtime}}")"
 DEST="$(expand_tilde "${DEST:-${SRC}-pruned}")"
 
 SRC_ABS="$(canon "$SRC")"

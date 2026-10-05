@@ -46,7 +46,7 @@ export class InvalidConfigurationError extends Error {
 }
 
 export function createEngine(options?: {
-  home?: string;        // data root; defaults to CORE_BRAIN_HOME ?? ~/.core-brain
+  home?: string;        // data root; defaults to CORE_BRAIN_HOME ?? ~/.config/core-brain
   configPath?: string;  // explicit config file (spec Q3 precedence)
   embedder?: Embedder;  // D4 test/runtime seam — see §8. Never a core_memory input
   reranker?: Reranker;  // D4 test/runtime seam — see §8

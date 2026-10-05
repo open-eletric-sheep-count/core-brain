@@ -13,9 +13,9 @@ outside the plugin tree. See [Engine](#engine--hybrid-retrieval) and
 | Plugin id | `core-brain` |
 | npm name | `@oesc/core-brain` |
 | Version | `0.1.0` |
-| Data root | `~/.core-brain/` (override with `CORE_BRAIN_HOME`) |
+| Data root | `~/.config/core-brain/` (override with `CORE_BRAIN_HOME`) |
 | Tool | `core_memory` (`who` \| `store` \| `recall` \| `forget` \| `feedback`) |
-| Runtime deps | `@huggingface/transformers` **4.3.0** — the engine runtime, provisioned into `~/.core-brain/runtime` (never inside the plugin tree); the plugin itself imports only `node:*` builtins |
+| Runtime deps | `@huggingface/transformers` **4.3.0** — the engine runtime, provisioned into `~/.config/core-brain/runtime` (never inside the plugin tree); the plugin itself imports only `node:*` builtins |
 | **License** | **(MIT AND Apache-2.0)** — MIT for core-brain's own files; Apache-2.0 for the four ported `engine/` files — see [`LICENSE`](LICENSE), [`LICENSE-APACHE`](LICENSE-APACHE) and [`NOTICE`](NOTICE) |
 
 ## Acknowledgment — a fork/substitute built on PLUR Memory
@@ -30,7 +30,7 @@ acknowledgment is required by the original specification
 
 The two projects are independent: they share no code, no dependency, no data
 directory, no config file, no environment variable, no port and no tool
-namespace (the full map is in [Zero collision with PLUR](#zero-collision-with-plur)).
+namespace (the plugin is fully standalone).
 Acknowledgment is a matter of origin and credit, not of shared machinery.
 
 ## What it is
@@ -55,7 +55,7 @@ the running session (the trusted plugin context) and looked up in
 config gets the **default policy** (`private:false` + `hasGlobalAccess:true`)
 instead of being refused.
 
-## Configuration — `~/.core-brain/config.json`
+## Configuration — `~/.config/core-brain/config.json`
 
 ```json
 {
@@ -78,7 +78,7 @@ instead of being refused.
 1. `options.configPath` — plugin options, when the plugin is configured with an
    object form in `opencode.json(c)`;
 2. `$CORE_BRAIN_HOME/config.json`;
-3. `~/.core-brain/config.json`;
+3. `~/.config/core-brain/config.json`;
 4. `<dataRoot>/config.json`;
 5. `<pluginDir>/config.json` — the development seed shipped in this folder.
 
@@ -156,7 +156,7 @@ Results — the tool returns this JSON as its content:
 ```jsonc
 // who
 { "agent": "agent_beta", "name": "agent_beta", "private": true,
-  "hasGlobalAccess": true, "dataDir": "/home/<user>/.core-brain" }
+  "hasGlobalAccess": true, "dataDir": "/home/<user>/.config/core-brain" }
 
 // store
 { "ok": true, "id": "<uuid>", "scope": "agent", "ns": "agent:agent_beta" }
@@ -185,13 +185,13 @@ can see which namespaces were consulted.
 
 ## Storage
 
-Root: `~/.core-brain/` — override with the **`CORE_BRAIN_HOME`** environment
+Root: `~/.config/core-brain/` — override with the **`CORE_BRAIN_HOME`** environment
 variable (the self-test points it at a disposable temp directory). The root is
 the **user profile** directory on purpose, so every project on the machine
 shares one memory store, and nothing is ever written into the project tree.
 
 ```
-~/.core-brain/
+~/.config/core-brain/
   config.json                  # the authoritative policy (see above)
   debug.log                    # only when CORE_BRAIN_DEBUG is set
   global/
@@ -236,8 +236,8 @@ loaded through `@huggingface/transformers@4.3.0`:
 | Pooling | **`cls`** (not `mean`) |
 | dtype | `fp32` |
 | ONNX artifact (download) | **133,093,490 B** (`onnx/model.onnx`, measured) |
-| Weights cache | `~/.core-brain/models` (override `CORE_BRAIN_MODELS_DIR`, alias `CORE_BRAIN_MODELS`) |
-| Runtime | `~/.core-brain/runtime` (override `CORE_BRAIN_RUNTIME_DIR`; provisioned by `install-runtime.sh`) |
+| Weights cache | `~/.config/core-brain/models` (override `CORE_BRAIN_MODELS_DIR`, alias `CORE_BRAIN_MODELS`) |
+| Runtime | `~/.config/core-brain/runtime` (override `CORE_BRAIN_RUNTIME_DIR`; provisioned by `install-runtime.sh`) |
 
 The runtime and the weights live **outside** the plugin tree and the mirror, and
 the engine **fails closed**: if the runtime is absent, `store`/`recall` throw a
@@ -329,11 +329,11 @@ is a single measured value.
 
 | Component | Command | Value |
 |---|---|---|
-| Engine runtime dir | `du -sb "$CORE_BRAIN_RUNTIME_DIR"` | **767,972,854 B** (`~/.core-brain/runtime` — `@huggingface/transformers@4.3.0` and its closure; `du -sb`, measured 2026-10-04) |
-| Model weights dir | `du -sb "$CORE_BRAIN_MODELS_DIR"` | **157,662,896 B** (`~/.core-brain/models` — the `bge-small-en-v1.5` embedder **and** the `ms-marco` reranker; `du -sb`, measured 2026-10-04) |
+| Engine runtime dir | `du -sb "$CORE_BRAIN_RUNTIME_DIR"` | **767,972,854 B** (`~/.config/core-brain/runtime` — `@huggingface/transformers@4.3.0` and its closure; `du -sb`, measured 2026-10-04) |
+| Model weights dir | `du -sb "$CORE_BRAIN_MODELS_DIR"` | **157,662,896 B** (`~/.config/core-brain/models` — the `bge-small-en-v1.5` embedder **and** the `ms-marco` reranker; `du -sb`, measured 2026-10-04) |
 | `bge-small` fp32 `onnx/model.onnx` (download) | measured artifact | **133,093,490 B** |
 | `onnxruntime-node` prune (linux/x64 only) | `du -sb` before/after on a copy | **254,789,872 B saved** (574,221,664 B → 319,431,792 B; Fatia 0 / B3 measurement, reproduced by `prune-runtime.sh`) |
-| Weights inside the plugin tree | `find … -name '*.onnx' \| wc -l` | **0** (by design: runtime and weights live under `~/.core-brain/`) |
+| Weights inside the plugin tree | `find … -name '*.onnx' \| wc -l` | **0** (by design: runtime and weights live under `~/.config/core-brain/`) |
 
 ---
 ## MCP server — `core-brain`
@@ -387,42 +387,6 @@ single read it offers, and it is explicitly a global-namespace view.
 - **`forget`** — retires a record without deleting it (by `id`, or by `query` above the match threshold). A retired record is excluded from recall; its text stays on disk.
 - **`feedback`** — records whether a record the caller may read was useful. It feeds the ranking tie-break: `score desc → feedback.useful desc → retrievals desc → updatedAt desc`.
 
-### Coexistence with PLUR
-
-Both MCP servers run side by side during the transition — no identifier is
-shared:
-
-| Artifact | PLUR | core-brain MCP |
-|---|---|---|
-| Server name | `plur` | `core-brain` |
-| Command | `npx -y @plur-ai/mcp` | local `node …/mcp/server.js` |
-| Tool prefix | `plur_*` | `core_*` |
-| Store | `~/.plur/` | `~/.core-brain/` |
-| Runtime deps | 5 packages (3 × `@modelcontextprotocol/*` + `zod`) | **zero** |
-
-See [`INSTALACAO.md`](INSTALACAO.md) for the install and verification steps.
-
----
-
-## Zero collision with PLUR
-
-PLUR Memory stays installed and working next to this plugin; every identifier is
-distinct.
-
-| Artifact | PLUR Memory (existing) | core-brain (this plugin) | Collision? |
-|---|---|---|---|
-| Plugin id | `plur-memory` | `core-brain` | No |
-| Plugin dir | `~/.config/opencode/plugins/plur-memory/` | `~/.config/opencode/plugins/core-brain/` | No |
-| npm name | `opencode-plur-memory` | `@oesc/core-brain` | No |
-| Runtime dependency | `@plur-ai/core` (postgres / sharp / onnxruntime-web / zod) | `@huggingface/transformers` 4.3.0 — an own copy in `~/.core-brain/runtime` (not in the plugin tree, not in the mirror) | No |
-| Data dir | `~/.plur/` | `~/.core-brain/` | No |
-| Config file | `~/.plur/config.yaml` | `~/.core-brain/config.json` | No |
-| Env vars | `PLUR_DEBUG`, `PLUR_PATH` | `CORE_BRAIN_DEBUG`, `CORE_BRAIN_HOME`, `CORE_BRAIN_RUNTIME_DIR`, `CORE_BRAIN_MODELS_DIR`, `CORE_BRAIN_OFFLINE`, `CORE_BRAIN_EMBEDDER`, `CORE_BRAIN_RERANKER` | No |
-| Network server / port / PID | yes — MCP server + `server.pid` | **none** — in-process tool | No |
-| Embeddings cache | `~/.plur/.embeddings-cache.json` | `~/.core-brain/vectors/<ns>/index.json` | No |
-| Tool namespace | `plur_*` (`plur_admin`, `plur_learn`, …) | `core_memory` (single tool) | No |
-| License | Apache-2.0 | (MIT AND Apache-2.0) | No |
-
 ## v1 vs roadmap
 
 **In v1:** per-agent isolated namespaces plus the shared global namespace; the
@@ -468,13 +432,12 @@ Measured on a live OpenCode V2 install (Node v24.15.0), not simulated:
   `store target:"global"` with `no global access`; `CB_ALPHA` wrote and read the
   global space and was refused on `store target:"agent:CB_BETA"` with
   `target is private — cross-agent write not allowed`;
-- persistence confirmed under `~/.core-brain/`: `global/memories.json`,
+- persistence confirmed under `~/.config/core-brain/`: `global/memories.json`,
   `agents/<name>/memories.json`, `vectors/<ns>/index.json`, the latter stamped
   `{ embedder, dim, revision, vectors }`. The offline fixture path stamps
   `hash-ngram-v1` / `dim 256`; the real `Xenova/bge-small-en-v1.5` stamp
   (`dim 384`) is **PENDENTE — runtime not provisioned** (see
   [Engine](#engine--hybrid-retrieval));
-- coexistence: `~/.plur/` untouched and the `plur` MCP still `connected`.
 
 ## Install
 

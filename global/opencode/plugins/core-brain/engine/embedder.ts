@@ -101,17 +101,17 @@ export class EngineUnavailableError extends Error {
 // Environment resolution (D1/E4/AC8)
 // ---------------------------------------------------------------------------
 
-/** `CORE_BRAIN_RUNTIME_DIR` -> `~/.core-brain/runtime` (D1). */
+/** `CORE_BRAIN_RUNTIME_DIR` -> `~/.config/core-brain/runtime` (D1). */
 export function resolveRuntimeDir(): string {
   const env = process.env[RUNTIME_DIR_ENV];
-  return env && env.trim() !== "" ? env : join(homedir(), ".core-brain", "runtime");
+  return env && env.trim() !== "" ? env : join(homedir(), ".config", "core-brain", "runtime");
 }
 
-/** `CORE_BRAIN_MODELS_DIR` (brief) | `CORE_BRAIN_MODELS` (plan) -> `~/.core-brain/models`. */
+/** `CORE_BRAIN_MODELS_DIR` (brief) | `CORE_BRAIN_MODELS` (plan) -> `~/.config/core-brain/models`. */
 export function resolveModelsDir(): string {
   const env =
     process.env[MODELS_DIR_ENV] ?? process.env[MODELS_DIR_ENV_LEGACY];
-  return env && env.trim() !== "" ? env : join(homedir(), ".core-brain", "models");
+  return env && env.trim() !== "" ? env : join(homedir(), ".config", "core-brain", "models");
 }
 
 /** `CORE_BRAIN_OFFLINE=1|true` -> `transformers.env.allowRemoteModels = false` (AC8). */
@@ -156,7 +156,7 @@ function runtimeUnavailableMessage(runtimeDir: string, cause: unknown): string {
     `core-brain engine runtime is not available: could not load ` +
     `"@huggingface/transformers" from '${runtimeDir}' (${detail}). ` +
     `Run global/opencode/plugins/core-brain/install-runtime.sh to provision it ` +
-    `(the dir is CORE_BRAIN_RUNTIME_DIR, default ~/.core-brain/runtime).`
+    `(the dir is CORE_BRAIN_RUNTIME_DIR, default ~/.config/core-brain/runtime).`
   );
 }
 

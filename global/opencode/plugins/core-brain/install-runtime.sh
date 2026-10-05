@@ -7,7 +7,7 @@
 # Installs @huggingface/transformers@4.3.0 into a dedicated runtime directory
 # OUTSIDE the plugin tree and OUTSIDE the generated OpenCode mirror:
 #
-#   ${CORE_BRAIN_RUNTIME_DIR:-$HOME/.core-brain/runtime}
+#   ${CORE_BRAIN_RUNTIME_DIR:-$HOME/.config/core-brain/runtime}
 #
 # The npm cache is redirected to a temporary directory (default
 # /tmp/opencode/npm-cache) so that ~/.npm is never written. This is a USER-run
@@ -19,7 +19,7 @@
 #   bash install-runtime.sh --help
 #
 # Environment:
-#   CORE_BRAIN_RUNTIME_DIR  destination (default: ~/.core-brain/runtime)
+#   CORE_BRAIN_RUNTIME_DIR  destination (default: ~/.config/core-brain/runtime)
 #   NPM_CACHE_DIR           npm cache   (default: /tmp/opencode/npm-cache)
 #
 # Rollback: rm -rf "$CORE_BRAIN_RUNTIME_DIR" — no repository change.
@@ -39,7 +39,7 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     -h|--help)
       echo "Usage: bash install-runtime.sh [--dry-run] [--help]"
-      echo "  Installs ${PKG_SPEC} into \${CORE_BRAIN_RUNTIME_DIR:-$HOME/.core-brain/runtime}."
+      echo "  Installs ${PKG_SPEC} into \${CORE_BRAIN_RUNTIME_DIR:-$HOME/.config/core-brain/runtime}."
       exit 0
       ;;
     *)
@@ -50,7 +50,7 @@ for arg in "$@"; do
 done
 
 # --- destination + cache, with ~ expansion --------------------------------
-DEST="${CORE_BRAIN_RUNTIME_DIR:-$HOME/.core-brain/runtime}"
+DEST="${CORE_BRAIN_RUNTIME_DIR:-$HOME/.config/core-brain/runtime}"
 case "$DEST" in
   "~")   DEST="$HOME" ;;
   "~/"*) DEST="$HOME/${DEST#\~/}" ;;
@@ -137,6 +137,6 @@ du -sb "$DEST_ABS"
 
 echo
 echo "done. Next:"
-echo "  - model weights are cached lazily in \${CORE_BRAIN_MODELS:-\$HOME/.core-brain/models} on first embed"
+echo "  - model weights are cached lazily in \${CORE_BRAIN_MODELS:-\$HOME/.config/core-brain/models} on first embed"
 echo "  - optional: bash \"$DIR/prune-runtime.sh\"   # reclaim ~255 MB (linux-x64 only, on a copy)"
 echo "  - rollback: rm -rf \"$DEST_ABS\""

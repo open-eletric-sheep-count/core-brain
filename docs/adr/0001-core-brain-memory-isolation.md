@@ -1,6 +1,6 @@
 # ADR 0001 — core-brain: per-agent memory isolation for OpenCode V2
 
-- **Status:** Accepted
+- **Status:** Accepted — **superseded by ADR 0004 (2026-10-04) for the data root (path only)**: `~/.core-brain/` → `~/.config/core-brain/`. Every other rule of this ADR stands.
 - **Date:** 2026-10-01
 - **Deciders:** ARCHITECT (spec + code), ORACLE (judge), USER (acceptance with reservations)
 - **Source spec:** `docs/specs/core-brain-plugin.md` (revision 2) — the authority for every decision below

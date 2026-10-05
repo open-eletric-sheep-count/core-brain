@@ -43,8 +43,8 @@ the generated mirror, so neither the repository nor the plugin copy carries the
 heavy Node closure:
 
 ```text
-~/.core-brain/runtime      engine runtime   (override: CORE_BRAIN_RUNTIME_DIR)
-~/.core-brain/models       model weights    (override: CORE_BRAIN_MODELS_DIR / CORE_BRAIN_MODELS)
+~/.config/core-brain/runtime   engine runtime   (override: CORE_BRAIN_RUNTIME_DIR)
+~/.config/core-brain/models    model weights    (override: CORE_BRAIN_MODELS_DIR / CORE_BRAIN_MODELS)
 ```
 
 Run the provisioning script **once**:
@@ -78,19 +78,19 @@ and `recall` throw a named `EngineUnavailableError` whose message points at
 `install-runtime.sh`. There is **no** silent fallback: the engine never
 downgrades to the deterministic `hash-ngram-v1` double on its own.
 
-**Rollback:** `rm -rf ~/.core-brain/runtime` — the plugin returns to the
+**Rollback:** `rm -rf ~/.config/core-brain/runtime` — the plugin returns to the
 fail-closed engine; no repository change.
 
 ### Environment variables
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `CORE_BRAIN_RUNTIME_DIR` | engine runtime (the `@huggingface/transformers` install) | `~/.core-brain/runtime` |
-| `CORE_BRAIN_MODELS_DIR` (alias `CORE_BRAIN_MODELS`) | model-weight cache (`transformers.env.cacheDir`) | `~/.core-brain/models` |
+| `CORE_BRAIN_RUNTIME_DIR` | engine runtime (the `@huggingface/transformers` install) | `~/.config/core-brain/runtime` |
+| `CORE_BRAIN_MODELS_DIR` (alias `CORE_BRAIN_MODELS`) | model-weight cache (`transformers.env.cacheDir`) | `~/.config/core-brain/models` |
 | `CORE_BRAIN_OFFLINE` | `1`/`true` → `allowRemoteModels=false`: load weights only from the cache, never fetch | off |
 | `CORE_BRAIN_EMBEDDER` | `real` (default, `Xenova/bge-small-en-v1.5`) \| `fixture` (offline test double; tests only) | `real` |
 | `CORE_BRAIN_RERANKER` | `off` (default) \| `ms-marco` (enable the cross-encoder) | `off` |
-| `CORE_BRAIN_HOME` | data root (records + vectors) | `~/.core-brain` |
+| `CORE_BRAIN_HOME` | data root (records + vectors) | `~/.config/core-brain` |
 | `CORE_BRAIN_DEBUG` | `1` → append diagnostics to `<data root>/debug.log` | off |
 
 The first real `embed()` downloads the `Xenova/bge-small-en-v1.5` fp32 weights
@@ -105,15 +105,15 @@ at `<config-dir>/plugins/<id>/index.ts` is loaded with no array entry. Proof fro
 this environment: `todo-list` and `context-inject` are loaded and working while
 the live `plugins` array holds only other ids.
 
-`core-brain` reads its policy from `~/.core-brain/config.json` (step 4), not from
+`core-brain` reads its policy from `~/.config/core-brain/config.json` (step 4), not from
 an array entry's `options`, so no `opencode.json` change is required. If you do
 configure the object form, the only supported options are `configPath` (explicit
 config file, `~` allowed) and `home` (data root).
 
-## 4. Write the policy — `~/.core-brain/config.json`
+## 4. Write the policy — `~/.config/core-brain/config.json`
 
 ```bash
-mkdir -p ~/.core-brain
+mkdir -p ~/.config/core-brain
 ```
 
 ```json
@@ -171,19 +171,14 @@ returns `{"ok":true,…}`; `recall` returns the marker you just stored. Repeat w
 `ERROR: … no global access`) and `--agent CB_ALPHA` (`store target:'global'` then
 `recall from:'global'` must echo the record).
 
-## 8. Coexistence with PLUR Memory
+## 8. Standalone memory
 
-`core-brain` is meant to live next to PLUR Memory, not to replace the running
-install:
+`core-brain` is the memory system; nothing else runs beside it:
 
 ```bash
-opencode2 mcp list     # the plur MCP must still be there and connected
-ls -la ~/.plur/        # still owned and written by PLUR — untouched by core-brain
+opencode2 mcp list      # core-brain must show connected
+ls -la ~/.config/core-brain/   # the store — owned by core-brain
 ```
-
-The two share nothing: distinct plugin id, directory, npm name, data directory,
-config file, environment variables, tool namespace and license (see the
-collision table in [`README.md`](README.md#zero-collision-with-plur)).
 
 ## 9. Troubleshooting
 
@@ -197,9 +192,9 @@ collision table in [`README.md`](README.md#zero-collision-with-plur)).
 | `ERROR: core_memory store: agent '<A>' cannot write to 'global': no global access` | `hasGlobalAccess` is false for that agent | expected behaviour — write to `self`, or grant access |
 | `ERROR: core_memory store: agent '<A>' cannot write to 'agent:<B>': target is private — cross-agent write not allowed` | cross-agent write | expected behaviour — writes only go to your own space |
 | the `core_memory` tool does not appear | the mirror was not installed, or OpenCode was not reloaded | re-run step 1, then step 5 |
-| where is the data? | the data root is the user profile | `~/.core-brain/`: `global/memories.json`, `agents/<name>/memories.json`, `vectors/<ns>/index.json` |
-| I want the hook's diagnostics | the prompt hook is silent by default | run with `CORE_BRAIN_DEBUG=1`; it appends to `~/.core-brain/debug.log` |
-| I want to start over | the store is plain JSON | stop OpenCode, then `rm -rf ~/.core-brain` (this also deletes your `config.json` and the engine runtime) |
+| where is the data? | the data root is the user profile | `~/.config/core-brain/`: `global/memories.json`, `agents/<name>/memories.json`, `vectors/<ns>/index.json` |
+| I want the hook's diagnostics | the prompt hook is silent by default | run with `CORE_BRAIN_DEBUG=1`; it appends to `~/.config/core-brain/debug.log` |
+| I want to start over | the store is plain JSON | stop OpenCode, then `rm -rf ~/.config/core-brain` (this also deletes your `config.json` and the engine runtime) |
 | I want a different data root | for tests or throwaway runs | set `CORE_BRAIN_HOME=/some/tmp/dir` before starting OpenCode |
 | right after `opencode2 reload`, `plugin list` shows fewer plugins and the MCP tools vanish from the session | observed transient reload behaviour (measured: 7 → 1 plugins listed, MCPs gone from the live catalogue) | it recovers by itself on the next command (8 plugins, MCPs back) — re-run the command once; only restart OpenCode if it does not recover |
 
@@ -212,8 +207,8 @@ reason — never a silent empty answer.
    `~/.config/opencode/agent/CB_*.md` from the mirror (or re-run the installer
    after removing their sources from the repository).
 2. `opencode2 reload`.
-3. Optionally reclaim the engine: `rm -rf ~/.core-brain/runtime` (and
-   `~/.core-brain/models`). Keep or delete `~/.core-brain/` — it is your memory
+3. Optionally reclaim the engine: `rm -rf ~/.config/core-brain/runtime` (and
+   `~/.config/core-brain/models`). Keep or delete `~/.config/core-brain/` — it is your memory
    data, and it is never touched by the uninstall.
 
 ## 11. Technical references (OpenCode V2 plugin API)
@@ -248,7 +243,7 @@ In `~/.config/opencode/opencode.json`, inside `mcp.servers`:
 "core-brain": {
   "type": "local",
   "command": ["node", "/home/<user>/.config/opencode/plugins/core-brain/mcp/server.js"],
-  "environment": { "CORE_BRAIN_HOME": "/home/<user>/.core-brain" }
+  "environment": { "CORE_BRAIN_HOME": "/home/<user>/.config/core-brain" }
 }
 ```
 
@@ -261,7 +256,7 @@ Notes:
 
 - The path must point at the **mirror** the running engine loads
   (`~/.config/opencode/…`), not at the repository.
-- `CORE_BRAIN_HOME` is optional: without it the server resolves `~/.core-brain`
+- `CORE_BRAIN_HOME` is optional: without it the server resolves `~/.config/core-brain`
   from the user's home. Keep it when the store lives elsewhere.
 - The MCP process reads the same engine runtime (section 2); the same
   `CORE_BRAIN_RUNTIME_DIR` / `CORE_BRAIN_MODELS_DIR` / `CORE_BRAIN_RERANKER`
@@ -282,7 +277,7 @@ per session; a reload makes it visible to new sessions.)
 opencode2 mcp list
 ```
 
-`core-brain` must show **connected**, and so must `plur` — the two coexist.
+`core-brain` must show **connected**.
 
 ### Step 4 — smoke test
 
@@ -295,10 +290,10 @@ code 0. The check drives the real server over stdio (`initialize` →
 `notifications/initialized` → `tools/list` → `tools/call`) and asserts that
 responses arrive in request order (the async seam).
 
-### Step 5 — coexistence
+### Step 5 — standalone
 
-Confirm `~/.plur/` is untouched and the `plur` MCP is still connected in the
-same `mcp list` output. Nothing in this plugin reads or writes PLUR data.
+`core-brain` is the only memory system wired; no other MCP server or store is
+involved.
 
 ### Troubleshooting
 

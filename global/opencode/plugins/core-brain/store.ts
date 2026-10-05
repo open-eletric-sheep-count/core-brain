@@ -347,14 +347,14 @@ function staleIndexMessage(label: string, header: IndexHeader | null, active: In
 
 // ---------------------------------------------------------------------------
 // Configuration (§4/Q3). Precedence: options.configPath > CORE_BRAIN_HOME >
-// ~/.core-brain > <dataRoot> > <pluginDir> (last = dev seed).
+// ~/.config/core-brain > <dataRoot> > <pluginDir> (last = dev seed).
 // ---------------------------------------------------------------------------
 
 function resolveDataRoot(options: EngineOptions): string {
   if (options.home) return options.home;
   const envHome = process.env.CORE_BRAIN_HOME;
   if (envHome) return envHome;
-  return join(homedir(), ".core-brain");
+  return join(homedir(), ".config", "core-brain");
 }
 
 function resolveConfigPath(options: EngineOptions, dataRoot: string): string {
@@ -365,7 +365,7 @@ function resolveConfigPath(options: EngineOptions, dataRoot: string): string {
   push(options.configPath);
   const envHome = process.env.CORE_BRAIN_HOME;
   if (envHome) push(join(envHome, CONFIG_FILE));
-  push(join(homedir(), ".core-brain", CONFIG_FILE));
+  push(join(homedir(), ".config", "core-brain", CONFIG_FILE));
   push(join(dataRoot, CONFIG_FILE));
   push(join(PLUGIN_DIR, CONFIG_FILE));
   for (const candidate of candidates) {

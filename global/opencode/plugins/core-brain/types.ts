@@ -294,7 +294,7 @@ export type CoreMemoryRequest =
 
 /** Options accepted by `createEngine` (spec Q3 precedence). */
 export interface EngineOptions {
-  /** Data root; defaults to `CORE_BRAIN_HOME ?? ~/.core-brain`. */
+  /** Data root; defaults to `CORE_BRAIN_HOME ?? ~/.config/core-brain`. */
   home?: string;
   /** Explicit config file (highest precedence). */
   configPath?: string;
