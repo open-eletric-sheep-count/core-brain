@@ -135,4 +135,10 @@ MVP plan in [README.md](README.md).
   tools `core_recall`/`core_status`/`core_doctor`/`core_receipt`/`core_admin`;
   plugin ops `forget`/`feedback`; additive store fields. Spec:
   `docs/specs/core-brain-mcp.md`. Evidence: `mcp/check.sh` 18/18, `check.sh`
-  13/13, `opencode2 mcp list` core-brain + plur connected. 
+  13/13, `opencode2 mcp list` core-brain + plur connected.
+
+---
+
+## core-brain plugin — Fatia 2b (PLUR parity: self-report + closing ritual)
+
+- [ ] **Fatia 2b — automatic self-report capture + session-closing ritual** (`global/opencode/plugins/core-brain/`; USER request 2026-10-05 — restore the PLUR learned-summary behavior): (1) **self-report capture** — read the assistant's end-of-reply learnings digest (`--- I learned:` block) at turn end and store each item automatically (PLUR's `learnFromTurn` on `session.idle`; today the skills store each bullet explicitly and nothing in the plugin reads the assistant's text); (2) **closing ritual** — on session close, capture the summary + episode (PLUR's `plur_session_end`; fatia 2's A4 remains `UNKNOWN`). First step: a spike for the turn-end/event signal on the V2 plugin API (the PLUR V2 port used an event subscribe — source in the plur repo, `packages/opencode/`). 

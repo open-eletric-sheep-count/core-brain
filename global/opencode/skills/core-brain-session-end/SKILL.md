@@ -1,6 +1,6 @@
 ---
 name: core-brain-session-end
-description: Extract durable learnings at the end of a session and save them as core-brain memories — corrections, preferences, and codebase patterns; nothing ephemeral, nothing sensitive. Use when the user says "wrap up", "end session", "we're done", or similar, or when a conversation winds down after completing a task and you want to record what you learned before the context window closes.
+description: Extract durable learnings at the end of a session and save them as core-brain memories — corrections, preferences, and codebase patterns; nothing ephemeral, nothing sensitive. Use when the user says "wrap up", "end session", "we're done", or signals the session is closing (including plain satisfaction — "ok", "thanks", "we're good"), or when a conversation winds down after completing a task and you want to record what you learned before the context window closes.
 ---
 
 # Core-Brain Session End
@@ -12,6 +12,7 @@ Core-brain stores durable knowledge — corrections, conventions, preferences, d
 ## When to Use
 
 - The user says "wrap up", "end session", "we're done", or similar
+- The user signals the session is closing — including plain satisfaction ("ok", "thanks", "we're good")
 - The conversation is winding down after completing a task
 - You want to record what you learned before the context window closes
 
@@ -102,7 +103,7 @@ Session learnings saved (3 records + 1 episode):
    domain: project:acme | tags: deploy, staging, ops
 ```
 
-Keep the user-facing summary short. Show what you saved; do not narrate your reasoning.
+**Always close with the user-facing summary** — show what you saved, even when the user just signals satisfaction; never close silently. Keep it short; do not narrate your reasoning.
 
 ## Integration with core-brain-memory
 

@@ -1,6 +1,6 @@
 ---
 name: core-brain-memory
-description: Persistent memory for AI agents backed by the core-brain store (core_memory). Store corrections, preferences, and conventions as they happen; recall relevant knowledge before acting; give feedback and retire stale records. Use every session — memory is a continuous layer, not a feature you toggle.
+description: Persistent memory for AI agents backed by the core-brain store (core_memory). Store corrections, preferences, and conventions as they happen; close replies with a short learnings digest; recall relevant knowledge before acting; give feedback and retire stale records. Use every session — memory is a continuous layer, not a feature you toggle.
 ---
 
 # Core-Brain Memory
@@ -11,7 +11,7 @@ Persistent memory for AI agents. Corrections, preferences, and patterns are stor
 
 Always. Memory is not a feature you toggle — it is a layer that runs continuously:
 
-- **Recall before you act** — when the user references earlier work, decisions, or conventions, search first. Core-brain does not inject memory automatically; `recall` is how memory surfaces.
+- **Recall before you act** — when the user references earlier work, decisions, or conventions, search first. (Opted-in agents also receive an automatic memory block; `recall` is how you fetch what you need either way.)
 - **Store as you learn** — corrections, stated preferences, discovered conventions (see the Learning Protocol below).
 - **Give feedback** — after a recalled record helped or misled you.
 - **Retire stale records** — `forget` what is no longer true.
@@ -32,6 +32,21 @@ Always. Memory is not a feature you toggle — it is a layer that runs continuou
 - **Convention or pattern discovered** — store it.
 - **Decision** — store it with the reason and the condition that would reopen it.
 - **Session wrap-up** — follow the `core-brain-session-end` skill to extract what the session produced.
+
+## Signaling New Learnings
+
+When you learn something durable, end your reply with a short digest:
+
+```
+---
+I learned:
+- <concise factual statement>
+- <another if applicable>
+```
+
+- Only genuine learnings — not conversation summaries; skip the block when nothing new was learned.
+- Phrase as facts: "The API requires an auth header", not "the user said the API needs auth".
+- Store each bullet with `core_memory` (`op: "store"`) — automatic harvesting of this block is a known gap (tracked in TASKS.md), so the store call is what persists it; the block stays the user-visible digest.
 
 ## What NOT to Learn
 
