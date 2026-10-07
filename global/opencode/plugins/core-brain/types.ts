@@ -1,4 +1,4 @@
-// types.ts — shared types for the core-brain plugin (spec §4, §7.2).
+// types.ts — shared types for the core-brain plugin (spec §4, §7.2) .
 //
 // Type-only module: it carries no runtime code and store.ts imports it with
 // `import type`, so it is fully erased by Node's type-stripping and adds no
