@@ -359,3 +359,36 @@ loads the matching `METHODOLOGY_*` file when a methodology is chosen (Tico and
 Teco Think, scrum team, ORACLE does it all, A New Brain Storm, Batman e Robin);
 the `SUBAGENT-*` files carry the mandatory subagent rules (e.g. the ORACLE is the
 single channel to the USER).
+
+---
+
+## 5. SonarQube analysis
+
+Two scripts send this checkout for analysis to SonarQube (same evaluation as a
+manual `npx @sonar/scan` run; needs Node >= 22.12):
+
+- `run-sonar-scan.sh` — plain analysis (no coverage).
+- `run-sonar-cover.sh` — analysis **plus** the LCOV coverage report, so the
+  dashboard shows real coverage instead of 0.0%. Fails fast with guidance if
+  the report file is missing.
+
+Both read their config from `./.env`, which is **gitignored and never
+committed** (it holds the analysis token):
+
+```bash
+cp .env.example .env
+# edit .env: set SONAR_TOKEN (SonarQube → My Account → Security →
+# Generate Token, with Execute Analysis permission on the project)
+bash run-sonar-scan.sh
+# dashboard: http://localhost:9000/dashboard?id=core-brain
+```
+
+Notes:
+
+- The project key (`SONAR_PROJECT_KEY`, default `core-brain`) must already
+  exist on the server, and the token needs **Execute Analysis** on it —
+  without that the scan dies with `401` on `/api/v2/analysis/version`.
+- This repo has **no test suite yet**, so there is no test step in the
+  scripts; when a runner with coverage exists (jest/vitest), point
+  `SONAR_LCOV_PATHS` in `.env` at its `lcov.info` and use
+  `run-sonar-cover.sh`.

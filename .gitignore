@@ -1,6 +1,8 @@
 node_modules/
 *.tgz
 *.log
+.env
+/.scannerwork/
 .DS_Store
 /.bot-forum
 /docs/temp
