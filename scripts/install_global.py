@@ -206,12 +206,19 @@ def plan(args):
             raise ValueError('--context-inject-only requires --host codex')
     elif host == 'opencode':
         copy_tree(source, target, changes)
+        # Current V2 documents agents/; retain the legacy agent/ tree as well.
+        if (source / 'agent').is_dir():
+            copy_tree(source / 'agent', target / 'agents', changes)
         if args.wsl_distro:
             raise ValueError('--wsl-distro is for a Windows Codex client installed from WSL')
     else:
         node = node_executable(args.node)
         copy_tree(source / 'adapters/core-brain', target / 'adapters/core-brain', changes)
         copy_tree(source / 'skills', skills, changes)
+        # Repository rules/*.md are role prompts, not native Codex .rules policy.
+        # Keep the established runtime path used by the file injector and ORACLE.
+        copy_tree(source / 'rules', target / 'roles', changes)
+        copy_tree(source / 'helpers', target / 'helpers', changes)
         environment = {'CORE_BRAIN_HOME': str(memory), 'CORE_BRAIN_RUNTIME_DIR': str(absolute(args.runtime_dir or memory / 'runtime')),
                        'CORE_BRAIN_MODELS_DIR': str(absolute(args.models_dir or memory / 'models'))}
         adapter = target / 'adapters/core-brain'

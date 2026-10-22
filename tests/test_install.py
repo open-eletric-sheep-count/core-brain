@@ -48,6 +48,7 @@ class InstallTests(unittest.TestCase):
         self.run_install('opencode')
         self.assertTrue((self.target / 'plugins/context-inject/index.ts').is_file())
         self.assertTrue((self.target / 'agent/ORACLE.md').is_file())
+        self.assertTrue((self.target / 'agents/ORACLE.md').is_file())
         actual = json.loads((self.memory / 'config.json').read_text())
         self.assertEqual(actual['agents'][0], policy['agents'][0])
         self.assertEqual(actual['custom'], 42)
@@ -89,6 +90,70 @@ class InstallTests(unittest.TestCase):
         self.run_install()
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.assertEqual(after, before)
+
+    def test_codex_suite_installs_agent_library_and_global_helpers(self):
+        self.run_install()
+        for source_folder, destination_folder in [('rules', 'roles'), ('helpers', 'helpers')]:
+            sources = list((ROOT / 'global/codex' / source_folder).glob('*.md'))
+            self.assertTrue(sources, source_folder)
+            for source in sources:
+                self.assertEqual((self.target / destination_folder / source.name).read_bytes(), source.read_bytes())
+        for source in (ROOT / 'global/opencode/agent').glob('*.md'):
+            self.assertTrue((self.target / 'roles' / source.name).is_file(), source.name)
+
+    def test_fresh_codex_suite_injects_its_installed_oracle(self):
+        self.run_install()
+        oracle = (ROOT / 'global/codex/rules/ORACLE.md').read_text().rstrip()
+        hooks = json.loads((self.target / 'hooks.json').read_text())
+        handler = next(handler for entry in hooks['hooks']['SessionStart'] for handler in entry['hooks']
+                       if handler.get('statusMessage') == 'context-inject: OESC file context')
+        for source in ('startup', 'compact'):
+            run = subprocess.run(shlex.split(handler['command']), text=True, capture_output=True, timeout=15,
+                                 input=json.dumps({'hook_event_name': 'SessionStart', 'session_id': 'fresh-home', 'source': source}))
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)['hookSpecificOutput']['additionalContext'], oracle)
+
+    def test_agent_upgrade_backs_up_changed_oracle_and_preserves_unmanaged_agents(self):
+        roles = self.target / 'roles'
+        roles.mkdir(parents=True)
+        (roles / 'ORACLE.md').write_text('Previous installed oracle')
+        (roles / 'USER_ONLY.md').write_text('Keep this user agent')
+        self.run_install()
+        self.assertEqual((roles / 'ORACLE.md').read_bytes(), (ROOT / 'global/codex/rules/ORACLE.md').read_bytes())
+        self.assertEqual((roles / 'USER_ONLY.md').read_text(), 'Keep this user agent')
+        self.assertEqual(next(roles.glob('ORACLE.md.oesc-backup-*')).read_text(), 'Previous installed oracle')
+
+    def test_opencode_injector_reads_installed_guides_on_start_and_compaction(self):
+        self.run_install('opencode')
+        plugin = self.target / 'plugins/context-inject'
+        script = """
+import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+const directory = process.argv[1];
+const {default: plugin} = await import(pathToFileURL(directory + '/index.ts'));
+let context = [], callback;
+const blocks = [];
+const dispose = await plugin.setup({session: {
+  async get() { return {agent: 'ORACLE'}; }, async context() { return context; },
+  async synthetic({text}) { blocks.push(text); },
+  async hook(name, fn) { callback = fn; return {dispose() {}}; }
+}});
+try {
+  for (const compact of [false, true]) {
+    context = compact ? [{type:'compaction', status:'completed', id:'checkpoint'}] : [];
+    blocks.length = 0;
+    await callback({sessionID:'installed-layout', prompt:{text:''}});
+    const files = JSON.parse(readFileSync(directory + '/config.json', 'utf8')).injections.agents.ORACLE;
+    for (const file of files[compact ? 'session.compacted' : 'session.created']) {
+      const text = readFileSync(directory + '/' + file, 'utf8').trimEnd();
+      if (!blocks.join('\\n\\n').includes(text)) throw Error('Missing installed file: ' + file);
+    }
+  }
+} finally { await dispose(); }
+"""
+        run = subprocess.run(['node', '--input-type=module', '-e', script, str(plugin)],
+                             text=True, capture_output=True, timeout=15)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
     def test_context_inject_only_preserves_memory_mcp_and_custom_file_lists(self):
         self.target.mkdir()

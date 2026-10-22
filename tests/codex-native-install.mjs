@@ -2,7 +2,7 @@
 // No model calls, personal memory writes, credential copies or hook trust bypass.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +74,17 @@ try {
   const hookText = JSON.stringify(hooks);
   assert.ok(hookText.includes('sessionStart') && hookText.includes('userPromptSubmit'), hookText);
   assert.ok(hookText.includes('launch.mjs'), hookText);
+  const contextHook = hooks.data.flatMap(entry => entry.hooks)
+    .find(entry => entry.statusMessage === 'context-inject: OESC file context' && entry.eventName === 'sessionStart');
+  assert.ok(contextHook, 'Installed file-context hook must be discovered');
+  const installedOracle = readFileSync(join(home, 'roles/ORACLE.md'), 'utf8').trimEnd();
+  for (const source of ['startup', 'compact']) {
+    const result = spawnSync(contextHook.command, { shell: true, encoding: 'utf8', timeout: 15000, windowsHide: true,
+      input: JSON.stringify({hook_event_name: 'SessionStart', session_id: 'installed-file-context', source}) });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(JSON.parse(result.stdout).hookSpecificOutput.additionalContext, installedOracle);
+  }
+  assert.ok(readdirSync(join(home, 'helpers')).includes('METHODOLOGY_ORACLE_DOES_IT_ALL_HELPERS.md'));
   const skills = await request('skills/list', { cwds: [workspace], forceReload: true });
   const installedSkills = skills.data.flatMap(entry => entry.skills)
     .filter(skill => skill.path.replaceAll('\\', '/').includes('/workspace/.agents/skills/'));
@@ -96,7 +107,10 @@ try {
   assert.ok(!learned.isError && JSON.stringify(learned).includes(prompt), JSON.stringify(learned));
   console.log(JSON.stringify({ passed: true, actual_codex_process: true, isolated_home: true,
     installed_mcp: 'core_memory', store_recall: true, skill_names: 3,
-    hook_definitions_discovered: 2, native_hook_trust_bypassed: false,
+    hook_definitions_discovered: hooks.data.flatMap(entry => entry.hooks).length,
+    installed_role_prompts: readdirSync(join(home, 'roles')).filter(name => name.endsWith('.md')).length,
+    installed_helpers: readdirSync(join(home, 'helpers')).filter(name => name.endsWith('.md')).length,
+    installed_file_context_startup_and_compaction: true, native_hook_trust_bypassed: false,
     native_hook_execution: 'not requested; new definitions require native review',
     installed_windows_hook_command_tested_directly: true,
     model_calls: 0, personal_configuration_changed: false }, null, 2));
