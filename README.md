@@ -5,54 +5,80 @@
 > Sheep?*) — the agent/artificial-mind imagery; "Count" = counting sheep to fall
 > asleep, i.e. the **sleep/consolidation ("dreams")** at the heart of the project.
 
-**OESC** aims to provide an **open-source AI framework for OpenCode**: a growing
+**OESC** provides an **open-source AI framework for OpenCode V2 and a core-brain adaptation for Codex**: a growing
 set of **agents**, **skills**, **plugins**, and an **enhanced memory** for LLM
 agents — shipped as a complete suite and **prepared for OpenCode V2**
-([`opencode2`](https://opencode.ai/v2/docs/)).
+([OpenCode V2 documentation](https://opencode.ai/v2/docs/)).
 
-Today the suite ships the two plugins below — **todo** (§1) and
-**context-inject** (§2) — plus the **agent team** that runs the flows (§4); the
-**memory system** (§3) is the next chapter.
+The suite ships **todo** (§1), **context-inject** (§2), the original core-brain
+memory engine, and the **agent team** (§4). `global/codex` contains the working
+memory MCP/hook adaptation, native file injector, role prompts, global helpers
+and memory skills. The broader tiered-memory, dreams and
+mental-map design in §3 remains a roadmap, beyond the implemented memory store.
 
 ---
 
 ## Getting started
 
-1. **Install OpenCode V2** — it runs as `opencode2`, side by side with V1's
-   `opencode` binary:
-   
-   ```bash
-   curl -fsSL https://opencode.ai/v2/install | bash
-   # or: npm install -g @opencode/cli@beta
-   ```
-   
-   Full instructions: <https://opencode.ai/v2/docs/>.
+**Install by giving your coding agent the prompt below.** Set the target CLI
+to `opencode`, `codex`, or the name of another CLI that needs an explicit
+adaptation. The agent should inspect your machine and existing configuration,
+then execute and verify the installation. The complete manual is
+[INSTALATION.md](INSTALATION.md) at the repository root.
 
-2. **Install the OESC suite** (brings the whole set):
-   
-   ```bash
-   git clone https://github.com/open-eletric-sheep-count/core-brain.git
-   bash core-brain/global/opencode/install-global.sh
-   ```
-   
-   The script copies the suite into `~/.config/opencode/` — no config-file
-   editing needed: plugins are **auto-discovered** from `plugins/`. Re-run it
-   anytime to update. Then restart OpenCode and confirm:
-   
-   ```bash
-   opencode2 plugin list
-   ```
+```text
+Install OESC core-brain from
+https://github.com/open-eletric-sheep-count/core-brain.git.
+Target CLI: <opencode | codex | another CLI name>.
+Checkout location: <choose a suitable local workspace or reuse my checkout>.
 
-Each plugin is **self-contained** — `global/opencode/plugins/<name>/` holds the
-whole thing (source, docs, npm manifest); the installer ships it as-is.
-Optional configuration lives in each plugin's README.
-
-**Single plugin via npm** (publication pending — until then, use the installer above):
-
-```bash
-opencode2 plugin add @oesc/todo-list
-opencode2 plugin add @oesc/context-inject
+1. Inspect the OS, shell, target CLI/version, Node, Python, existing skills,
+   MCPs, hooks and memory paths. Read applicable local AGENTS.md instructions.
+   Reuse an existing checkout after inspecting its branch and local changes;
+   otherwise clone the Git repository to the selected directory. Preserve work.
+2. Read README.md, the root INSTALATION.md and install.sh --help. Check the
+   target CLI's current official plugin/skill/MCP/hook documentation. Plan the
+   steps and define focused tests before changing installation behavior.
+3. For OpenCode V2, run bash install.sh --host opencode --dry-run, then
+   bash install.sh --host opencode --install-runtime with the correct paths.
+   For Codex, use the same commands with --host codex. Reuse an already
+   provisioned real runtime instead of reinstalling it unnecessarily. Select
+   --memory-home, --runtime-dir, --models-dir and --skills-dir as needed.
+   Full installation also installs global helpers and role prompts. For Codex,
+   source global/codex/rules maps to CODEX_HOME/roles, and helpers maps to
+   CODEX_HOME/helpers. Check injector file paths in the installed layout as
+   explained in INSTALATION.md; keep custom installed configuration when updating.
+   For Windows Codex using WSL, run the installer in the selected distro/user,
+   target the Windows Codex and skills directories, and use --wsl-distro and
+   --wsl-user. Read the manual's concrete example before running that command.
+4. Preserve unrelated settings, MCPs, hooks, identities, existing memory and
+   credentials. Review the dry-run, use the installer's backups and never put
+   runtime packages, model weights or personal records in the Git repository.
+   Register each plugin only once. Follow native hook review/trust requirements.
+5. For another CLI, do not pretend the installer already supports it. Verify
+   its MCP stdio registration, skills/instruction discovery, fixed or per-role
+   identity, startup/prompt hooks and compaction transcript contracts. Reuse
+   the original engine and map those host events through a small host adapter.
+   Pass actual discarded/retained message parts for the named session, inject
+   recalled context through that CLI's supported channel, and leave the native
+   compaction summary under host control. Preserve the original learning and
+   retrieval logic without added filters, cuts or summaries. Document missing
+   lifecycle support, context-inject portability and isolation differences.
+6. Run appropriate isolated tests. Start a fresh real target CLI, confirm its
+   actual tool/skill catalog and a controlled memory store/recall, then exercise
+   trusted automatic hooks, compaction and restart/resume where supported.
+   Clean up test resources. Do not call the task complete until the installed
+   CLI is running and the promised behavior has been verified; report any
+   unavailable capability or remaining user trust step explicitly.
 ```
+
+The shared entry point is `bash install.sh --host opencode` or
+`bash install.sh --host codex`; the default host remains OpenCode for existing
+Taulukko callers. Native Windows can invoke `python scripts/install_global.py`.
+Each OpenCode plugin remains self-contained under `global/opencode/plugins/`.
+Codex uses `global/codex/adapters` and `global/codex/skills` rather
+than loading the OpenCode plugin contract directly. See the manual for runtime
+provisioning, policy merging, backups, compatibility and rollback.
 
 ---
 
@@ -84,6 +110,21 @@ log, so behavior survives service restarts. Relative file paths resolve against
 the plugin directory.
 
 Contract, details and configuration: [`global/opencode/plugins/context-inject/`](global/opencode/plugins/context-inject/).
+
+The [Codex adapter](global/codex/adapters/context-inject/README.md) uses native
+`SessionStart` and `SubagentStart` hooks with the original file-loading engine.
+Install it independently with `bash install.sh --host codex --context-inject-only`.
+By default it reads `roles/ORACLE.md` in the selected Codex home on root startup
+and after compaction, with complete context delivery. Full suite installation
+supplies the project-edited ORACLE and global helpers; injector-only installation
+requires that role file to exist separately. Its
+README documents native event timing, trust review and compatibility limits.
+
+Codex's methodology menu also supports **option 4 — A New Brain Storm** again.
+Its native adaptation retains the four serial personas, original grading,
+rejection limits and optional backup helpers. Restore it independently with
+`bash install.sh --host codex --brainstorm-only`; see the installation manual
+for the scoped migration of the former menu exclusion.
 
 ---
 
