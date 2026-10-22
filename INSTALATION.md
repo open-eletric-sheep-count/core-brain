@@ -8,7 +8,7 @@ For guided installation, give an agent the prompt in [README.md](README.md#getti
 | Host | Source | Installed components |
 |---|---|---|
 | OpenCode V2 | `global/opencode` | Original plugins, agents, helpers and memory skills |
-| Codex | `global/codex` | Original core-brain engine, MCP adapter, native hooks and three memory skills |
+| Codex | `global/codex` | Original memory and file-injection engines, MCP adapter, native hooks and three memory skills |
 | Other CLI | Adapter required | Reuse the engine; map that host's MCP, instructions and lifecycle contracts |
 
 `context-inject` is the current name of the former Taulukko file injector. The
@@ -94,6 +94,15 @@ its own `core_memory` MCP and does not install this administration surface.
 
 ## 4. Install Codex on Linux, macOS or native Windows
 
+The suite includes the native file injector. To add only that component to an
+existing Codex installation, run `bash install.sh --host codex --context-inject-only`
+(preview with `--dry-run`). This leaves MCP configuration, memory and skills
+untouched. It loads the existing `${CODEX_HOME:-~/.codex}/roles/ORACLE.md` on
+root startup and after compaction; the personal role file is not distributed.
+Existing customized file lists are retained. See the
+[context-inject Codex manual](global/codex/adapters/context-inject/README.md)
+for event mappings, per-agent selection and native lifecycle limitations.
+
 On Linux or macOS:
 
 ```bash
@@ -104,7 +113,8 @@ bash install.sh --host codex --install-runtime
 The installer copies `global/codex/adapters/core-brain` into
 `${CODEX_HOME:-~/.codex}/adapters/core-brain`, copies the three memory skill
 directories into `~/.agents/skills`, merges only the `core-brain` MCP section in
-`config.toml`, and merges `SessionStart` and `UserPromptSubmit` in `hooks.json`.
+`config.toml`, and merges memory and context-injection handlers in `hooks.json`
+(`SessionStart`, `UserPromptSubmit` and `SubagentStart`).
 Other MCPs, hooks, settings and memory identities are preserved. Existing
 `codex` permissions are retained and its `inject` flag is enabled. All Codex
 roles use this fixed identity; there is no per-role private isolation.
@@ -157,7 +167,7 @@ Linux installation without `--wsl-distro`.
 ### 4.2 Activate and verify
 
 Restart Codex, open `/mcp` and confirm `core-brain` exposes `core_memory`. Open
-`/hooks`, review the installed commands and trust the two handlers through the
+`/hooks`, review the installed commands and trust the installed handlers through the
 native Codex flow. The installer does not alter trust records or bypass review.
 Already disabled Codex hooks are reported before configuration is written.
 

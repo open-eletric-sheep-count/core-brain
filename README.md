@@ -12,7 +12,7 @@ agents — shipped as a complete suite and **prepared for OpenCode V2**
 
 The suite ships **todo** (§1), **context-inject** (§2), the original core-brain
 memory engine, and the **agent team** (§4). `global/codex` contains the working
-memory MCP/hook adaptation and its skills. The broader tiered-memory, dreams and
+memory MCP/hook adaptation, native file injector and memory skills. The broader tiered-memory, dreams and
 mental-map design in §3 remains a roadmap, beyond the implemented memory store.
 
 ---
@@ -71,7 +71,7 @@ The shared entry point is `bash install.sh --host opencode` or
 `bash install.sh --host codex`; the default host remains OpenCode for existing
 Taulukko callers. Native Windows can invoke `python scripts/install_global.py`.
 Each OpenCode plugin remains self-contained under `global/opencode/plugins/`.
-Codex uses `global/codex/adapters/core-brain` and `global/codex/skills` rather
+Codex uses `global/codex/adapters` and `global/codex/skills` rather
 than loading the OpenCode plugin contract directly. See the manual for runtime
 provisioning, policy merging, backups, compatibility and rollback.
 
@@ -105,6 +105,13 @@ log, so behavior survives service restarts. Relative file paths resolve against
 the plugin directory.
 
 Contract, details and configuration: [`global/opencode/plugins/context-inject/`](global/opencode/plugins/context-inject/).
+
+The [Codex adapter](global/codex/adapters/context-inject/README.md) uses native
+`SessionStart` and `SubagentStart` hooks with the original file-loading engine.
+Install it independently with `bash install.sh --host codex --context-inject-only`.
+By default it reads the existing `roles/ORACLE.md` in the selected Codex home
+on root startup and after compaction, with complete context delivery. Its
+README documents native event timing, trust review and compatibility limits.
 
 ---
 

@@ -7,6 +7,12 @@ Newest on top.
 
 ### Added — 2026-10-22
 
+- Added the native Codex `context-inject` adapter, preserving the original
+  file-loading engine unchanged. Startup and compaction load the existing
+  Codex-home `roles/ORACLE.md` in full; native subagent labels support separate
+  file lists. `--context-inject-only` installs it without changing MCP, memory
+  or skills. Native lifecycle differences and hook trust review are documented.
+
 - Added `global/codex` with the working core-brain MCP/native-hook adaptation,
   three portable memory skills and source hashes. The original plugin and engine
   files remain byte-identical to the OpenCode implementation. A small launcher

@@ -90,6 +90,49 @@ class InstallTests(unittest.TestCase):
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.assertEqual(after, before)
 
+    def test_context_inject_only_preserves_memory_mcp_and_custom_file_lists(self):
+        self.target.mkdir()
+        config = b'model = "keep-model"\n[mcp_servers.other]\ncommand = "keep-mcp"\n'
+        (self.target / 'config.toml').write_bytes(config)
+        self.memory.mkdir()
+        (self.memory / 'config.json').write_bytes(b'{"custom":"keep-memory"}\n')
+        unrelated = {'type': 'command', 'command': 'keep-hook'}
+        (self.target / 'hooks.json').write_text(json.dumps({'hooks': {
+            'SessionStart': [{'matcher': 'resume', 'hooks': [unrelated]}]}}))
+        adapter = self.target / 'adapters/context-inject'
+        adapter.mkdir(parents=True)
+        custom = b'{"injections":{"agents":{"codex":{"session.created":[]}}}}\n'
+        (adapter / 'config.json').write_bytes(custom)
+        self.run_install('codex', '--context-inject-only')
+        self.assertEqual((self.target / 'config.toml').read_bytes(), config)
+        self.assertEqual((self.memory / 'config.json').read_bytes(), b'{"custom":"keep-memory"}\n')
+        self.assertEqual((adapter / 'config.json').read_bytes(), custom)
+        self.assertFalse((self.target / 'adapters/core-brain').exists())
+        self.assertFalse(self.skills.exists())
+        hooks = json.loads((self.target / 'hooks.json').read_text())
+        self.assertEqual(hooks['hooks']['SessionStart'][0], {'matcher': 'resume', 'hooks': [unrelated]})
+        installed = hooks['hooks']['SessionStart'][-1]
+        self.assertEqual(installed['matcher'], '^(startup|clear|compact)$')
+        self.assertEqual(installed['hooks'][0]['additionalContextLimit'], 0)
+        before = (self.target / 'hooks.json').read_bytes()
+        self.run_install('codex', '--context-inject-only')
+        self.assertEqual((self.target / 'hooks.json').read_bytes(), before)
+
+    def test_installed_context_hook_loads_oracle_from_selected_codex_home(self):
+        (self.target / 'roles').mkdir(parents=True)
+        oracle = 'ORACLE pessoal completo — não alterar.\n' + 'Regra inteira.\n' * 3000 + 'ÚLTIMA REGRA\n'
+        (self.target / 'roles/ORACLE.md').write_text(oracle)
+        self.run_install('codex', '--context-inject-only')
+        hooks = json.loads((self.target / 'hooks.json').read_text())
+        handler = hooks['hooks']['SessionStart'][-1]['hooks'][0]
+        for source in ('startup', 'compact'):
+            run = subprocess.run(shlex.split(handler['command']),
+                                 input=json.dumps({'hook_event_name': 'SessionStart', 'session_id': 'test', 'source': source}),
+                                 text=True, capture_output=True, timeout=15)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            output = json.loads(run.stdout)
+            self.assertEqual(output['hookSpecificOutput']['additionalContext'], oracle.rstrip())
+
     def test_invalid_existing_configuration_never_partially_installs(self):
         self.target.mkdir()
         for name, content in [('hooks.json', '{invalid'), ('config.toml', '[invalid')]:

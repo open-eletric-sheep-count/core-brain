@@ -2,11 +2,15 @@
   "date": "2026-10-22",
   "source": "Working Codex adaptation, originally migrated from the OESC OpenCode plugin",
   "original_engine": "global/opencode/plugins/core-brain",
+  "context_inject_original_engine": "global/opencode/plugins/context-inject",
   "scope": "Imported source files only. The installer and launch.mjs are new repository additions.",
   "changes": [
-    "Skill resource roots made portable; original plugin, engine and host adaptation copied unchanged."
+    "Skill resource roots made portable; original plugin, engine and host adaptation copied unchanged.",
+    "Context-inject engine and license copied unchanged; codex-hook.mjs maps native lifecycle events and full context output."
   ],
   "files": {
+    "adapters/context-inject/LICENSE": "0992b87a05a1f555ab6aa5c51ccb7c737ffa9e0b5db0b8f77a755649346ee70d",
+    "adapters/context-inject/index.ts": "8fbbd2325c7cfb682744f34d24a61a5f0ffcb79a3ca2fda7ff8fd031c5c2c0ba",
     "adapters/core-brain/LICENSE": "0992b87a05a1f555ab6aa5c51ccb7c737ffa9e0b5db0b8f77a755649346ee70d",
     "adapters/core-brain/LICENSE-APACHE": "90fd2dc4d26efa3c2fd3fd770130a335fda76cf5c6a3705faabac5d765cabd12",
     "adapters/core-brain/NOTICE": "987a5546f3c1fc394c8c556ef6050f646b0b50b000ceadc060998e6251648d94",
