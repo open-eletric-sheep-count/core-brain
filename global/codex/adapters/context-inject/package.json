@@ -1,0 +1,9 @@
+{
+  "name": "@oesc/context-inject-codex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OESC context-inject engine through native Codex lifecycle hooks",
+  "license": "MIT",
+  "engines": { "node": ">=24" }
+}

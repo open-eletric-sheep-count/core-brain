@@ -1,0 +1,11 @@
+{
+  "logging": { "enabled": true },
+  "injections": {
+    "agents": {
+      "codex": {
+        "session.created": ["../../roles/ORACLE.md"],
+        "session.compacted": ["../../roles/ORACLE.md"]
+      }
+    }
+  }
+}

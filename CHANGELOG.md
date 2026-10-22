@@ -5,6 +5,21 @@ Newest on top.
 
 ## [Unreleased]
 
+### Added — 2026-10-22
+
+- Added `global/codex` with the working core-brain MCP/native-hook adaptation,
+  three portable memory skills and source hashes. The original plugin and engine
+  files remain byte-identical to the OpenCode implementation. A small launcher
+  gives MCP and hooks the same installed runtime environment.
+- Added root `install.sh` and a shared Python installer selecting OpenCode V2
+  or Codex, including Windows Codex with a WSL runtime. Existing global installer
+  calls and `-s`/`-d` options remain supported. Installation merges configuration
+  and memory identities, backs up changed existing files, supports no-write
+  dry-run and leaves live records intact. Runtime provisioning is explicit.
+- Added root `INSTALATION.md`, an agent installation/adaptation prompt in README,
+  installer scenarios and Codex compaction contract checks. The guide describes
+  native trust, fixed Codex identity and unsupported host contracts.
+
 ### Removed
 - **PLUR references swept from the plugin docs and task list** (USER, 2026-10-04): `docs/troca-ferramenta.md` deleted (it documented the retired `opencode-mem` → PLUR swap — both tools are now removed from the system); the plugin `README.md` lost the "Coexistence with PLUR" and "Zero collision with PLUR" sections (written for the dual-run transition) and its acknowledgment paragraph now states the plugin is fully standalone; `INSTALACAO.md` §8 became "Standalone memory" and §12 no longer require `plur` next to `core-brain`; `TASKS.md` item 0.0 closed. Kept on purpose: the fork acknowledgment (README), the ported-code attribution (`engine/*` headers, `NOTICE`, `LICENSE-APACHE`) and historical specs/CHANGELOG entries.
 
