@@ -69,9 +69,19 @@ try {
     assert.equal(run.status, 0, run.stdout + run.stderr);
     assert.equal(JSON.parse(run.stdout).hookSpecificOutput.additionalContext, oracle);
   }
+  const restore = spawnSync('wsl.exe', ['-d', distro, '-u', user, '--exec', 'python3',
+    linuxPath(join(repository, 'scripts/install_global.py')), '--host', 'codex', '--brainstorm-only',
+    '--target', linuxPath(home), '--skills-dir', linuxPath(join(workspace, '.agents/skills'))],
+    { encoding: 'utf8', timeout: 20000, windowsHide: true });
+  assert.equal(restore.status, 0, restore.stdout + restore.stderr);
+  const skills = await request('skills/list', { cwds: [workspace], forceReload: true });
+  const brainstorm = skills.data.flatMap(entry => entry.skills).find(skill => skill.name === 'a-new-brain-storm');
+  assert.ok(brainstorm, JSON.stringify(skills));
+  assert.ok(brainstorm.path.replaceAll('\\', '/').includes('/workspace/.agents/skills/a-new-brain-storm/'));
   console.log(JSON.stringify({ passed: true, real_windows_codex_discovery: true,
     installed_hooks: entries.map(entry => ({ event: entry.eventName, enabled: entry.enabled, trusted: entry.trusted })),
     full_file_characters: oracle.length, installed_startup_and_compact_commands_executed: true,
+    restored_brainstorm_skill_discovered: true,
     automatic_hook_execution: 'not requested; native trust review preserved', model_calls: 0,
     personal_configuration_changed: false }, null, 2));
 } finally {

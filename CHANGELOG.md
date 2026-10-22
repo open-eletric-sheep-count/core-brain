@@ -5,6 +5,30 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-10-22
+
+- Restored Codex methodology option 4, A New Brain Storm, with its adapted
+  skill, existing four persona prompts and helper. The original workflow body
+  and Bash algorithms are retained; native tools replace OpenCode tool names.
+  `--brainstorm-only` restores this workflow and its known migrated menu
+  exclusion without changing MCP, hook or memory configuration.
+
+- ORACLE may skip methodology selection only for an apparently standalone factual question when the surrounding context does not suggest further work. A lead-in such as needing a favor requires methodology selection first; ongoing tasks keep their existing methodology.
+
+- Full Codex installation now copies the 24 project role prompts from
+  `global/codex/rules` to the selected Codex home's `roles` directory and the
+  seven helpers to `helpers`. The user's edited ORACLE remains the source;
+  its runtime instructions now describe native tools, on-demand helpers and
+  actual workflow dependencies. Tico and Teco remains the first recommended
+  option when its helper, `be-judge` and `bot-forum` are installed. Removed the
+  obsolete temporary ORACLE backup at the user's request.
+- OpenCode installation also supplies the currently documented `agents/`
+  directory while retaining `agent/` for existing consumers. Both host guides
+  now document global helper installation, role discovery and injector paths,
+  including Windows/WSL, custom homes and personal overlay configuration.
+- Added fresh-profile startup/compaction file-injection checks, role/helper
+  installation and backup scenarios, and installed OpenCode guide loading.
+
 ### Added — 2026-10-22
 
 - Added the native Codex `context-inject` adapter, preserving the original

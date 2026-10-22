@@ -2,6 +2,14 @@
 
 Helper for menu option 4 (`A New Brain Storm`). Loaded by the ORACLE when the USER chooses this flow. Complements the `a-new-brain-storm` skill.
 
+## Codex loading
+
+Read the installed `a-new-brain-storm/SKILL.md` directly and follow its Codex
+runtime contract. Use native Codex tools for serial persona launches, questions
+and planning. OpenCode's `skill` and `task` tools are legacy names, not required
+Codex integrations. This helper is available as menu option 4 when the skill,
+its Bash scripts and the four persona prompts are installed.
+
 ## What it is
 
 Multi-agent brainstorm to create a new screen/feature. Load the `a-new-brain-storm` skill via the skill tool and execute it: lock the USER-confirmed BRIEF first, then the 4 `BRAIN_STORM_PERSONA_*` subagents diverge, prototype, and vote in rounds — the USER has the final vote in every round; the skill is the single home of the flow.

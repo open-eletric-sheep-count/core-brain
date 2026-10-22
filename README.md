@@ -12,7 +12,8 @@ agents — shipped as a complete suite and **prepared for OpenCode V2**
 
 The suite ships **todo** (§1), **context-inject** (§2), the original core-brain
 memory engine, and the **agent team** (§4). `global/codex` contains the working
-memory MCP/hook adaptation, native file injector and memory skills. The broader tiered-memory, dreams and
+memory MCP/hook adaptation, native file injector, role prompts, global helpers
+and memory skills. The broader tiered-memory, dreams and
 mental-map design in §3 remains a roadmap, beyond the implemented memory store.
 
 ---
@@ -43,6 +44,10 @@ Checkout location: <choose a suitable local workspace or reuse my checkout>.
    For Codex, use the same commands with --host codex. Reuse an already
    provisioned real runtime instead of reinstalling it unnecessarily. Select
    --memory-home, --runtime-dir, --models-dir and --skills-dir as needed.
+   Full installation also installs global helpers and role prompts. For Codex,
+   source global/codex/rules maps to CODEX_HOME/roles, and helpers maps to
+   CODEX_HOME/helpers. Check injector file paths in the installed layout as
+   explained in INSTALATION.md; keep custom installed configuration when updating.
    For Windows Codex using WSL, run the installer in the selected distro/user,
    target the Windows Codex and skills directories, and use --wsl-distro and
    --wsl-user. Read the manual's concrete example before running that command.
@@ -109,9 +114,17 @@ Contract, details and configuration: [`global/opencode/plugins/context-inject/`]
 The [Codex adapter](global/codex/adapters/context-inject/README.md) uses native
 `SessionStart` and `SubagentStart` hooks with the original file-loading engine.
 Install it independently with `bash install.sh --host codex --context-inject-only`.
-By default it reads the existing `roles/ORACLE.md` in the selected Codex home
-on root startup and after compaction, with complete context delivery. Its
+By default it reads `roles/ORACLE.md` in the selected Codex home on root startup
+and after compaction, with complete context delivery. Full suite installation
+supplies the project-edited ORACLE and global helpers; injector-only installation
+requires that role file to exist separately. Its
 README documents native event timing, trust review and compatibility limits.
+
+Codex's methodology menu also supports **option 4 — A New Brain Storm** again.
+Its native adaptation retains the four serial personas, original grading,
+rejection limits and optional backup helpers. Restore it independently with
+`bash install.sh --host codex --brainstorm-only`; see the installation manual
+for the scoped migration of the former menu exclusion.
 
 ---
 

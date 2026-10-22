@@ -46,10 +46,16 @@ resolve from that adapter directory, independently of the current workspace.
 Absolute entries are also supported. An optional command-line argument selects
 another JSON configuration file; relative entries still resolve from the adapter.
 
-The default `codex` lists contain `../../roles/ORACLE.md`, resolving to the
-existing `ORACLE.md` under the selected Codex home's `roles` directory. This
-does not distribute or overwrite personal ORACLE instructions. Install or
-configure that file separately if the home does not already contain it.
+The default `codex` lists contain `../../roles/ORACLE.md`, resolving to
+`ORACLE.md` under the selected Codex home's `roles` directory. The full suite
+installs the project-edited `global/codex/rules/ORACLE.md` there, backing up
+changed existing files. Injector-only installation preserves existing role files;
+provide the role separately if that home does not already contain it.
+
+See the root [path-resolution guide](../../../../INSTALATION.md#44-injector-configurations-and-path-resolution)
+for native Windows, WSL, custom homes and external configuration files. Installed
+Codex injector configuration is preserved on updates; source template edits must
+be merged explicitly into an existing profile.
 
 ## Lifecycle compatibility
 

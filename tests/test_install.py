@@ -81,7 +81,8 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(sum(h.get('statusMessage', '').startswith('core-brain:') for h in session), 1)
         identity = json.loads((self.memory / 'config.json').read_text())['agents'][0]
         self.assertEqual(identity, {'name': 'codex', 'private': True, 'hasGlobalAccess': False, 'inject': True})
-        self.assertEqual(len(list(self.skills.glob('*/SKILL.md'))), 3)
+        self.assertEqual({p.parent.name for p in self.skills.glob('*/SKILL.md')}, {
+            'core-brain-memory', 'core-brain-create-memories', 'core-brain-session-end', 'a-new-brain-storm'})
         self.assertTrue(list(self.target.rglob('*.oesc-backup-*')))
 
     def test_reinstall_is_idempotent(self):
@@ -90,6 +91,73 @@ class InstallTests(unittest.TestCase):
         self.run_install()
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.assertEqual(after, before)
+
+    def test_brainstorm_restore_preserves_mcp_hooks_and_user_instructions(self):
+        self.target.mkdir()
+        config = b'model = "keep-model"\n[mcp_servers.other]\ncommand = "keep-mcp"\n'
+        hooks = b'{"hooks":{"Stop":[]}}\n'
+        (self.target / 'config.toml').write_bytes(config)
+        (self.target / 'hooks.json').write_bytes(hooks)
+        instructions = ('Personal header\n<!-- opencode-migration:start -->\n'
+                        'Only offer workflows whose skills are installed. In particular, do not offer\n'
+                        'the removed A New Brain Storm flow. Keep the Tico and Teco rule.\n'
+                        'Never restore an excluded MCP.\n<!-- opencode-migration:end -->\nPersonal footer\n')
+        (self.target / 'AGENTS.md').write_text(instructions)
+        self.run_install('codex', '--brainstorm-only', '--dry-run')
+        self.assertEqual((self.target / 'AGENTS.md').read_text(), instructions)
+        self.assertFalse(self.skills.exists())
+        self.run_install('codex', '--brainstorm-only')
+        self.assertEqual((self.target / 'config.toml').read_bytes(), config)
+        self.assertEqual((self.target / 'hooks.json').read_bytes(), hooks)
+        self.assertFalse(self.memory.exists())
+        updated = (self.target / 'AGENTS.md').read_text()
+        self.assertTrue(updated.startswith('Personal header\n'))
+        self.assertTrue(updated.endswith('Personal footer\n'))
+        self.assertIn('Keep the Tico and Teco rule.', updated)
+        self.assertIn('Never restore an excluded MCP.', updated)
+        self.assertNotIn('do not offer\nthe removed A New Brain Storm flow', updated)
+        for name in ['winner.sh', 'reject.sh', 'backup-phase.sh']:
+            self.assertEqual((self.skills / 'a-new-brain-storm/scripts' / name).read_bytes(),
+                             (ROOT / 'global/codex/skills/a-new-brain-storm/scripts' / name).read_bytes())
+        self.assertTrue((self.target / 'helpers/METHODOLOGY_A_NEW_BRAIN_STORM_HELPERS.md').is_file())
+        for name in ['BAD_GUY', 'MARKETER', 'MINIMALIST', 'NAME_MAKER']:
+            self.assertTrue((self.target / 'roles' / f'BRAIN_STORM_PERSONA_{name}.md').is_file())
+        before = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        self.run_install('codex', '--brainstorm-only')
+        after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        self.assertEqual(after, before)
+
+    def test_installed_brainstorm_helpers_preserve_optional_backup_and_archive_winner(self):
+        self.run_install('codex', '--brainstorm-only')
+        directory = self.root / 'workspace/docs/temp/brainstorm-proof'
+        personas = ['BAD_GUY', 'MARKETER', 'MINIMALIST', 'NAME_MAKER']
+        for name in personas:
+            output = directory / 'output' / name
+            output.mkdir(parents=True)
+            (output / 'delivery.md').write_text('Proposal from ' + name)
+        (directory / 'forum.md').write_text('Peer grades')
+        (directory / 'votes.md').write_text('Slice vote')
+        scripts = self.skills / 'a-new-brain-storm/scripts'
+        for _ in range(2):
+            result = subprocess.run(['bash', str(scripts / 'backup-phase.sh'), 'slice-1', 'MARKETER', str(directory)],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((directory / 'backup/report.md').read_text().count('## slice-1'), 1)
+        for _ in range(2):
+            result = subprocess.run(['bash', str(scripts / 'winner.sh'), 'MARKETER', str(directory)],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        for name in personas:
+            self.assertEqual((directory / 'backup/slice-1' / name / 'delivery.md').read_text(), 'Proposal from ' + name)
+            self.assertEqual((directory / 'output' / name / 'delivery.md').read_text(), 'Proposal from MARKETER')
+        for _ in range(2):
+            result = subprocess.run(['bash', str(scripts / 'reject.sh'), 'slice-1', 'R1', str(directory)],
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        archived = directory / 'reject/slice-1-R1'
+        self.assertEqual((archived / 'delivery.md').read_text(), 'Proposal from MARKETER')
+        self.assertEqual((archived / 'forum.md').read_text(), 'Peer grades')
+        self.assertEqual((archived / 'votes.md').read_text(), 'Slice vote')
 
     def test_codex_suite_installs_agent_library_and_global_helpers(self):
         self.run_install()

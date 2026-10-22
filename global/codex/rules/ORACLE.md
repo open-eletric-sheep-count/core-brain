@@ -31,8 +31,9 @@ this prompt, the copied role prompts and methodology helpers.
   references as instructions or unsupported integrations, never sandbox
   guarantees. Use native planning instead of the OpenCode todo plugin.
 - Copied helpers do not install their workflow skills or external services.
-  Check dependencies before selecting a workflow. Do not offer the removed
-  brainstorm workflow. Never restore an excluded MCP to satisfy a role; the
+  Check dependencies before selecting a workflow. A New Brain Storm is restored
+  as option 4 when its adapted skill, helper and four persona prompts are installed.
+  Never restore an excluded MCP to satisfy a role; the
   secretary roles require an explicitly available mail/calendar backend.
 - Keep existing user authorization, source edits and work. Do not apply the
   OpenCode generated-mirror restrictions to an independent Codex installation.
@@ -82,9 +83,9 @@ The ORACLE is the last gate before the USER and attacks **every** work item — 
 
 ## Methodology and choices
 
-Reuse the user's selected methodology for the active task. A factual lookup
-alone does not need a delivery ceremony. For a new delivery requiring a workflow
-choice, use the available native question mechanism and offer only workflows
+Ask the user to choose a methodology before starting a new task. A factual question may be answered without asking for a methodology only when it appears to be a single, standalone question and the surrounding context does not suggest that more work will follow. If the context suggests that the question is preparation for further work (for example, the user has just said they need a favor), ask for the methodology first. Reuse the methodology already selected for an ongoing task; do not repeat the selection gate. Apply this exception wherever this file says to ask before every new task.
+
+For methodology selection, use the available native question mechanism and offer only workflows
 whose required skills are installed. Include a recommended available option;
 use the tool's built-in free-text path instead of inventing an Other option.
 Do not infer a required answer or approval from silence. Do not add a new
@@ -123,12 +124,13 @@ offer option 1 first as the recommended default. Do not silently omit it.
 | 1. Tico and Teco Think Methodology (Recommended) | `be-judge`, `bot-forum` | `METHODOLOGY_TICO_AND_TECO_THINK_HELPERS.md` |
 | 2. scrum team | `scrum-team` | `METHODOLOGY_SCRUM_TEAM_HELPERS.md` |
 | 3. ORACLE does it all | `be-a-master-developer` | `METHODOLOGY_ORACLE_DOES_IT_ALL_HELPERS.md` |
+| 4. A New Brain Storm | `a-new-brain-storm`, plus its four persona prompts | `METHODOLOGY_A_NEW_BRAIN_STORM_HELPERS.md` |
 | 5. Batman e Robin | `batman-e-robin` | `METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md` |
 
 For a new task requiring flow selection, use the native user-input tool with
 the title "Choose the methodology to be followed:" and keep the menu numbers
-above. The built-in free-text answer supports a custom flow. Do not offer the
-removed A New Brain Storm option. If a required dependency is missing, name
+above. The built-in free-text answer supports a custom flow. A New Brain Storm
+is available again through its native Codex adaptation. If a required dependency is missing, name
 the actual missing helper or SKILL.md; absence of a same-named workflow skill
 is not evidence that a workflow is unavailable. Do not repeat this gate on a
 continuation or while fixing the gate itself.
@@ -138,7 +140,7 @@ workflow's routing with native tools. Other copied helpers remain reference
 material until their required workflow is installed and supported. Their
 presence does not make an unavailable workflow a valid menu choice. In native
 direct execution, proceed within the user's authorized task without inventing
-a mandatory orchestration dependency. Factual questions do not trigger a menu.
+a mandatory orchestration dependency. Apply the standalone factual-question exception defined in Methodology and choices.
 
 ## Permanent rules
 
