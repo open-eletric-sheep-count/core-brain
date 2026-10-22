@@ -7,6 +7,21 @@ Newest on top.
 
 ### Changed — 2026-10-22
 
+- Audited the installation guide's local links, section anchors and external
+  documentation URLs; removed the broken link to a deleted internal report.
+
+- Aligned the installation guide with OpenCode V2's `agents/` source and
+  destination directories, corrected section numbering and updated cross-links
+  after the user's documentation edits.
+
+- Kept the installation guide focused on end-user setup and troubleshooting;
+  removed development test-suite commands and the internal test-report link.
+
+- Removed references to the former private project from nine public guides,
+  specifications, backlog text and installer comments. Installation examples
+  now use the OESC entry point and target OpenCode configuration; episodic
+  history documentation points to the existing `core_memory` operations.
+
 - Restored Codex methodology option 4, A New Brain Storm, with its adapted
   skill, existing four persona prompts and helper. The original workflow body
   and Bash algorithms are retained; native tools replace OpenCode tool names.

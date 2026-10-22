@@ -52,7 +52,7 @@ installs the project-edited `global/codex/rules/ORACLE.md` there, backing up
 changed existing files. Injector-only installation preserves existing role files;
 provide the role separately if that home does not already contain it.
 
-See the root [path-resolution guide](../../../../INSTALATION.md#44-injector-configurations-and-path-resolution)
+See the root [path-resolution guide](../../../../INSTALATION.md#46-injector-configurations-and-path-resolution)
 for native Windows, WSL, custom homes and external configuration files. Installed
 Codex injector configuration is preserved on updates; source template edits must
 be merged explicitly into an existing profile.

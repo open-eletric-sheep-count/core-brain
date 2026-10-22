@@ -6,7 +6,7 @@ OpenCode V2 plugin: injects configured files into sessions — project rules at
 the true start of a session (its first admitted prompt ever) and a
 re-injection after a completed compaction. Per-agent configuration.
 
-Migrated from the internal `taulukko-inject-context` plugin; renamed for OESC.
+Part of the OESC OpenCode suite.
 
 ## Behavior
 

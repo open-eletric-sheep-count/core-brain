@@ -1,26 +1,21 @@
 # Installation: OpenCode V2, Codex and other CLIs
 
-Reference date: 2026-10-22. Run these commands from the repository root.
+Run these commands from the repository root.
 For guided installation, give an agent the prompt in [README.md](README.md#getting-started).
 
 ## 1. Choose the host
 
-| Host | Source | Installed components |
-|---|---|---|
-| OpenCode V2 | `global/opencode` | Original plugins, agents, helpers and memory skills |
-| Codex | `global/codex` | Memory/file-injection adapters, agent prompts, global helpers and three memory skills |
-| Other CLI | Adapter required | Reuse the engine; map that host's MCP, instructions and lifecycle contracts |
-
-`context-inject` is the current name of the former Taulukko file injector. The
-public OpenCode defaults remain generic. Keep personal Taulukko overrides in
-your own configuration source; this repository does not distribute personal
-rules, credentials or live memory records.
+| Host        | Source            |
+| ----------- | ----------------- |
+| OpenCode V2 | `global/opencode` |
+| Codex       | `global/codex`    |
+| Other CLI   | Adapter required  |
 
 ## 2. Requirements and download
 
 Install Git, Bash, Python **3.11+**, Node.js **24+** and npm. Install the chosen
 CLI using its official instructions. The current OpenCode V2 website documents
-`npm install -g @opencode/cli`; some older installations expose V2 as `opencode2`.
+`npm install -g @opencode/cli`;
 Confirm the actual executable and version before continuing. The Codex adapter
 was originally validated against CLI **0.163.0**; native checkpoint formats and
 hook support must be checked when using another version.
@@ -34,19 +29,21 @@ bash install.sh --help
 If a checkout already exists, inspect its branch and local changes and reuse it.
 Do not discard changes to obtain a fresh copy.
 
-## 3. Install OpenCode V2
+## 3. For OpenCode V2
 
 ```bash
 bash install.sh --host opencode --dry-run
 bash install.sh --host opencode --install-runtime
 ```
 
-The default destination is `~/.config/opencode`. V2 discovers plugin packages
+The default destination is `~/.config/opencode`, the source is `global/opencode`. V2 discovers plugin packages
 under `plugins/` and skills under `skills/`. Do not register the same package
 again through an additional `plugins` configuration entry.
 
-Agents are installed under the current V2 `agents/` directory; the legacy
-`agent/` copy remains for existing consumers. Helpers are copied to `helpers/`.
+Agents from `global/opencode/agents/` are installed in
+`~/.config/opencode/agents/`. OpenCode V2 also recognizes the legacy `agent/`
+directory for backward compatibility; keeping duplicate copies is unnecessary.
+Helpers are copied to `helpers/`.
 Select `ORACLE` in OpenCode, or merge `"default_agent": "ORACLE"` into the
 existing configuration when that is the desired default. The ORACLE injection
 lists apply to that agent; other agents need their own list or `ALL`.
@@ -64,19 +61,17 @@ Restart OpenCode V2, run `opencode plugin list` (or the verified V2 executable),
 and open a new session. Verify the configured file injection, a controlled
 memory store/recall, and reinjection after an actual compaction.
 
-The existing Taulukko entry point continues to work and accepts either host:
+The backward-compatible global entry point accepts either host:
 
 ```bash
 bash global/opencode/install-global.sh
 bash global/opencode/install-global.sh --host codex
 ```
 
-### 3.1 Optional administration MCP
+### 3.1 Required Administration MCP
 
 The OpenCode plugin supplies the session-scoped `core_memory` tool. Its separate
-administration server is also copied, but is not registered automatically. If
-you need `core_recall`, `core_status`, `core_doctor`, `core_receipt` and
-`core_admin`, merge this entry into the existing OpenCode V2 configuration:
+administration server is also copied, but is not registered automatically. Ask for the user the permission to update global opencode.json the mcp config (create if not exist):
 
 ```json
 {
@@ -98,16 +93,15 @@ environment values when applicable. Restart OpenCode and verify with
 recall continues to use the plugin's `core_memory`. The Codex adapter registers
 its own `core_memory` MCP and does not install this administration surface.
 
-## 4. Install Codex on Linux, macOS or native Windows
+## 4. Install Codex
 
-### Restore the Brain Storm workflow
+### 4.1 Restore the Brain Storm workflow
 
-Option 4, **A New Brain Storm**, is available again through an adapted Codex
-skill, its helper and the four persona prompts. To restore only that workflow:
+Use the source global/codex.
 
 ```bash
-bash install.sh --host codex --brainstorm-only --dry-run
-bash install.sh --host codex --brainstorm-only
+bash install.sh --host codex --dry-run
+bash install.sh --host codex
 ```
 
 Use `--target` and `--skills-dir` when installing from WSL into Windows.
@@ -118,7 +112,7 @@ instructions and MCP exclusions are retained. MCP settings, hooks, memory and
 unrelated skills remain unchanged. Start a fresh session to reload the skill.
 The complete Codex suite also includes the adapted skill.
 
-### File injection and complete suite
+### 4.2 File injection and complete suite
 
 The suite includes the native file injector. To add only that component to an
 existing Codex installation, run `bash install.sh --host codex --context-inject-only`
@@ -149,8 +143,8 @@ roles use this fixed identity; there is no per-role private isolation.
 
 The full suite also maps `global/codex/rules/*.md` to `CODEX_HOME/roles/` and
 copies `global/codex/helpers/` to `CODEX_HOME/helpers/`. Your project-edited
-ORACLE is the source; the original Taulukko ORACLE is not recopied during
-installation. Changed existing installed files receive the normal backups.
+ORACLE is the installation source. Changed existing installed files receive
+the normal backups.
 
 `runtime-config.json` in the installed adapter contains the selected memory,
 runtime and model paths. `launch.mjs` supplies these same values to both the MCP
@@ -170,7 +164,7 @@ a matching native Windows Node/runtime/model installation. Provisioning with
 `--install-runtime` requires Bash and npm; the Windows-with-WSL arrangement below
 is also supported and is the arrangement exercised on the source machine.
 
-### 4.1 Windows Codex with a WSL runtime
+### 4.3 Windows Codex with a WSL runtime
 
 Run the installer **inside the selected WSL distribution as the selected user**.
 Point it to the Windows Codex configuration and Windows user skills directories.
@@ -197,7 +191,7 @@ Checkout locations vary by machine; `S:\core-brain` is only a source-machine
 example, not an installer default. A WSL Codex client itself uses the normal
 Linux installation without `--wsl-distro`.
 
-### 4.2 Activate and verify
+### 4.4 Activate and verify
 
 Restart Codex, open `/mcp` and confirm `core-brain` exposes `core_memory`. Open
 `/hooks`, review the installed commands and trust the installed handlers through the
@@ -209,14 +203,14 @@ automatic prompt learning and an actual `/compact` continuation, including
 restart/resume. Remove test records afterwards. File installation alone is not
 proof that the model, hooks or the running session's tool catalog are working.
 
-### 4.3 Global helpers and role prompts
+### 4.5 Global helpers and role prompts
 
-| Resource | Repository source | Global destination |
-|---|---|---|
-| OpenCode agents | `global/opencode/agent/` | `~/.config/opencode/agents/` plus the legacy `agent/` copy |
-| OpenCode helpers | `global/opencode/helpers/` | `~/.config/opencode/helpers/` |
-| Codex role prompts | `global/codex/rules/` | `${CODEX_HOME:-~/.codex}/roles/` |
-| Codex helpers | `global/codex/helpers/` | `${CODEX_HOME:-~/.codex}/helpers/` |
+| Resource           | Repository source          | Global destination                 |
+| ------------------ | -------------------------- | ---------------------------------- |
+| OpenCode agents    | `global/opencode/agents/`  | `~/.config/opencode/agents/`       |
+| OpenCode helpers   | `global/opencode/helpers/` | `~/.config/opencode/helpers/`      |
+| Codex role prompts | `global/codex/rules/`      | `${CODEX_HOME:-~/.codex}/roles/`   |
+| Codex helpers      | `global/codex/helpers/`    | `${CODEX_HOME:-~/.codex}/helpers/` |
 
 The complete `bash install.sh --host opencode` and `--host codex` commands
 install the corresponding helpers automatically. To copy only the helper files
@@ -252,17 +246,17 @@ reference files do not make the removed brainstorm workflow available. Secretary
 roles need a separately available mail/calendar backend; copying a role does
 not enable or restore excluded MCPs.
 
-### 4.4 Injector configurations and path resolution
+### 4.6 Injector configurations and path resolution
 
 Paths in the two injectors resolve from the **installed plugin/adapter directory**,
 not the current workspace and not the folder containing an external config file.
 The memory home and the helper directory do not change that base.
 
-| Runtime | Configuration to inspect | Relative path example and result |
-|---|---|---|
-| OpenCode | `<OpenCode global>/plugins/context-inject/config.json` | `CORE_BRAIN_HOWTO.md` refers to the sibling guide copied with the plugin |
-| Native Codex on Linux/macOS | `<CODEX_HOME>/adapters/context-inject/config.json` | `../../roles/ORACLE.md` refers to `<CODEX_HOME>/roles/ORACLE.md` |
-| Native Codex on Windows | Same adapter path in the Windows profile | The same relative entry resolves to the Windows profile's `roles/ORACLE.md` |
+| Runtime                              | Configuration to inspect                                                 | Relative path example and result                                            |
+| ------------------------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| OpenCode                             | `<OpenCode global>/plugins/context-inject/config.json`                   | `CORE_BRAIN_HOWTO.md` refers to the sibling guide copied with the plugin    |
+| Native Codex on Linux/macOS          | `<CODEX_HOME>/adapters/context-inject/config.json`                       | `../../roles/ORACLE.md` refers to `<CODEX_HOME>/roles/ORACLE.md`            |
+| Native Codex on Windows              | Same adapter path in the Windows profile                                 | The same relative entry resolves to the Windows profile's `roles/ORACLE.md` |
 | Windows Codex executing hooks in WSL | Config in the Windows-installed adapter, read through `/mnt/<drive>/...` | The same relative entry reaches the Windows-installed role file through WSL |
 
 `global/codex/rules` is a **source** directory; `roles` is the **installed**
@@ -287,7 +281,7 @@ absolute config path; its file entries still resolve from the adapter directory.
 For OpenCode, change the source plugin configuration and reinstall, or select an
 external configuration through the plugin's supported `configPath` option. The
 public default's three HOWTO paths all refer to installed sibling files. A
-Taulukko personal overlay may replace that config with machine-specific absolute
+personal configuration overlay may replace that config with machine-specific absolute
 paths; check those after overlay installation. If the overlay also installs
 `PERSONAL_RULES.md` in the OpenCode global root, `../../PERSONAL_RULES.md` is a
 portable entry. The public suite does not supply personal rules.
@@ -315,19 +309,19 @@ catalog. Helpers are loaded only when needed; they are not all injected on start
 
 ## 5. Options, runtime, updates and rollback
 
-| Option | Meaning |
-|---|---|
-| `--host opencode\|codex` | Select installation; default `opencode` for existing callers |
-| `-d, --target PATH` | Host configuration directory |
-| `-s, --source PATH` | Override that host's source tree; retains the legacy overlay interface |
-| `--memory-home PATH` | Live memory policy and records; defaults to `CORE_BRAIN_HOME` or `~/.config/core-brain` |
-| `--skills-dir PATH` | Codex user skill directory; default `~/.agents/skills` |
-| `--agent NAME` | OpenCode automatic-memory identity; repeatable; default `ORACLE` |
-| `--node PATH` | Node executable for Codex; default resolved from `PATH` |
-| `--runtime-dir PATH` | Runtime location; environment override or `<memory-home>/runtime` |
-| `--models-dir PATH` | Model cache location; environment override or `<memory-home>/models` |
-| `--install-runtime` | Run the original pinned npm runtime provisioning script |
-| `--dry-run` | Validate and report the plan without installing files or runtime packages |
+| Option                   | Meaning                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `--host opencode\|codex` | Select installation; default `opencode` for existing callers                            |
+| `-d, --target PATH`      | Host configuration directory                                                            |
+| `-s, --source PATH`      | Override that host's source tree; retains the legacy overlay interface                  |
+| `--memory-home PATH`     | Live memory policy and records; defaults to `CORE_BRAIN_HOME` or `~/.config/core-brain` |
+| `--skills-dir PATH`      | Codex user skill directory; default `~/.agents/skills`                                  |
+| `--agent NAME`           | OpenCode automatic-memory identity; repeatable; default `ORACLE`                        |
+| `--node PATH`            | Node executable for Codex; default resolved from `PATH`                                 |
+| `--runtime-dir PATH`     | Runtime location; environment override or `<memory-home>/runtime`                       |
+| `--models-dir PATH`      | Model cache location; environment override or `<memory-home>/models`                    |
+| `--install-runtime`      | Run the original pinned npm runtime provisioning script                                 |
+| `--dry-run`              | Validate and report the plan without installing files or runtime packages               |
 
 Without `--install-runtime`, an existing real runtime is required for embedding
 operations. The runtime is `@huggingface/transformers@4.3.0`; the model is
@@ -383,14 +377,14 @@ memory identity is not supplied by the Codex adaptation.
 
 ## 7. Verification and references
 
-| Symptom | Action |
-|---|---|
-| `ENGINE_UNAVAILABLE` | Provision the real runtime and verify the selected runtime/model paths |
-| `STALE_INDEX` | Use the original administration `reindex` action for the named namespace; see the [plugin reference](global/opencode/plugins/core-brain/README.md) |
-| Invalid public identity without global access | Correct the policy: `private:false` and `hasGlobalAccess:false` is an invalid combination |
-| No automatic memory context | Check the identity's `inject` setting, actual host tool catalog and native hook review/state |
-| Wrong data location | Compare the plugin/MCP/hook memory home and all runtime environment values |
-| File context missing | Check installed injector config, resolved file paths, selected agent and native hook review; see section 4.4 |
+| Symptom                                       | Action                                                                                                                                             |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ENGINE_UNAVAILABLE`                          | Provision the real runtime and verify the selected runtime/model paths                                                                             |
+| `STALE_INDEX`                                 | Use the original administration `reindex` action for the named namespace; see the [plugin reference](global/opencode/plugins/core-brain/README.md) |
+| Invalid public identity without global access | Correct the policy: `private:false` and `hasGlobalAccess:false` is an invalid combination                                                          |
+| No automatic memory context                   | Check the identity's `inject` setting, actual host tool catalog and native hook review/state                                                       |
+| Wrong data location                           | Compare the plugin/MCP/hook memory home and all runtime environment values                                                                         |
+| File context missing                          | Check installed injector config, resolved file paths, selected agent and native hook review; see section 4.6                                       |
 
 ```bash
 python3 tests/test_install.py
@@ -403,8 +397,7 @@ bash global/opencode/plugins/core-brain/check.sh
 Set `OESC_TEST_RUNTIME` and `OESC_TEST_MODELS` to cached real directories to
 include the installer suite's real-model hook integration. Otherwise that case
 is explicitly skipped. Existing source suites distinguish fixtures, real-model
-checks and their original unsupported cases. See [installation verification](docs/installation-verification.md)
-for executed evidence and paths actually exercised.
+checks and their original unsupported cases.
 
 - [OpenCode V2 installation](https://opencode.ai/v2/docs/)
 - [OpenCode V2 plugins](https://opencode.ai/v2/docs/plugins/)
