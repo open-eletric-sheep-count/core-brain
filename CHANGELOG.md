@@ -5,6 +5,11 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-10-23
+
+- **`Build` workflow: the scanner is downloaded with `curl` and `sonar-scanner` runs directly; the SonarQube stack must be up** (USER report, 2026-10-23 — every push since 2026-10-22 failed with `Action failed: Unexpected HTTP response: 403`): the `SonarSource/sonarqube-scan-action` setup step fetched `sonar-scanner-cli-8.1.0.6389-linux-x64.zip` through its own HTTP client and got **403**, while the very same URL answers **200** to `curl` on the same runner (verified: 61,626,644 bytes downloaded, `sonar-scanner --version` → `SonarScanner CLI 8.1.0.6389`). `.github/workflows/build.yml` now pins `SCANNER_VERSION: 8.1.0.6389`, caches the extracted scanner in `<workspace>/../.sonar-scanner-cache` (the workspace is cleaned by `actions/checkout`), downloads only on a cold cache, adds it to `PATH` and runs `sonar-scanner` with the same `SONAR_TOKEN` / `SONAR_HOST_URL` secrets; `actions/checkout` moved from the v4.3.1 SHA to **v5.0.0** (`fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09`), clearing the `Node.js 20 is deprecated` annotation. **Second, distinct cause found once the download worked:** the scan died with `Failed to query server version: Call to URL [.../api/v2/analysis/version] failed: null` because the local SonarQube stack was **down** — podman containers `sonar-cube-postgres` (exited ~41 h earlier, exit 0) and `sonar-cube-sonarqube` (state `Created`, never started after the runner moved to `templates/sonar-qube/actions-runner`), compose project `/media/gandb/workspace/templates/scripts/docker-files/sonnar-cube`. The stack was started (`podman-compose up -d`, falling back to `podman start`), `/api/system/status` answered `UP` (server id `75543C7E-AaEV4HO8IgntGSkuKsh7`, build 26.9.0.129388 — the same id as the last green run) and the failed job's rerun finished **`completed / success`** with `Communicating with SonarQube Community Build 26.9.0.129388`, `Analysis report uploaded in 89ms`, `ANALYSIS SUCCESSFUL` (run 39963094391). Open risk: the containers do not come back on their own after a migration/reboot despite `--restart unless-stopped`; the build depends on someone starting them.
+
+
 ### Changed — 2026-10-22
 
 - Removed `--brainstorm-only` from the installer. A New Brain Storm remains
