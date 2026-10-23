@@ -138,9 +138,9 @@ README documents native event timing, trust review and compatibility limits.
 
 Codex's methodology menu also supports **option 4 — A New Brain Storm** again.
 Its native adaptation retains the four serial personas, original grading,
-rejection limits and optional backup helpers. Restore it independently with
-`bash install.sh --host codex --brainstorm-only`; see the installation manual
-for the scoped migration of the former menu exclusion.
+rejection limits and optional backup helpers. It is included in the complete
+Codex installation with `bash install.sh --host codex`; see the installation
+manual for runtime and platform-specific paths.
 
 ---
 

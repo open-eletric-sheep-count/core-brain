@@ -95,24 +95,10 @@ its own `core_memory` MCP and does not install this administration surface.
 
 ## 4. Install Codex
 
-### 4.1 Restore the Brain Storm workflow
+### 4.1 File injection and complete suite
 
-Use the source global/codex.
-
-```bash
-bash install.sh --host codex --dry-run
-bash install.sh --host codex
-```
-
-Use `--target` and `--skills-dir` when installing from WSL into Windows.
-This opt-in operation copies only the Brain Storm skill/scripts, its helper,
-the ORACLE prompt and its four personas. It removes only the known old
-Brain Storm exclusion inside the migration-generated AGENTS block; other
-instructions and MCP exclusions are retained. MCP settings, hooks, memory and
-unrelated skills remain unchanged. Start a fresh session to reload the skill.
-The complete Codex suite also includes the adapted skill.
-
-### 4.2 File injection and complete suite
+The complete Codex installation includes the A New Brain Storm methodology:
+its adapted skill and scripts, helper, four persona prompts and ORACLE prompt.
 
 The suite includes the native file injector. To add only that component to an
 existing Codex installation, run `bash install.sh --host codex --context-inject-only`
@@ -164,7 +150,7 @@ a matching native Windows Node/runtime/model installation. Provisioning with
 `--install-runtime` requires Bash and npm; the Windows-with-WSL arrangement below
 is also supported and is the arrangement exercised on the source machine.
 
-### 4.3 Windows Codex with a WSL runtime
+### 4.2 Windows Codex with a WSL runtime
 
 Run the installer **inside the selected WSL distribution as the selected user**.
 Point it to the Windows Codex configuration and Windows user skills directories.
@@ -191,7 +177,7 @@ Checkout locations vary by machine; `S:\core-brain` is only a source-machine
 example, not an installer default. A WSL Codex client itself uses the normal
 Linux installation without `--wsl-distro`.
 
-### 4.4 Activate and verify
+### 4.3 Activate and verify
 
 Restart Codex, open `/mcp` and confirm `core-brain` exposes `core_memory`. Open
 `/hooks`, review the installed commands and trust the installed handlers through the
@@ -203,7 +189,7 @@ automatic prompt learning and an actual `/compact` continuation, including
 restart/resume. Remove test records afterwards. File installation alone is not
 proof that the model, hooks or the running session's tool catalog are working.
 
-### 4.5 Global helpers and role prompts
+### 4.4 Global helpers and role prompts
 
 | Resource           | Repository source          | Global destination                 |
 | ------------------ | -------------------------- | ---------------------------------- |
@@ -241,12 +227,12 @@ and helper bodies retain their original reference text.
 Workflow labels are not skill IDs. Tico and Teco uses its helper plus `be-judge`
 and `bot-forum`; when all are installed, ORACLE presents it first as option 1
 and recommended. Other workflows also require their actual installed skills.
-This bundle's three memory skills do not install every workflow skill. Legacy
-reference files do not make the removed brainstorm workflow available. Secretary
+The full Codex suite includes three memory skills and the adapted A New Brain
+Storm workflow; other workflow skills may need separate installation. Secretary
 roles need a separately available mail/calendar backend; copying a role does
 not enable or restore excluded MCPs.
 
-### 4.6 Injector configurations and path resolution
+### 4.5 Injector configurations and path resolution
 
 Paths in the two injectors resolve from the **installed plugin/adapter directory**,
 not the current workspace and not the folder containing an external config file.
@@ -384,7 +370,7 @@ memory identity is not supplied by the Codex adaptation.
 | Invalid public identity without global access | Correct the policy: `private:false` and `hasGlobalAccess:false` is an invalid combination                                                          |
 | No automatic memory context                   | Check the identity's `inject` setting, actual host tool catalog and native hook review/state                                                       |
 | Wrong data location                           | Compare the plugin/MCP/hook memory home and all runtime environment values                                                                         |
-| File context missing                          | Check installed injector config, resolved file paths, selected agent and native hook review; see section 4.6                                       |
+| File context missing                          | Check installed injector config, resolved file paths, selected agent and native hook review; see section 4.5                                       |
 
 ```bash
 python3 tests/test_install.py

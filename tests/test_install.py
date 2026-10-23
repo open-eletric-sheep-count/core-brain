@@ -47,7 +47,6 @@ class InstallTests(unittest.TestCase):
         (self.memory / 'memories.json').write_bytes(b'existing memory bytes')
         self.run_install('opencode')
         self.assertTrue((self.target / 'plugins/context-inject/index.ts').is_file())
-        self.assertTrue((self.target / 'agent/ORACLE.md').is_file())
         self.assertTrue((self.target / 'agents/ORACLE.md').is_file())
         actual = json.loads((self.memory / 'config.json').read_text())
         self.assertEqual(actual['agents'][0], policy['agents'][0])
@@ -92,30 +91,32 @@ class InstallTests(unittest.TestCase):
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.assertEqual(after, before)
 
-    def test_brainstorm_restore_preserves_mcp_hooks_and_user_instructions(self):
+    def test_removed_standalone_workflow_option_is_rejected_without_writes(self):
+        result = self.run_install('codex', '--brainstorm-only', '--dry-run', success=False)
+        self.assertIn('unrecognized arguments', result.stderr)
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_codex_suite_preserves_user_instructions_and_installs_brainstorm(self):
         self.target.mkdir()
         config = b'model = "keep-model"\n[mcp_servers.other]\ncommand = "keep-mcp"\n'
         hooks = b'{"hooks":{"Stop":[]}}\n'
         (self.target / 'config.toml').write_bytes(config)
         (self.target / 'hooks.json').write_bytes(hooks)
         instructions = ('Personal header\n<!-- opencode-migration:start -->\n'
-                        'Only offer workflows whose skills are installed. In particular, do not offer\n'
-                        'the removed A New Brain Storm flow. Keep the Tico and Teco rule.\n'
+                        'Honor the selected methodology. Keep the Tico and Teco rule.\n'
                         'Never restore an excluded MCP.\n<!-- opencode-migration:end -->\nPersonal footer\n')
         (self.target / 'AGENTS.md').write_text(instructions)
-        self.run_install('codex', '--brainstorm-only', '--dry-run')
+        self.run_install('codex', '--dry-run')
         self.assertEqual((self.target / 'AGENTS.md').read_text(), instructions)
         self.assertFalse(self.skills.exists())
-        self.run_install('codex', '--brainstorm-only')
-        self.assertEqual((self.target / 'config.toml').read_bytes(), config)
-        self.assertEqual((self.target / 'hooks.json').read_bytes(), hooks)
-        self.assertFalse(self.memory.exists())
-        updated = (self.target / 'AGENTS.md').read_text()
-        self.assertTrue(updated.startswith('Personal header\n'))
-        self.assertTrue(updated.endswith('Personal footer\n'))
-        self.assertIn('Keep the Tico and Teco rule.', updated)
-        self.assertIn('Never restore an excluded MCP.', updated)
-        self.assertNotIn('do not offer\nthe removed A New Brain Storm flow', updated)
+        self.run_install()
+        installed_config = tomllib.loads((self.target / 'config.toml').read_text())
+        self.assertEqual(installed_config['model'], 'keep-model')
+        self.assertEqual(installed_config['mcp_servers']['other']['command'], 'keep-mcp')
+        self.assertIn('core-brain', installed_config['mcp_servers'])
+        self.assertEqual(json.loads((self.target / 'hooks.json').read_text())['hooks']['Stop'], [])
+        self.assertTrue(self.memory.exists())
+        self.assertEqual((self.target / 'AGENTS.md').read_text(), instructions)
         for name in ['winner.sh', 'reject.sh', 'backup-phase.sh']:
             self.assertEqual((self.skills / 'a-new-brain-storm/scripts' / name).read_bytes(),
                              (ROOT / 'global/codex/skills/a-new-brain-storm/scripts' / name).read_bytes())
@@ -123,12 +124,12 @@ class InstallTests(unittest.TestCase):
         for name in ['BAD_GUY', 'MARKETER', 'MINIMALIST', 'NAME_MAKER']:
             self.assertTrue((self.target / 'roles' / f'BRAIN_STORM_PERSONA_{name}.md').is_file())
         before = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
-        self.run_install('codex', '--brainstorm-only')
+        self.run_install()
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
         self.assertEqual(after, before)
 
     def test_installed_brainstorm_helpers_preserve_optional_backup_and_archive_winner(self):
-        self.run_install('codex', '--brainstorm-only')
+        self.run_install()
         directory = self.root / 'workspace/docs/temp/brainstorm-proof'
         personas = ['BAD_GUY', 'MARKETER', 'MINIMALIST', 'NAME_MAKER']
         for name in personas:
@@ -166,7 +167,7 @@ class InstallTests(unittest.TestCase):
             self.assertTrue(sources, source_folder)
             for source in sources:
                 self.assertEqual((self.target / destination_folder / source.name).read_bytes(), source.read_bytes())
-        for source in (ROOT / 'global/opencode/agent').glob('*.md'):
+        for source in (ROOT / 'global/opencode/agents').glob('*.md'):
             self.assertTrue((self.target / 'roles' / source.name).is_file(), source.name)
 
     def test_fresh_codex_suite_injects_its_installed_oracle(self):

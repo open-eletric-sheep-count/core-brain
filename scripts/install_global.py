@@ -201,33 +201,7 @@ def plan(args):
         if destination == Path.home() or destination == Path(destination.anchor) or destination.is_relative_to(ROOT):
             raise ValueError(f'Choose a dedicated destination outside this repository: {destination}')
     changes = {}
-    if args.brainstorm_only:
-        if host != 'codex':
-            raise ValueError('--brainstorm-only requires --host codex')
-        copy_tree(source / 'skills/a-new-brain-storm', skills / 'a-new-brain-storm', changes)
-        helper = 'METHODOLOGY_A_NEW_BRAIN_STORM_HELPERS.md'
-        changes[target / 'helpers' / helper] = (source / 'helpers' / helper).read_bytes()
-        for name in ['ORACLE', 'BRAIN_STORM_PERSONA_BAD_GUY', 'BRAIN_STORM_PERSONA_MARKETER',
-                     'BRAIN_STORM_PERSONA_MINIMALIST', 'BRAIN_STORM_PERSONA_NAME_MAKER']:
-            changes[target / 'roles' / (name + '.md')] = (source / 'rules' / (name + '.md')).read_bytes()
-        # Explicit opt-in upgrade of the known, migration-generated exclusion.
-        # Leave instructions outside the generated block and other exclusions intact.
-        instructions = target / 'AGENTS.md'
-        if instructions.exists():
-            text = instructions.read_bytes().decode('utf-8')
-            start = text.find('<!-- opencode-migration:start -->')
-            end = text.find('<!-- opencode-migration:end -->', start)
-            if start >= 0 and end >= 0:
-                block = text[start:end]
-                newline = '\r\n' if '\r\n' in block else '\n'
-                old = ('Only offer workflows whose skills are installed. In particular, do not offer\n'
-                       'the removed A New Brain Storm flow.').replace('\n', newline)
-                new = ('Only offer workflows whose skills and helpers are installed. A New Brain Storm\n'
-                       'is restored as option 4 when its adapted skill, helper and persona prompts exist.').replace('\n', newline)
-                updated = block.replace(old, new)
-                if updated != block:
-                    changes[instructions] = (text[:start] + updated + text[end:]).encode('utf-8')
-    elif args.context_inject_only:
+    if args.context_inject_only:
         if host != 'codex':
             raise ValueError('--context-inject-only requires --host codex')
     elif host == 'opencode':
@@ -273,9 +247,9 @@ def plan(args):
             raise ValueError('Codex hooks are disabled; enable them deliberately before installation')
         changes[config_path] = merge_server(text, server)
         changes[target / 'hooks.json'] = encode(merge_hooks(read_object(target / 'hooks.json'), command))
-    if host == 'codex' and not args.brainstorm_only:
+    if host == 'codex':
         plan_context_inject(args, source, target, changes)
-    if not args.context_inject_only and not args.brainstorm_only:
+    if not args.context_inject_only:
         changes[memory / 'config.json'] = encode(merged_policy(memory / 'config.json', host, source, args.agent))
     for path in changes:
         absolute(path)
@@ -283,11 +257,11 @@ def plan(args):
             raise ValueError(f'Destination is not a regular file: {path}')
     changed = {path: data for path, data in changes.items() if not path.exists() or path.read_bytes() != data}
     return changed, {'host': host, 'target': str(target),
-                     'component': 'brainstorm' if args.brainstorm_only else 'context-inject' if args.context_inject_only else 'suite',
-                     'memory_home': None if args.context_inject_only or args.brainstorm_only else str(memory),
+                     'component': 'context-inject' if args.context_inject_only else 'suite',
+                     'memory_home': None if args.context_inject_only else str(memory),
                      'skills_dir': None if args.context_inject_only else str(skills) if host == 'codex' else str(target / 'skills'),
                      'changed_files': len(changed), 'dry_run': args.dry_run,
-                     'requires_codex_hook_review': host == 'codex' and not args.brainstorm_only}
+                     'requires_codex_hook_review': host == 'codex'}
 
 
 def atomic_write(path, data, mode):
@@ -339,8 +313,6 @@ def main():
     parser.add_argument('--wsl-user')
     parser.add_argument('--context-inject-only', action='store_true',
                         help='Install only the Codex file injector; preserve MCP, memory and skills')
-    parser.add_argument('--brainstorm-only', action='store_true',
-                        help='Restore option 4, its skill/helper/personas and the known migrated menu exclusion; preserve MCP and hooks')
     parser.add_argument('--install-runtime', action='store_true', help='Also provision the pinned embedding runtime with npm')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
@@ -350,8 +322,6 @@ def main():
         parser.error('--wsl-user requires --wsl-distro')
     if args.context_inject_only and args.install_runtime:
         parser.error('--context-inject-only does not use the embedding runtime')
-    if args.brainstorm_only and (args.context_inject_only or args.install_runtime):
-        parser.error('--brainstorm-only cannot combine with --context-inject-only or --install-runtime')
     changes, report = plan(args)
     if args.install_runtime:
         runtime = absolute(args.runtime_dir or Path(report['memory_home']) / 'runtime')
@@ -363,13 +333,11 @@ def main():
     if not args.dry_run:
         apply(changes)
     print(json.dumps(report, indent=2))
-    if args.brainstorm_only:
-        print('Brainstorm option 4 restored. Start a fresh Codex session to reload skills and global instructions.')
-    elif args.host == 'codex':
+    if args.host == 'codex':
         print('Restart Codex; review the installed native handlers in /hooks.')
     else:
         print('Restart OpenCode V2; verify plugins with opencode plugin list.')
-    if not args.install_runtime and not args.context_inject_only and not args.brainstorm_only:
+    if not args.install_runtime and not args.context_inject_only:
         print('Embedding runtime not provisioned by this command. Use --install-runtime or an existing real runtime.')
 
 

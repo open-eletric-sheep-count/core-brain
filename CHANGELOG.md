@@ -7,6 +7,10 @@ Newest on top.
 
 ### Changed — 2026-10-22
 
+- Removed `--brainstorm-only` from the installer. A New Brain Storm remains
+  included in the full Codex suite with its skill, scripts, helper and personas.
+  Updated documentation and checks to use the full installation.
+
 - Audited the installation guide's local links, section anchors and external
   documentation URLs; removed the broken link to a deleted internal report.
 
@@ -25,8 +29,7 @@ Newest on top.
 - Restored Codex methodology option 4, A New Brain Storm, with its adapted
   skill, existing four persona prompts and helper. The original workflow body
   and Bash algorithms are retained; native tools replace OpenCode tool names.
-  `--brainstorm-only` restores this workflow and its known migrated menu
-  exclusion without changing MCP, hook or memory configuration.
+  The complete Codex installation includes this workflow and its resources.
 
 - ORACLE may skip methodology selection only for an apparently standalone factual question when the surrounding context does not suggest further work. A lead-in such as needing a favor requires methodology selection first; ongoing tasks keep their existing methodology.
 
