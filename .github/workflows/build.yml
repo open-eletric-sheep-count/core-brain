@@ -11,17 +11,46 @@ jobs:
     name: Build and analyze
     runs-on: self-hosted
 
+    env:
+      # Scanner version pinned explicitly (was implicitly pinned by the SonarSource action).
+      SCANNER_VERSION: 8.1.0.6389
+      # Persistent cache outside the workspace: actions/checkout cleans the workspace on every run.
+      SCANNER_CACHE: ${{ github.workspace }}/../.sonar-scanner-cache
+
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+
+      - name: Install Sonar Scanner CLI
+        # The SonarSource action fetches the scanner through its own HTTP client, which fails on
+        # this runner with "Unexpected HTTP response: 403" while curl reaches the same URL (HTTP 200).
+        # The download is done here instead and the scanner is invoked directly.
+        run: |
+          set -euo pipefail
+          scanner_dir="$SCANNER_CACHE/sonar-scanner-${SCANNER_VERSION}-linux-x64"
+          if [ -x "$scanner_dir/bin/sonar-scanner" ]; then
+            echo "Sonar Scanner CLI $SCANNER_VERSION already cached at $scanner_dir"
+          else
+            url="https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SCANNER_VERSION}-linux-x64.zip"
+            mkdir -p "$SCANNER_CACHE"
+            echo "Downloading $url"
+            curl --fail --silent --show-error --location \
+              --retry 5 --retry-all-errors --max-time 300 \
+              -o "$SCANNER_CACHE/sonar-scanner-${SCANNER_VERSION}.zip" "$url"
+            unzip -q -o "$SCANNER_CACHE/sonar-scanner-${SCANNER_VERSION}.zip" -d "$SCANNER_CACHE"
+          fi
+          echo "$scanner_dir/bin" >> "$GITHUB_PATH"
+
+      - name: SonarQube Scan
+        run: sonar-scanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       # If you wish to fail your job when the Quality Gate is red, uncomment the
       # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b # v1.2.0
-      #   timeout-minutes: 5
+      # - name: SonarQube Quality Gate
+      #   run: sonar-scanner -Dsonar.qualitygate.wait=true
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
