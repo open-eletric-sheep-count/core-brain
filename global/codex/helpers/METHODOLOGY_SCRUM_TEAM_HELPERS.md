@@ -1,0 +1,16 @@
+# METHODOLOGY_SCRUM_TEAM_HELPERS
+
+Helper for menu option 2 (`scrum team`). Loaded by the ORACLE when the USER chooses this flow. Complements the `scrum-team` skill.
+
+## What it is
+
+The Scrum flow: flow steps, role glossary (COOPERATOR/FIRED/ORCHESTRATOR), agent model, flow rules, forward-after routing — all live in the `scrum-team` skill. Load that skill via the skill tool and execute it.
+
+## Rules
+
+- Executes the `scrum-team` skill as-is (frozen); its internal protocol applies only inside that flow.
+- **The forum (`bot-forum`):** the level-0 agent opens `.bot-forum/forum-<session id>.md` at the start (skill `bot-forum`) and writes the path into every brief; it is the channel for what no dispatch carries (a subagent never launches another — rule 19 — and only speaks at the end of the turn): `[REQ]`/`[ANS]` in the forum.
+
+## Forward After (grill concluded, USER confirmed) — routing in the `scrum-team` skill
+
+- Documentation-only tasks → DOCUMENTATION_WRITER or ARCHITECT; implementation tasks → TESTER (tests first) and then the selected flow. Full routing: see the `scrum-team` skill (Forward After section).

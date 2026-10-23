@@ -113,16 +113,18 @@ After install, the file lives at
    against the plugin directory, `/...` entries are used as-is, dedup by
    resolved absolute path.
 2. **Permission** — grant the `todo` tool to that agent in
-   `global/opencode/opencode.json` (the global deny stays), inside the
-   agent's `permissions` array:
+   the target OpenCode configuration (`~/.config/opencode/opencode.json`, or
+   your own configuration source), inside the agent's `permissions` array.
+   Keep the global deny when using that access policy:
 
    ```json
    { "action": "todo", "resource": "*", "effect": "allow" }
    ```
 
-3. **Install** — `bash <taulukko>/src/install-global.sh` (it chains the
-   core-brain installer; the mirror `~/.config/opencode/` is updated by the
-   USER).
+3. **Install** — from the OESC repository root, run
+   `bash install.sh --host opencode`. The suite is installed under
+   `~/.config/opencode/` by default. See the root
+   [installation guide](../../../../INSTALATION.md) for prerequisites and paths.
 
 Example — also enabling `DEVELOPER`:
 

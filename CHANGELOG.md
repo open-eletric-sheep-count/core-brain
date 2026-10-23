@@ -5,6 +5,69 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-10-22
+
+- Removed `--brainstorm-only` from the installer. A New Brain Storm remains
+  included in the full Codex suite with its skill, scripts, helper and personas.
+  Updated documentation and checks to use the full installation.
+
+- Audited the installation guide's local links, section anchors and external
+  documentation URLs; removed the broken link to a deleted internal report.
+
+- Aligned the installation guide with OpenCode V2's `agents/` source and
+  destination directories, corrected section numbering and updated cross-links
+  after the user's documentation edits.
+
+- Kept the installation guide focused on end-user setup and troubleshooting;
+  removed development test-suite commands and the internal test-report link.
+
+- Removed references to the former private project from nine public guides,
+  specifications, backlog text and installer comments. Installation examples
+  now use the OESC entry point and target OpenCode configuration; episodic
+  history documentation points to the existing `core_memory` operations.
+
+- Restored Codex methodology option 4, A New Brain Storm, with its adapted
+  skill, existing four persona prompts and helper. The original workflow body
+  and Bash algorithms are retained; native tools replace OpenCode tool names.
+  The complete Codex installation includes this workflow and its resources.
+
+- ORACLE may skip methodology selection only for an apparently standalone factual question when the surrounding context does not suggest further work. A lead-in such as needing a favor requires methodology selection first; ongoing tasks keep their existing methodology.
+
+- Full Codex installation now copies the 24 project role prompts from
+  `global/codex/rules` to the selected Codex home's `roles` directory and the
+  seven helpers to `helpers`. The user's edited ORACLE remains the source;
+  its runtime instructions now describe native tools, on-demand helpers and
+  actual workflow dependencies. Tico and Teco remains the first recommended
+  option when its helper, `be-judge` and `bot-forum` are installed. Removed the
+  obsolete temporary ORACLE backup at the user's request.
+- OpenCode installation also supplies the currently documented `agents/`
+  directory while retaining `agent/` for existing consumers. Both host guides
+  now document global helper installation, role discovery and injector paths,
+  including Windows/WSL, custom homes and personal overlay configuration.
+- Added fresh-profile startup/compaction file-injection checks, role/helper
+  installation and backup scenarios, and installed OpenCode guide loading.
+
+### Added — 2026-10-22
+
+- Added the native Codex `context-inject` adapter, preserving the original
+  file-loading engine unchanged. Startup and compaction load the existing
+  Codex-home `roles/ORACLE.md` in full; native subagent labels support separate
+  file lists. `--context-inject-only` installs it without changing MCP, memory
+  or skills. Native lifecycle differences and hook trust review are documented.
+
+- Added `global/codex` with the working core-brain MCP/native-hook adaptation,
+  three portable memory skills and source hashes. The original plugin and engine
+  files remain byte-identical to the OpenCode implementation. A small launcher
+  gives MCP and hooks the same installed runtime environment.
+- Added root `install.sh` and a shared Python installer selecting OpenCode V2
+  or Codex, including Windows Codex with a WSL runtime. Existing global installer
+  calls and `-s`/`-d` options remain supported. Installation merges configuration
+  and memory identities, backs up changed existing files, supports no-write
+  dry-run and leaves live records intact. Runtime provisioning is explicit.
+- Added root `INSTALATION.md`, an agent installation/adaptation prompt in README,
+  installer scenarios and Codex compaction contract checks. The guide describes
+  native trust, fixed Codex identity and unsupported host contracts.
+
 ### Removed
 - **PLUR references swept from the plugin docs and task list** (USER, 2026-10-04): `docs/troca-ferramenta.md` deleted (it documented the retired `opencode-mem` → PLUR swap — both tools are now removed from the system); the plugin `README.md` lost the "Coexistence with PLUR" and "Zero collision with PLUR" sections (written for the dual-run transition) and its acknowledgment paragraph now states the plugin is fully standalone; `INSTALACAO.md` §8 became "Standalone memory" and §12 no longer require `plur` next to `core-brain`; `TASKS.md` item 0.0 closed. Kept on purpose: the fork acknowledgment (README), the ported-code attribution (`engine/*` headers, `NOTICE`, `LICENSE-APACHE`) and historical specs/CHANGELOG entries.
 

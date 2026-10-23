@@ -16,7 +16,7 @@ MVP plan in [README.md](README.md).
 
 - [x] **0.0 — Evaluate `troca-ferramenta.md`** (memory-tool swap: `opencode-mem` → PLUR). — **Closed 2026-10-04 (USER):** both legacy memory tools were removed from the system and the swap doc was deleted.
 - [ ] **0.1 — Run a `grill-me` session to produce the spec.**
-  - Move Taulukko dependences for OESC tree.
+  - Consolidate agent/AI dependencies within the OESC tree.
   - Document or recreate external dependences like opencode-mem
   - Decision tree to resolve:
     - **Tiers** — exact short/medium/long boundaries; the scopes/tags used; the

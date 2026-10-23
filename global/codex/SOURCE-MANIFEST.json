@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-22",
+  "source": "Working Codex adaptation, originally migrated from the OESC OpenCode plugin",
+  "original_engine": "global/opencode/plugins/core-brain",
+  "context_inject_original_engine": "global/opencode/plugins/context-inject",
+  "scope": "Imported source files only. The installer and launch.mjs are new repository additions.",
+  "changes": [
+    "Skill resource roots made portable; original plugin, engine and host adaptation copied unchanged.",
+    "Context-inject engine and license copied unchanged; codex-hook.mjs maps native lifecycle events and full context output."
+  ],
+  "files": {
+    "adapters/context-inject/LICENSE": "0992b87a05a1f555ab6aa5c51ccb7c737ffa9e0b5db0b8f77a755649346ee70d",
+    "adapters/context-inject/index.ts": "8fbbd2325c7cfb682744f34d24a61a5f0ffcb79a3ca2fda7ff8fd031c5c2c0ba",
+    "adapters/core-brain/LICENSE": "0992b87a05a1f555ab6aa5c51ccb7c737ffa9e0b5db0b8f77a755649346ee70d",
+    "adapters/core-brain/LICENSE-APACHE": "90fd2dc4d26efa3c2fd3fd770130a335fda76cf5c6a3705faabac5d765cabd12",
+    "adapters/core-brain/NOTICE": "987a5546f3c1fc394c8c556ef6050f646b0b50b000ceadc060998e6251648d94",
+    "adapters/core-brain/codex-hook.mjs": "3ec939179c2a99672dbde35bda4ad46560c702526dcc2b9e28e56c720fa4a78c",
+    "adapters/core-brain/codex-mcp.mjs": "0d3fb287b6ad725daef7ea6669488a69d6d088015b1387da8e360d05a05d6f98",
+    "adapters/core-brain/engine/embedder.ts": "30590e583da14c26e1dcfd816f7aadfbf98b8887d66f693dfa1e0b0b6723c073",
+    "adapters/core-brain/engine/fts.ts": "3cb8ffce8924bc50acf67de635c743a5b6a02f4d03f030168ccde0af5aa63480",
+    "adapters/core-brain/engine/fusion.ts": "b0b71ae34ed86a40f27dd1e026651d0c02002c835ec71792f99ef15451d3c6ab",
+    "adapters/core-brain/engine/reranker.ts": "039d389b1842746eb93c8244e08e1e7062fc51ac4cc60e77f2dc6deddce7a319",
+    "adapters/core-brain/engine/search.ts": "dae677c594754ebf4ceadaf8fec858a06647fa5d4a449a8107fbc1a62f8934ea",
+    "adapters/core-brain/index.ts": "c26f3691d9da77124f19b732e8af52f56a545141a09e3794b81972de06326ff3",
+    "adapters/core-brain/install-runtime.sh": "deceed294ad4cb539af75ca172eeef364041f8ad0dee886ac0ee466dcc5b6df5",
+    "adapters/core-brain/mcp/jsonrpc.js": "fff5be466c034a5e165b7d54aea83f2634e6e6aa6659223b23a44a56e9cdc761",
+    "adapters/core-brain/package.json": "b042b29484119c6330e4e486457fc453c288e6b0269c6f93091b01655b61acd1",
+    "adapters/core-brain/store.ts": "12271d1d7d458e7e23617601d5436b3c9f6a13fd4869e535b6a2d7b23f833814",
+    "adapters/core-brain/types.ts": "faf1bcdaec927eea68dab002c2d46ce541f3a59e69f3337e90ff1fcb30d2340a",
+    "skills/core-brain-create-memories/SKILL.md": "21c079e4e523d31351b497c2d5e9f63e64abdac5c8c10bbe9f61ec0402f05f1b",
+    "skills/core-brain-memory/SKILL.md": "25d3d85dd3a27929d2b1ff8ced60785ab056abd51a3d49d1d4199c3151c1ffd5",
+    "skills/core-brain-session-end/SKILL.md": "c6939112148ca6a6403388bdcb0a759ac880763d3d31af6fc5dad7f9462f302e"
+  }
+}

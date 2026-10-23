@@ -2,7 +2,7 @@
 
 - Status: **DRAFT** — grill closed 2026-09-10 (Q1–Q15 resolved); ready for spike + implementation
 - Date: 2026-09-10
-- Project: `oesc/core-brain` (open source). Closed project `taulukko/project-generator` is the migration source.
+- Project: `oesc/core-brain` (open source).
 - Authors: USER (PO) + ORACLE
 
 This spec exists so the decisions taken during the grill session of 2026-09-10
@@ -31,7 +31,7 @@ user can watch:
 3. **Only the ORACLE operator** uses the list. Enforced by permissions
    (global deny + ORACLE allow), not by trusting the model.
 4. **One list per session** (keyed by `sessionID`), not per project.
-5. Plugin lives **outside** the taulukko repo, in `oesc/core-brain`.
+5. Plugin is maintained and distributed in `oesc/core-brain`.
 
 ## 3. Background / evidence
 
@@ -88,7 +88,7 @@ Verified 2026-09-10 (see `../../docs/`… note: findings memo was first written 
 core-brain/
   global/                        # DISTRIBUTION tree (shipped by install-global)
     opencode/
-      install-global.sh          # copies global/opencode/. -> ~/.config/opencode/ (same as taulukko)
+      install-global.sh          # installs global/opencode/. -> ~/.config/opencode/
       install-vars.sh            # writes the migration env vars into the standard Linux user env
       plugins/
         todo-list/               # SINGLE-FOLDER plugin (source + artifact + npm package root) -> auto-discovered
@@ -123,7 +123,7 @@ core-brain/
 - Reads the list from our own JSON store
   (`~/.local/share/opencode-todo/<sessionID>.json`, Q13).
 
-### 5.3 Permissions (taulukko `opencode.json`)
+### 5.3 Permissions (target OpenCode `opencode.json`)
 - Global: `{ "action": "todo", "resource": "*", "effect": "deny" }`
 - ORACLE agent: `{ "action": "todo", "resource": "*", "effect": "allow" }`
 - Same pattern already used for `jarvis_*`/`pt_*`/etc.
@@ -183,23 +183,21 @@ Item:
   `podman-cleanup-orphans-volumes`).
 - Never touches OpenCode data.
 
-## 10. Migration to core-brain (open source) — new requirement (2026-09-10)
+## 10. OESC distribution and external integration — requirement (2026-09-10)
 
-- `taulukko` is the **closed** project; everything agent/AI related will
-  eventually migrate to the **open-source** `oesc/core-brain`.
-- **Create** `core-brain/global/opencode/install-global.sh` behaving exactly
-  like taulukko's `src/install-global.sh` (copy `<repo>/global/opencode/.` →
-  `~/.config/opencode/`, `-s`/`-d` options, abort if source missing).
-- **Wire the migration:** taulukko's `install-global.sh` must **call** the
-  core-brain `install-global.sh`.
-- The core-brain **location must be defined by environment variables** (no
-  hardcoded path in taulukko).
+- Agent/AI components are maintained in the **open-source** `oesc/core-brain`.
+- Provide `core-brain/global/opencode/install-global.sh` as a compatible entry
+  point for the root installer: install `<repo>/global/opencode/.` into
+  `~/.config/opencode/`, support `-s`/`-d`, and abort if the source is missing.
+- External configuration installers can **call** the OESC installer before
+  applying their own personal configuration overlay.
+- External callers locate core-brain through **`OESC_CORE_BRAIN_HOME`**, without
+  hardcoding the checkout location.
 - The directory holding the core-brain `install-global.sh` must also contain
   **`install-vars.sh`**, which writes those variables into the standard Linux
   user environment (e.g. `/etc/environment` and/or the user's shell profile).
-- *Note:* taulukko has no `install-vars.sh` today; `/etc/environment` variable
-  writing is only planned there (`docs/TASKS.md`). Verify the intended
-  `install-vars` convention before implementing.
+- Environment setup belongs to this repository; external installers consume
+  the exported location variable.
 
 ## 11. Open questions — all resolved (grill 2026-09-10)
 
@@ -240,12 +238,12 @@ Item:
 2. **Spike** (Q14): toy `sidebar.content` panel → placement below MCP
    (screenshot + vision), in-place JSX loading, scroll behavior; decide slot.
 3. Implement `@oesc/todo-list` (server + TUI) in TypeScript.
-4. Add the `plugins[]` entry and the `todo` permissions in the taulukko
-   `global/opencode/opencode.json`.
+4. Configure plugin loading and the `todo` permissions in the target OpenCode
+   `opencode.json`.
 5. Remove the AGENTS.md section and fix the two skills.
 6. Add the `context-inject` contract file.
 7. Create the `cleanup-todo-list` skill.
 8. Create `core-brain/global/opencode/install-global.sh` + `install-vars.sh`;
-   wire taulukko's `install-global.sh` to call core-brain's.
+   document how external configuration installers call the OESC installer.
 9. Validate: no plugin load errors, tool callable, panel visible below MCP,
    update/remove/mark/cancel + strikethrough all working.

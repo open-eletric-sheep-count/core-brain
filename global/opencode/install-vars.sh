@@ -14,7 +14,7 @@
 #   - ~/.bashrc (block with a marker; user fallback, re-runnable without
 #     duplicating — the old block is replaced)
 #
-# Taulukko's install-global.sh uses OESC_CORE_BRAIN_HOME to call this
+# External configuration installers use OESC_CORE_BRAIN_HOME to call this
 # repository's install-global.sh.
 
 set -euo pipefail
