@@ -617,7 +617,8 @@ the ORACLE may rule):
 
 ### 10.5 The episodes section of the import document — FIXED HERE (plan §7.1)
 
-`core_admin { action:"import" }` keeps its document (`namespaces[]` for
+The admin `import` (the `core_admin` engine op, now run through
+`mcp/admin-cli.js import --file …`) keeps its document (`namespaces[]` for
 memories) and gains ONE optional top-level key, `episodes`:
 
 ```json

@@ -22,8 +22,6 @@ function fail(code, message) {
 // TOOL DEFINITIONS
 // ---------------------------------------------------------------------------
 
-const ACTIONS = new Set(["purge", "reindex", "export", "import", "compact"]);
-
 const TOOLS = [
   {
     name: "core_recall",
@@ -77,23 +75,6 @@ const TOOLS = [
         days: { type: "integer" },
       },
       required: [],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "core_admin",
-    description:
-      "Maintenance dispatcher; purge is destructive and refuses a private agent namespace unless force: true is passed.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        action: {
-          type: "string",
-          enum: ["purge", "reindex", "export", "import", "compact"],
-        },
-        args: { type: "object" },
-      },
-      required: ["action"],
       additionalProperties: false,
     },
   },
@@ -170,21 +151,6 @@ async function callTool(name, args = {}) {
       request = { op: "receipt" };
       if (args.ns !== undefined) request.ns = args.ns;
       if (args.days !== undefined) request.days = args.days;
-      break;
-    }
-
-    case "core_admin": {
-      if (typeof args.action !== "string" || !ACTIONS.has(args.action)) {
-        throw fail(
-          -32602,
-          `core_admin: 'action' must be one of: ${[...ACTIONS].join("|")}`
-        );
-      }
-      request = {
-        op: "admin",
-        action: args.action,
-        args: args.args ?? {},
-      };
       break;
     }
 

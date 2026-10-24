@@ -4,7 +4,7 @@
 // tool surface, the isolation refusal and the JSON-RPC error codes.
 // Zero dependencies.
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,6 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = join(HERE, "..", "server.js");
 const root = mkdtempSync(join(tmpdir(), "core-brain-mcp-selftest."));
-const exportedFile = join(root, "export.json");
 
 let pass = 0;
 let fail = 0;
@@ -79,8 +78,8 @@ try {
   const tools = afterNotify?.result?.tools ?? [];
   const names = tools.map((tool) => tool.name).sort();
   line(
-    JSON.stringify(names) === JSON.stringify(["core_admin", "core_doctor", "core_recall", "core_receipt", "core_status"]),
-    `tools/list advertises exactly the five tools: ${names.join(", ")}`,
+    JSON.stringify(names) === JSON.stringify(["core_doctor", "core_recall", "core_receipt", "core_status"]),
+    `tools/list advertises exactly the four safe tools: ${names.join(", ")}`,
   );
   line(tools.every((tool) => tool.inputSchema?.type === "object" && tool.inputSchema?.additionalProperties === false), "every tool inputSchema is a closed object");
 
@@ -127,10 +126,10 @@ try {
     "core_receipt returns the documented counters shape",
   );
 
-  const exported = JSON.parse(resultText(await callTool("core_admin", { action: "export", args: { file: exportedFile } })));
-  line(exported.ok === true && existsSync(exportedFile), "core_admin export writes the caller-named file");
-
-  line((await callTool("core_admin", { action: "bogus" }))?.error?.code === -32602, "unknown admin action is refused with -32602");
+  line(
+    (await callTool("core_admin", { action: "export" }))?.error?.code === -32602,
+    "core_admin is NOT on the MCP surface (Unknown tool, -32602)",
+  );
   line((await callTool("no_such_tool", {}))?.error?.code === -32602, "unknown tool is refused with -32602");
   line((await request("no/such/method", {}))?.error?.code === -32601, "unknown method is refused with -32601");
   child.stdin.write("this is not json\n");

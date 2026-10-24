@@ -356,7 +356,7 @@ dependencies**: the newline-delimited JSON-RPC 2.0 transport lives in the repo
 `zod`. The store keeps using `node:fs` / `node:path` / `node:os` /
 `node:crypto` / `node:url` only.
 
-### The five tools
+### The four tools
 
 | Tool | What it returns |
 |---|---|
@@ -364,7 +364,14 @@ dependencies**: the newline-delimited JSON-RPC 2.0 transport lives in the repo
 | `core_status` | per-namespace counts (records / retired / retrievals), storage root, config path, embedder and dim — **counts only, never memory text** |
 | `core_doctor` | the five health checks, each with an id, an ok flag and a detail |
 | `core_receipt` | counted report of what was stored and retrieved |
-| `core_admin` | `purge` / `reindex` / `export` / `import` / `compact` |
+
+Maintenance (`purge` / `reindex` / `export` / `import` / `compact`) is **not
+exposed as an MCP tool**. The MCP has no caller identity, so a maintenance tool
+there would be reachable by every agent, including restricted ones. It lives in
+`mcp/admin-cli.js` instead, run with `bash` by the operator (or the ORACLE) —
+see the context-inject `ADMIN_CLI_HOWTO.md`. A restricted agent cannot run it; a
+bash-capable agent is already fully privileged, so the CLI adds no new
+capability for it.
 
 Invalid requests are JSON-RPC errors (`-32602`); a refusal raised by the store comes back as a tool result with `isError: true` and an `ERROR: …` text — the MCP convention for protocol errors versus tool-level errors.
 

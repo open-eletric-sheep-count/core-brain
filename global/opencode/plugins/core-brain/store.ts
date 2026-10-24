@@ -5,9 +5,9 @@
 // Zero runtime npm dependencies: Node builtins only (spec Q2).
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type {
@@ -266,6 +266,55 @@ function writeFileAtomic(file: string, data: unknown): void {
   renameSync(tmp, file);
 }
 
+/**
+ * Resolves `p` to its real filesystem location, following symlinks: `realpath`
+ * when it exists, otherwise the realpath of its nearest existing ancestor — so
+ * a symlinked ancestor cannot be used to escape the memory root.
+ */
+function realTargetPath(p: string): string {
+  let current = resolve(p);
+  for (;;) {
+    if (existsSync(current)) return realpathSync(current);
+    const parent = dirname(current);
+    if (parent === current) return current;
+    current = parent;
+  }
+}
+
+/**
+ * §7.2 containment: `export`/`import` may only touch files that live INSIDE the
+ * core-brain data root (where the memory is stored). An absolute path elsewhere,
+ * a `..` escape, or a symlink pointing out of the root is refused before any
+ * filesystem write/read happens.
+ */
+function assertInsideDataRoot(root: string, candidate: string, action: string): void {
+  const rootReal = realTargetPath(root);
+  const targetReal = realTargetPath(candidate);
+  const rel = relative(rootReal, targetReal);
+  const contained = rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  if (!contained) {
+    throw new Error(
+      `core-brain admin ${action}: 'file' must live inside the core-brain memory root ` +
+        `(${rootReal}); refusing '${candidate}'`,
+    );
+  }
+}
+
+/**
+ * §7.2: an export must never overwrite a LIVE store file — `config.json`, a
+ * namespace's `memories.json`/`episodes.json`, or a `vectors/**` index. Doing so
+ * would corrupt (or silently wipe) the memory the admin op is meant to dump.
+ */
+function isLiveStoreFile(root: string, file: string): boolean {
+  const rel = relative(realTargetPath(root), realTargetPath(file));
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) return false;
+  const parts = rel.split(sep);
+  if (parts[0] === "vectors") return true;
+  if (parts.length === 1) return parts[0] === CONFIG_FILE;
+  const leaf = parts[parts.length - 1];
+  return leaf === "memories.json" || leaf === "episodes.json";
+}
+
 /** The index header written by `writeVectors` (D5). */
 interface IndexHeader {
   embedder: string;
@@ -341,7 +390,7 @@ function staleIndexMessage(label: string, header: IndexHeader | null, active: In
   return (
     `core_memory recall: namespace '${label}' index ${state}, but the active engine is ` +
     `'${active.id}' dim ${active.dim} revision '${active.revision}' — ` +
-    `run core_admin { action: "reindex", args: { ns: "${label}" } } to rebuild it`
+    `run the core-brain admin CLI ("reindex --ns ${label}") to rebuild it`
   );
 }
 
@@ -1448,6 +1497,12 @@ export function createEngine(options: EngineOptions = {}): Engine {
       if (typeof file !== "string" || file.trim() === "") {
         throw new Error("core-brain admin export: 'file' is required (a non-empty path)");
       }
+      assertInsideDataRoot(root, file, "export");
+      if (isLiveStoreFile(root, file)) {
+        throw new Error(
+          `core-brain admin export: 'file' must not overwrite a live store file: ${file}`,
+        );
+      }
       const namespaces: {
         ns: string;
         records: MemoryRecord[];
@@ -1477,6 +1532,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
       if (typeof file !== "string" || file.trim() === "") {
         throw new Error("core-brain admin import: 'file' is required (a non-empty path)");
       }
+      assertInsideDataRoot(root, file, "import");
       if (!existsSync(file)) {
         throw new Error(`core-brain admin import: file not found: ${file}`);
       }
