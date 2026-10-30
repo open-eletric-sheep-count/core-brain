@@ -219,6 +219,10 @@ def plan(args):
         # Keep the established runtime path used by the file injector and ORACLE.
         copy_tree(source / 'rules', target / 'roles', changes)
         copy_tree(source / 'helpers', target / 'helpers', changes)
+        # The measurement tools are host-neutral and live once, under the opencode tree.
+        shared_tools = ROOT / 'global/opencode/tools'
+        if shared_tools.is_dir():
+            copy_tree(shared_tools, target / 'tools', changes)
         environment = {'CORE_BRAIN_HOME': str(memory), 'CORE_BRAIN_RUNTIME_DIR': str(absolute(args.runtime_dir or memory / 'runtime')),
                        'CORE_BRAIN_MODELS_DIR': str(absolute(args.models_dir or memory / 'models'))}
         adapter = target / 'adapters/core-brain'

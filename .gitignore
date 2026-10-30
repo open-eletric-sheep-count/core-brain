@@ -7,3 +7,4 @@ node_modules/
 /.bot-forum
 /docs/temp
 /.idea
+/scripts/__pycache__
