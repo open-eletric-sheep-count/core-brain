@@ -8,7 +8,13 @@ MVP plan in [README.md](README.md).
 
 ## Suite — agents & templates
 
-- [ ] **1 — Template markers + user templates folder** — add a template mechanism for the agent surface: template markers (placeholders) in `AGENTS.md` and in the agent definitions (`agent/*.md`), plus a **templates folder** where the user can change **what gets injected into the agents and into `AGENTS.md`**. Goal: personalizations (e.g. a personalized `SECRETARY`) live in the user's templates — **without editing the git-shipped templates**, surviving reinstalls/updates.
+- [ ] **1 — `AGENTS.md` delivered by `context-inject`** — the suite ships agents, helpers, plugins and skills, but **no behavioural contract**: `global/opencode/` contains no `AGENTS.md`, so a machine that installs only core-brain receives the skills and none of the rules that tell an agent to use them. Publish a shared instruction file and deliver it through the `context-inject` plugin, on `session.created` and `session.compacted`, under the `ALL` key.
+  - **Why.** The only `AGENTS.md` today lives in the private Taulukko repository, and the install cascade copies that layer **over** core-brain. Every rule binding all agents therefore travels with the private layer: a public-only install is incomplete, and any fix made here is silently overwritten there. Injection is applied by a plugin, so file precedence cannot undo it.
+  - **Content — minimum.** The rules that bind every agent regardless of role. First one: any task that creates, modifies, refactors or reviews code loads the `clean-code-mode` skill before the first edit and states `SKILL LOADED: clean-code-mode`; the skill's publication and version-control steps stay out of scope unless the USER asks.
+  - **Budget.** Injected text is paid on every session **and again on every compaction**. Keep it short and measure it: a rule that costs more than it saves belongs in the agent file it governs, not in an injection.
+  - **Acceptance.** A machine with core-brain only — no private layer — opens a session where every agent receives the injected text. Removing the private checkout changes nothing. `install.sh` verifies the wiring and fails loudly when the injection is missing.
+
+- [ ] **2 — Template markers + user templates folder** — add a template mechanism for the agent surface: template markers (placeholders) in `AGENTS.md` and in the agent definitions (`agent/*.md`), plus a **templates folder** where the user can change **what gets injected into the agents and into `AGENTS.md`**. Goal: personalizations (e.g. a personalized `SECRETARY`) live in the user's templates — **without editing the git-shipped templates**, surviving reinstalls/updates.
 
 ---
 
@@ -141,4 +147,12 @@ MVP plan in [README.md](README.md).
 
 ## core-brain plugin — Fatia 2b (PLUR parity: self-report + closing ritual)
 
-- [ ] **Fatia 2b — automatic self-report capture + session-closing ritual** (`global/opencode/plugins/core-brain/`; USER request 2026-10-05 — restore the PLUR learned-summary behavior): (1) **self-report capture** — read the assistant's end-of-reply learnings digest (`--- I learned:` block) at turn end and store each item automatically (PLUR's `learnFromTurn` on `session.idle`; today the skills store each bullet explicitly and nothing in the plugin reads the assistant's text); (2) **closing ritual** — on session close, capture the summary + episode (PLUR's `plur_session_end`; fatia 2's A4 remains `UNKNOWN`). First step: a spike for the turn-end/event signal on the V2 plugin API (the PLUR V2 port used an event subscribe — source in the plur repo, `packages/opencode/`). 
+- [ ] **Fatia 2b — automatic self-report capture + session-closing ritual** (`global/opencode/plugins/core-brain/`; USER request 2026-10-05 — restore the PLUR learned-summary behavior): (1) **self-report capture** — read the assistant's end-of-reply learnings digest (`--- I learned:` block) at turn end and store each item automatically (PLUR's `learnFromTurn` on `session.idle`; today the skills store each bullet explicitly and nothing in the plugin reads the assistant's text); (2) **closing ritual** — on session close, capture the summary + episode (PLUR's `plur_session_end`; fatia 2's A4 remains `UNKNOWN`). First step: a spike for the turn-end/event signal on the V2 plugin API (the PLUR V2 port used an event subscribe — source in the plur repo, `packages/opencode/`).
+
+---
+
+## Deferred — PLUR upstream (security-audit follow-up)
+
+- [ ] **P1 — Consult PLUR upstream for the same bug we fixed.** core-brain is a fork of PLUR (`@plur-ai/core@0.21.0`, Apache-2.0; `engine/` derives from it). Check whether PLUR's admin/MCP maintenance surface has the same flaw we closed in core-brain: `export`/`import` accepting an arbitrary caller-supplied path (write/read outside the data root) and an admin op that ignores the caller's policy. If it does, record the exact files/lines and the impact.
+- [ ] **P2 — Open an issue in the PLUR repo.** Report the vulnerability with a minimal PoC. Important: our mitigation does **not** transfer — PLUR has neither ORACLE nor `context-inject`, so it cannot move maintenance to an ORACLE-run CLI documented by an injected HOWTO. The issue must describe the flaw and suggest a self-contained fix (path containment to the store root + a real authorization/identity gate, or removing the admin surface from the MCP).
+- [ ] **P3 — Use PLUR's README as inspiration for ours.** Read the PLUR README and make core-brain's README as attractive: it currently has no image — add a banner/screenshot/diagram, a clearer quick-start and a feature table, keeping the existing accuracy.

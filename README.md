@@ -25,7 +25,7 @@ mental-map design in §3 remains a roadmap, beyond the implemented memory store.
 
 
 ```plantext
-Visit https://github.com/open-eletric-sheep-count/core-brain and folow the "Agent Instalation Instructions"
+Visit https://github.com/open-eletric-sheep-count/core-brain and follow the "Agent Instalation Instructions"
 ```
 
 #
@@ -181,7 +181,19 @@ Teco Think, scrum team, ORACLE does it all, A New Brain Storm, Batman e Robin);
 the `SUBAGENT-*` files carry the mandatory subagent rules (e.g. the ORACLE is the
 single channel to the USER).
 
+---
 
+## Credits and provenance
+
+Built on work by Robert C. Martin (`unclebob`).
+
+- `crapper`, `dryer`, `mutator` — used as they are, under the BSD Zero Clause License (0BSD),
+  with no conditions attached.
+- `clean-code-mode` (`global/opencode/skills/clean-code-mode/`) — a similar version of his
+  `ub-mode` skill. That one carries no license, so it cannot be redistributed here; if it ever
+  gains one, prefer it: <https://github.com/unclebob/ub-mode>
+
+No affiliation with or endorsement by the original author is implied.
 
 ---
 
@@ -203,7 +215,7 @@ Give an LLM agent a memory that is closer to a human's:
    associated memories. The spread is guaranteed to terminate.
 
 The whole thing is designed to be **quick to implement** because the heavy
-substrate already exists (see §3.4).
+substrate already exists.
 
 ---
 
@@ -289,7 +301,7 @@ top-k cosine search misses, and it terminates by construction.
 
 ---
 
-### 3. Existing substrate (what we using for now — maybe we need remake something better)
+### 3. Existing substrate
 
 | Substrate                                     | Role in this project                                                                 | Status        |
 | --------------------------------------------- | ------------------------------------------------------------------------------------ | ------------- |
