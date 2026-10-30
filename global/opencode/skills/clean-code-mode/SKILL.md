@@ -41,6 +41,9 @@ description: Enforces auditable codebase changes: reproduce faults, fix causes, 
 
 ## Checking
 
+- Measure with the suite's tools — `crapper` (complexity and coverage), `dryer`
+  (duplication) and `mutator` (mutation), installed under the CLI's `tools/`
+  directory; a missing tool blocks the rules that depend on it, never estimates.
 - Each behavioural change starts with a check failing for the intended reason on unmodified code.
 - No edit after first pass unless another currently fails.
 - Checks use consumer paths and observable results.

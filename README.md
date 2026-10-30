@@ -177,15 +177,18 @@ single channel to the USER).
 
 ---
 
-## Credits and provenance
+## Credits and thanks
 
-Built on work by Robert C. Martin (`unclebob`).
+This suite is built on work by Robert C. Martin (`unclebob`), and thanks are due for it.
 
-- `crapper`, `dryer`, `mutator` — used as they are, under the BSD Zero Clause License (0BSD),
-  with no conditions attached.
-- `clean-code-mode` (`global/opencode/skills/clean-code-mode/`) — a similar version of his
+- **`crapper`, `dryer`, `mutator`** — shipped as they are under the BSD Zero Clause License
+  (0BSD), which asks for nothing in return. They live in
+  [`global/opencode/tools/`](global/opencode/tools/) and provide the complexity, duplication
+  and mutation measurements the `clean-code-mode` skill requires.
+
+- **`clean-code-mode`** (`global/opencode/skills/clean-code-mode/`) — a similar version of his
   `ub-mode` skill. That one carries no license, so it cannot be redistributed here; if it ever
-  gains one, prefer it: <https://github.com/unclebob/ub-mode>
+  gains one, prefer the original: <https://github.com/unclebob/ub-mode>
 
 No affiliation with or endorsement by the original author is implied.
 
