@@ -1,6 +1,6 @@
 {
   "name": "@oesc/todo-list",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "OpenCode V2 plugin: session todo tool (`todo`) + live TUI sidebar panel",
   "license": "MIT",
@@ -18,8 +18,9 @@
     ".": "./index.ts",
     "./tui": "./tui.tsx"
   },
-  "files": ["index.ts", "store.ts", "types.ts", "format.ts", "tui.tsx", "README.md"],
+  "files": ["index.ts", "order.ts", "store.ts", "types.ts", "format.ts", "tui.tsx", "README.md"],
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "prepublishOnly": "node --input-type=module -e \"await import('./index.ts')\""
   }
 }

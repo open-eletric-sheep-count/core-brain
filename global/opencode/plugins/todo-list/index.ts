@@ -25,14 +25,21 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { clearList, readList, writeList } from "./store.ts";
+import { clearList, filePathFor, loadList, writeList } from "./store.ts";
 import {
   clampDepthAt,
   deriveNumbers,
   displayContent,
   stripEnumeration,
 } from "./format.ts";
+import {
+  findOrderingViolations,
+  formatOrderingRejection,
+  isClosedStatus,
+} from "./order.ts";
 import type {
+  LoadResult,
+  OrderingViolation,
   TodoItem,
   TodoList,
   TodoOp,
@@ -105,6 +112,9 @@ const STATUSES: readonly TodoStatus[] = [
   "cancelled",
 ];
 const PRIORITIES: readonly TodoPriority[] = ["high", "medium", "low"];
+
+/** A stored/keyed text still carrying a legacy "1.1)" enumeration (§9 F3/F4). */
+const LEGACY_PREFIX = /^\s*(\d+(?:\.\d+)*)\)/;
 
 const GLYPH: Record<TodoStatus, string> = {
   pending: "[ ]",
@@ -191,6 +201,83 @@ function withIssues(base: string, issues: string[]): string {
   return `${base}\nissues: ${issues.join("; ")}`;
 }
 
+/**
+ * v0.3 ordering rule (spec-ordering.md §2/§3): the CANDIDATE list is validated
+ * whole — `add`/`remove` renumber and re-parent later items, so a per-item
+ * check would miss the state that is about to be stored. `starts` carries the
+ * ids this op actually STARTS (§4.1), so a rejection blames the item the caller
+ * asked to start instead of the one already running. `closes` carries the ids
+ * this op actually CLOSES — a declaration, not a selector (D11): rule B's
+ * offender is always the closed member, so the set never changes a line.
+ * `reverts` carries the ids this op actually sets back to `pending` — the same
+ * kind of declaration for rule C (D14): its offender is always the pending item.
+ * Returns the exact §4 rejection text, or null when the candidate is legal. A
+ * rejection writes nothing: the stored list (and its `nextId`) stays
+ * byte-identical.
+ */
+function orderRejection(
+  items: TodoItem[],
+  starts: ReadonlySet<number>,
+  closes: ReadonlySet<number>,
+  reverts: ReadonlySet<number>,
+): string | null {
+  const violations = findOrderingViolations(items, starts, closes, reverts);
+  return violations.length === 0 ? null : formatOrderingRejection(violations);
+}
+
+// ---------------------------------------------------------------------------
+// No silent failure (spec-ordering §9).
+//
+// A store that cannot be read must never look like "no list yet": the old
+// `readList` collapsed absent/empty/corrupt/unreadable into `null`, so a broken
+// file was reported as an empty session and the next `write` overwrote it.
+// ---------------------------------------------------------------------------
+
+/** A store state that CANNOT be trusted (and that no mutating op may touch). */
+type BadLoad = Extract<
+  LoadResult,
+  { status: "corrupt" } | { status: "unreadable" }
+>;
+
+/** True when the loaded state refuses to be read (narrows the union). */
+function isBadLoad(loaded: LoadResult): loaded is BadLoad {
+  return loaded.status === "corrupt" || loaded.status === "unreadable";
+}
+
+/** The exact §9.2 refusal for a store we cannot trust. */
+function storeRefusal(loaded: BadLoad, mode: "read" | "mutate"): string {
+  const verb = mode === "read" ? "Nothing was read." : "Nothing was changed.";
+  if (loaded.status === "corrupt") {
+    return (
+      `ERROR: the stored list for this session is corrupt (${loaded.path}): ` +
+      `${loaded.detail}. ${verb} Run op "clear" to discard it (its data ` +
+      `cannot be recovered), or repair the file by hand.`
+    );
+  }
+  return (
+    `ERROR: the stored list for this session could not be read ` +
+    `(${loaded.path}): ${loaded.detail}. ${verb} Fix the permissions, or ` +
+    `run op "clear" to discard it.`
+  );
+}
+
+/** What `clear` actually did — every outcome says the truth (§9.2). */
+function clearOutcome(sessionID: string): string {
+  const loaded = loadList(sessionID);
+  if (loaded.status === "absent") {
+    return "TODO: no list for this session — nothing to clear.";
+  }
+  const removed = clearList(sessionID);
+  if (!removed) return "TODO: no list for this session — nothing to clear.";
+  if (loaded.status === "corrupt") {
+    return "TODO: removed the corrupt list file for this session (it could not be parsed).";
+  }
+  if (loaded.status === "empty") {
+    return "TODO: the list for this session was already empty (file removed).";
+  }
+  return "TODO list cleared (file removed).";
+}
+
 function formatList(list: TodoList): string {
   const count = (status: TodoStatus) =>
     list.items.filter((item) => item.status === status).length;
@@ -228,6 +315,8 @@ function buildItems(
   issues: string[];
 } {
   const used = new Set<number>();
+  /** Ids already assigned to an item OF THIS REQUEST (§9.1 F5). */
+  const fromRequest = new Set<number>();
   let nextId = 1;
   if (base) {
     for (const item of base.items) used.add(item.id);
@@ -251,8 +340,21 @@ function buildItems(
     } else {
       while (used.has(nextId)) nextId++;
       id = nextId++;
+      // §9.1 F5: an id substitution is never silent.
+      if (raw.id !== undefined) {
+        if (!isPositiveInt(raw.id)) {
+          issues.push(
+            `id ${JSON.stringify(raw.id)} is not a positive integer — assigned id ${id} instead`,
+          );
+        } else if (fromRequest.has(raw.id)) {
+          issues.push(
+            `id ${raw.id} was already used by an item in this request — assigned id ${id} instead`,
+          );
+        }
+      }
     }
     used.add(id);
+    fromRequest.add(id);
     for (const taken of used) if (taken >= nextId) nextId = taken + 1;
 
     let status: TodoStatus = "pending";
@@ -277,6 +379,9 @@ function buildItems(
     }
     // 0.2: depth is explicit when valid; otherwise inferred from a legacy
     // "1.1)" prefix in the text; otherwise 0. The text prefix is stripped.
+    // §9.1 F3: stripping is reported, never silent.
+    const prefixMatch = LEGACY_PREFIX.exec(content);
+    const prefixText = prefixMatch ? `${prefixMatch[1]})` : null;
     const stripped = stripEnumeration(content);
     const rawDepth = raw.depth;
     let depth: number;
@@ -296,8 +401,20 @@ function buildItems(
     } else {
       depth = stripped.depth ?? 0;
     }
+    if (prefixText && stripped.text && stripped.text !== content) {
+      issues.push(
+        `id ${id}: removed the "${prefixText}" prefix from the text — numbering is generated`,
+      );
+    }
     content = stripped.text || content;
     items.push({ id, content, status, priority, depth });
+    // §9.1 F6: a non-integer `after` falls back to "append at the end" — and
+    // says so instead of silently relocating the item.
+    if (raw.after !== undefined && !isPositiveInt(raw.after)) {
+      issues.push(
+        `id ${id}: "after" must be a positive integer (got ${JSON.stringify(raw.after)}) — appended at the end`,
+      );
+    }
     afters.push(isPositiveInt(raw.after) ? raw.after : undefined);
   }
   return { items, afters, nextId, issues };
@@ -308,26 +425,117 @@ function buildItems(
 // ---------------------------------------------------------------------------
 
 function opRead(sessionID: string): string {
-  const list = readList(sessionID);
-  if (!list) return "TODO: no list for this session yet.";
-  return formatList(list);
+  // §9.1 F1/F2: report the REAL state — absent, empty, corrupt and unreadable
+  // are four different answers, never collapsed into "no list".
+  const loaded = loadList(sessionID);
+  if (isBadLoad(loaded)) return storeRefusal(loaded, "read");
+  if (loaded.status === "absent") return "TODO: no list for this session yet.";
+  if (loaded.status === "empty") {
+    return "TODO: the list for this session is empty (the file exists and holds no items).";
+  }
+  const list = loaded.list;
+  const notes: string[] = [];
+  // §9.1 F10 / §8 D8: a stored list that violates the ordering law is
+  // announced — the FIRST offending pair (lowest offender index; for one
+  // offender the in-progress clause first, then pending, then the new
+  // open-descendant clause) in the §4 reason sentences, then the law restated.
+  const violations = findOrderingViolations(list.items);
+  if (violations.length > 0) {
+    const first = violations[0];
+    if (first.reason === "open_descendant") {
+      notes.push(
+        `list is in an invalid state — ${first.number} is closed while ` +
+          `${first.blockerNumbers[0]} is still open; mutating ops will refuse ` +
+          `until every descendant of a closed item is closed too.`,
+      );
+    } else if (first.reason === "closed_descendant") {
+      notes.push(
+        `list is in an invalid state — ${first.number} is pending while ` +
+          `${first.blockerNumbers[0]} is already closed; mutating ops will ` +
+          `refuse until every descendant of a pending item is pending too.`,
+      );
+    } else {
+      const state =
+        first.reason === "in_progress"
+          ? "is still in progress"
+          : "is not in progress";
+      notes.push(
+        `list is in an invalid state — ${first.number} is in progress while ` +
+          `${first.blockerNumbers[0]} ${state}; mutating ops will refuse until ` +
+          `every item before an in-progress item is closed or is one of its ` +
+          `in-progress ancestors.`,
+      );
+    }
+  }
+  // §9.1 F4: stored text that still carries a legacy prefix is not what the
+  // dump shows — say it once instead of pretending the two agree.
+  const legacy = list.items.filter((item) => LEGACY_PREFIX.test(item.content))
+    .length;
+  if (legacy > 0) {
+    notes.push(
+      `${legacy} items store a legacy numbered prefix; the display omits it — ` +
+        `rewrite those texts without the prefix to clear this note.`,
+    );
+  }
+  return notes.reduce(
+    (text, note) => `${text}\nissues: ${note}`,
+    formatList(list),
+  );
 }
 
 function opWrite(sessionID: string, rawItems: TodoOpItem[] | undefined): string {
-  const base = readList(sessionID);
-  const { items, nextId, issues } = buildItems(rawItems ?? [], base);
-  if (items.length === 0) {
+  // §9.1 F1: a store we cannot trust is refused BEFORE any computation.
+  const loaded = loadList(sessionID);
+  if (isBadLoad(loaded)) return storeRefusal(loaded, "mutate");
+  const raw = rawItems ?? [];
+  // §9.1 F7/F8: only an EXPLICIT empty request clears. A request whose every
+  // item was rejected must never destroy the existing list — and with no file
+  // behind it, `write []` must not claim it cleared one.
+  if (raw.length === 0) {
+    if (loaded.status === "absent") {
+      return "TODO: no list for this session — nothing to clear.";
+    }
+    // §9.2: the empty-store sentence says "(file removed)" — so the file must
+    // actually go, exactly as the `clear` op does. Returning first left the
+    // empty file on disk and the next `read` contradicted the answer.
     clearList(sessionID);
-    return withIssues("TODO list cleared.", issues);
+    if (loaded.status === "empty") {
+      return "TODO: the list for this session was already empty (file removed).";
+    }
+    return "TODO list cleared.";
+  }
+  const base = loaded.status === "ok" ? loaded.list : null;
+  const { items, nextId, issues } = buildItems(raw, base);
+  if (items.length === 0) {
+    return (
+      withIssues(
+        "ERROR: nothing valid to write: every item in the request was rejected.",
+        issues,
+      ) + "\nNothing was changed."
+    );
   }
   items.forEach((_, index) => clampDepthAt(items, index, issues));
+  // §4.1: `write` replaces the list — no item has a prior state, so EVERY
+  // in-progress item of the candidate is a start, and there is nothing to
+  // close (the close set is deliberately empty for `write`).
+  const rejection = orderRejection(
+    items,
+    new Set(
+      items.filter((item) => item.status === "in_progress").map((item) => item.id),
+    ),
+    new Set(),
+    new Set(),
+  );
+  if (rejection !== null) return rejection;
   const list: TodoList = { sessionID, nextId, items };
   writeList(sessionID, list);
   return withIssues(`TODO list replaced.\n${formatList(list)}`, issues);
 }
 
 function opAdd(sessionID: string, rawItems: TodoOpItem[] | undefined): string {
-  const base = readList(sessionID);
+  const loaded = loadList(sessionID);
+  if (isBadLoad(loaded)) return storeRefusal(loaded, "mutate");
+  const base = loaded.status === "ok" ? loaded.list : null;
   const previous: TodoList = base ?? { sessionID, nextId: 1, items: [] };
   const { items, afters, nextId, issues } = buildItems(rawItems ?? [], previous);
   if (items.length === 0) {
@@ -352,6 +560,22 @@ function opAdd(sessionID: string, rawItems: TodoOpItem[] | undefined): string {
     merged.splice(index, 0, item);
     clampDepthAt(merged, index, issues);
   });
+  // §4.1: only the items created by THIS call can be starts — and only those
+  // that arrive already closed can be closes, or already `pending` a revert.
+  // All three sets are declarations (§2.1, D11/D14), never selectors.
+  const rejection = orderRejection(
+    merged,
+    new Set(
+      items.filter((item) => item.status === "in_progress").map((item) => item.id),
+    ),
+    new Set(
+      items.filter((item) => isClosedStatus(item.status)).map((item) => item.id),
+    ),
+    new Set(
+      items.filter((item) => item.status === "pending").map((item) => item.id),
+    ),
+  );
+  if (rejection !== null) return rejection;
   const list: TodoList = { sessionID, nextId, items: merged };
   writeList(sessionID, list);
   const added = items.map((item) => item.id).join(", ");
@@ -365,9 +589,23 @@ function opUpdate(
   sessionID: string,
   rawItems: TodoOpItem[] | undefined,
 ): string {
-  const base = readList(sessionID);
-  if (!base) return "TODO: no list for this session yet — nothing to update.";
+  const loaded = loadList(sessionID);
+  if (isBadLoad(loaded)) return storeRefusal(loaded, "mutate");
+  if (loaded.status === "absent") {
+    return "TODO: no list for this session yet — nothing to update.";
+  }
+  if (loaded.status === "empty") {
+    return "TODO: the list for this session is empty — nothing to update.";
+  }
+  const base = loaded.list;
+  // §4.1: snapshot the statuses BEFORE any mutation — a start is a TRANSITION
+  // to in_progress; re-sending in_progress for a running item is NOT a start.
+  const before = new Map(
+    base.items.map((item) => [item.id, item.status] as const),
+  );
   const issues: string[] = [];
+  /** Changes this call would apply, itemised for the §9.1 F9 refusal line. */
+  const applied: Array<{ id: number; field: string }> = [];
   let changes = 0;
   for (const raw of rawItems ?? []) {
     if (!isPositiveInt(raw?.id)) {
@@ -381,9 +619,20 @@ function opUpdate(
     }
     if (raw.content !== undefined) {
       const trimmed = typeof raw.content === "string" ? raw.content.trim() : "";
+      // §9.1 F3: a stripped legacy prefix is reported on update too.
+      const prefixMatch = LEGACY_PREFIX.exec(trimmed);
+      const prefixText = prefixMatch ? `${prefixMatch[1]})` : null;
       const stripped = stripEnumeration(trimmed);
       const content = stripped.text || trimmed;
       if (content) {
+        if (prefixText && stripped.text && stripped.text !== trimmed) {
+          issues.push(
+            `id ${raw.id}: removed the "${prefixText}" prefix from the text — numbering is generated`,
+          );
+        }
+        if (item.content !== content) {
+          applied.push({ id: raw.id, field: "content" });
+        }
         item.content = content;
         changes++;
       } else {
@@ -392,6 +641,9 @@ function opUpdate(
     }
     if (raw.status !== undefined) {
       if (STATUSES.includes(raw.status)) {
+        if (item.status !== raw.status) {
+          applied.push({ id: raw.id, field: "status" });
+        }
         item.status = raw.status;
         changes++;
       } else {
@@ -400,6 +652,9 @@ function opUpdate(
     }
     if (raw.priority !== undefined) {
       if (PRIORITIES.includes(raw.priority)) {
+        if (item.priority !== raw.priority) {
+          applied.push({ id: raw.id, field: "priority" });
+        }
         item.priority = raw.priority;
         changes++;
       } else {
@@ -411,6 +666,9 @@ function opUpdate(
     if (raw.depth !== undefined) {
       const rd = raw.depth;
       if (typeof rd === "number" && Number.isInteger(rd) && rd >= 0) {
+        if (item.depth !== rd) {
+          applied.push({ id: raw.id, field: "depth" });
+        }
         item.depth = rd;
         changes++;
       } else {
@@ -418,6 +676,92 @@ function opUpdate(
       }
     }
     clampDepthAt(base.items, base.items.indexOf(item), issues);
+  }
+  // §4.1: ids whose requested status transitions to in_progress in this call
+  // are starts — one `before` snapshot serves both sets.
+  const starts = new Set<number>();
+  for (const raw of rawItems ?? []) {
+    if (
+      raw?.status === "in_progress" &&
+      isPositiveInt(raw.id) &&
+      before.get(raw.id) !== "in_progress"
+    ) {
+      starts.add(raw.id);
+    }
+  }
+  // §4.1: the sibling set — ids whose status transitions to a CLOSED state in
+  // this call (the same `before` snapshot serves both sets). Re-sending
+  // `completed` for an already completed item is not a close, and neither is
+  // switching `completed` → `cancelled`.
+  const closes = new Set<number>();
+  for (const raw of rawItems ?? []) {
+    if (!raw || !isPositiveInt(raw.id)) continue; // unknown ids are refused
+    const prior = before.get(raw.id); // undefined ⇒ the id is not in the list
+    if (
+      prior !== undefined &&
+      raw.status !== undefined &&
+      STATUSES.includes(raw.status) &&
+      isClosedStatus(raw.status) &&
+      !isClosedStatus(prior)
+    ) {
+      closes.add(raw.id);
+    }
+  }
+  // §4.1: ids whose requested status transitions back to `pending` are reverts
+  // (rule C) — read from the same `before` snapshot. Re-sending `pending` for
+  // an item already pending is not a revert.
+  const reverts = new Set<number>();
+  for (const raw of rawItems ?? []) {
+    if (!raw || !isPositiveInt(raw.id)) continue;
+    const prior = before.get(raw.id);
+    if (
+      prior !== undefined &&
+      prior !== "pending" &&
+      raw.status === "pending"
+    ) {
+      reverts.add(raw.id);
+    }
+  }
+  // v0.3: one candidate list (all requested changes applied + clamped, never
+  // per item) is validated before anything is persisted. §9.1 F9: a refusal
+  // itemises the non-offending changes that were discarded with it.
+  const violations = findOrderingViolations(
+    base.items,
+    starts,
+    closes,
+    reverts,
+  );
+  if (violations.length > 0) {
+    // §9.1 F9: only NON-offending changes are "discarded". Besides the
+    // offenders, a blocker is involved when THIS call changed its `status` or
+    // `depth` — that is the change that made it a blocker (T48: `1.1` closed
+    // under a pending `1`; T50: the depth move itself). A content/priority edit
+    // on a blocker stays an unrelated discarded change.
+    const causal = new Set(
+      applied
+        .filter((change) => change.field === "status" || change.field === "depth")
+        .map((change) => change.id),
+    );
+    const involved = new Set<number>();
+    for (const violation of violations) {
+      involved.add(violation.itemId);
+      for (const blockerId of violation.blockerIds) {
+        if (causal.has(blockerId)) involved.add(blockerId);
+      }
+    }
+    const discarded = applied.filter((change) => !involved.has(change.id));
+    const lines = formatOrderingRejection(violations).split("\n");
+    const trailer = lines.pop() ?? "Nothing was changed.";
+    if (discarded.length > 0) {
+      const plural = discarded.length === 1 ? "" : "s";
+      lines.push(
+        `refused whole: ${discarded.length} other requested change${plural} ` +
+          `${discarded.length === 1 ? "was" : "were"} not applied (` +
+          `${discarded.map((change) => `id ${change.id} ${change.field}`).join(", ")}).`,
+      );
+    }
+    lines.push(trailer);
+    return lines.join("\n");
   }
   writeList(sessionID, base);
   return withIssues(
@@ -430,8 +774,15 @@ function opRemove(
   sessionID: string,
   rawItems: TodoOpItem[] | undefined,
 ): string {
-  const base = readList(sessionID);
-  if (!base) return "TODO: no list for this session yet — nothing to remove.";
+  const loaded = loadList(sessionID);
+  if (isBadLoad(loaded)) return storeRefusal(loaded, "mutate");
+  if (loaded.status === "absent") {
+    return "TODO: no list for this session yet — nothing to remove.";
+  }
+  if (loaded.status === "empty") {
+    return "TODO: the list for this session is empty — nothing to remove.";
+  }
+  const base = loaded.list;
   const issues: string[] = [];
   const ids = new Set<number>();
   for (const raw of rawItems ?? []) {
@@ -454,16 +805,28 @@ function opRemove(
     clearList(sessionID);
     return withIssues("TODO list is now empty — removed.", issues);
   }
+  // §4.1: fail-closed (D12) — a removal that leaves the list illegal is
+  // rejected too; removals that FIX a violation are accepted. A removal never
+  // starts, closes nor reverts anything, so all three sets are empty (fallback
+  // attribution applies) — it can still CAUSE the close-rule violation by
+  // re-parenting an open item under a closed one (§4, N9), or the pending-rule
+  // violation by re-parenting a closed item under a pending one (§4, T45).
+  const rejection = orderRejection(
+    keep,
+    new Set<number>(),
+    new Set<number>(),
+    new Set<number>(),
+  );
+  if (rejection !== null) return rejection;
   const list: TodoList = { sessionID, nextId: base.nextId, items: keep };
   writeList(sessionID, list);
   return withIssues(`TODO updated (items removed).\n${formatList(list)}`, issues);
 }
 
 function opClear(sessionID: string): string {
-  const removed = clearList(sessionID);
-  return removed
-    ? "TODO list cleared (file removed)."
-    : "TODO: no list for this session — nothing to clear.";
+  // §9.1 F1: `clear` is the ONLY op allowed to destroy a store that cannot be
+  // read — and it says which of the four outcomes actually happened.
+  return clearOutcome(sessionID);
 }
 
 // ---------------------------------------------------------------------------
@@ -516,8 +879,19 @@ async function execute(
     return { content: `ERROR: unreachable op ${op}.` };
   } catch (e) {
     console.error(`${LOG_TAG} execute failed:`, e);
+    // §9.1 F12: a thrown exception says whether anything was persisted and why
+    // it is safe to assume it was not (writes are atomic tmp + rename).
+    const message = e instanceof Error ? e.message : String(e);
+    let leftover = "a leftover .tmp file can be deleted safely";
+    try {
+      leftover = `a leftover "${filePathFor(sessionID)}.tmp" can be deleted safely`;
+    } catch {
+      // the path itself is unusable — keep the generic note
+    }
     return {
-      content: `ERROR: todo ${op} failed: ${e instanceof Error ? e.message : String(e)}`,
+      content:
+        `ERROR: todo ${op} failed: ${message}. Nothing was changed (writes ` +
+        `are atomic: ${leftover}).`,
     };
   }
 }
@@ -551,7 +925,18 @@ export default {
           "on insert/remove; a level jump is clamped and reported. Statuses: " +
           "pending | in_progress | completed | cancelled. Priorities: " +
           "high | medium | low. Ids are stable integers, never reused — " +
-          "always reuse the ids reported by previous calls.",
+          "always reuse the ids reported by previous calls. " +
+          "An item may be in progress only when every item before it is " +
+          "closed (completed/cancelled) or is one of its own ancestors in " +
+          "progress: `3`, `3.1`, `3.1.2` together are fine; `4.3` while " +
+          "`3.1` is in progress — or `1.1` while `1` has not started — is " +
+          "not. A closed item may not have an open descendant: finish or " +
+          "cancel `1.1` before closing or cancelling `1`. A pending item may " +
+          "not have a completed or cancelled descendant: start `1` (or close " +
+          "it) before finishing `1.1`, and an item with a closed descendant " +
+          "cannot be set back to pending. A removal or insertion that would " +
+          "leave any of these states behind is refused too. Rejections change " +
+          "nothing.",
         input: {
           type: "object",
           properties: {
@@ -605,8 +990,25 @@ export default {
       // Remember for tool calls whose second argument does not carry the id.
       activeSessionID = sessionID;
       try {
-        const list = readList(sessionID);
-        if (!list) return; // absent or empty — inject nothing
+        const loaded = loadList(sessionID);
+        if (loaded.status === "corrupt" || loaded.status === "unreadable") {
+          // §9.1 F11: a broken store is announced, never silently skipped.
+          const reason =
+            loaded.status === "corrupt"
+              ? "corrupt store"
+              : "store could not be read";
+          if (Array.isArray(event?.system)) {
+            event.system.push({
+              type: "text",
+              text:
+                `TODO: list unreadable (${reason}) — run the todo tool op ` +
+                `"read" for details.`,
+            });
+          }
+          return;
+        }
+        if (loaded.status !== "ok") return; // absent or empty — inject nothing
+        const list = loaded.list;
         const inProgress = list.items.filter(
           (item) => item.status === "in_progress",
         ).length;

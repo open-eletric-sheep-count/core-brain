@@ -247,3 +247,16 @@ Item:
    document how external configuration installers call the OESC installer.
 9. Validate: no plugin load errors, tool callable, panel visible below MCP,
    update/remove/mark/cancel + strikethrough all working.
+
+---
+
+## 13. Ordering rule (v0.3, 2026-10-30; contract revision v0.3.5, 2026-10-31)
+
+The ordering rule — **rule A** (an item may be `in_progress` only when every
+earlier item is closed, except its own ancestors, which must be `in_progress`),
+**rule B** (a `completed` or `cancelled` item may not have an open descendant, so
+closing runs bottom-up) and **rule C** (an item may be `pending` only while every
+descendant is `pending`) — is specified in **`spec-ordering.md`**, contract
+revision **v0.3.5**, which is normative and carries the law, the op-level
+behaviour, the attribution, the exact error text, the implementation contract, the
+test contract and the acceptance checklist; `Q1`-`Q15` above stay unchanged.
