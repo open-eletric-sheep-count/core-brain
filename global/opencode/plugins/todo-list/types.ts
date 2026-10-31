@@ -60,6 +60,9 @@ export interface OrderingViolation {
   blockerIds: number[];
   blockerNumbers: string[];
   reason: "in_progress" | "pending" | "open_descendant" | "closed_descendant";
+  /** The offender's own status — it decides the verb: `close` for a closed
+   * offender, `start` for a running one (contract v0.3.6 §4). */
+  offenderStatus: TodoStatus;
 }
 
 /**

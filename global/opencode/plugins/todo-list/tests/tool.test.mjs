@@ -121,10 +121,15 @@ test("execute without any session id refuses instead of guessing", async () => {
 
 test("context hook pushes exactly one reminder line for a non-empty list", async () => {
   const sessionID = "hook-happy";
+  // RE-DERIVED for v0.3.6 (spec §6 collateral ruling, item 4): the seed used to
+  // be `[I@0, P@0, C@0]` — a closed item behind a `pending` one, which rule D
+  // forbids even though `seed()` writes it straight to disk. Re-ordered to
+  // closed, started, pending. The assertion it exists for (the one reminder line
+  // and its counts) is unchanged and not weakened.
   seed(sessionID, [
-    makeItem(1, { status: "in_progress" }),
-    makeItem(2),
-    makeItem(3, { status: "completed" }),
+    makeItem(1, { status: "completed" }),
+    makeItem(2, { status: "in_progress" }),
+    makeItem(3),
   ]);
   const system = [];
   await hook({ sessionID, system });
@@ -548,8 +553,8 @@ test("read reports absent, empty, a legacy prefix and an illegal state", async (
       "2: [~] 2) item 2",
       "3: [~] 3) item 3",
       "issues: list is in an invalid state — 2 is in progress while 1 is not in " +
-        "progress; mutating ops will refuse until every item before an " +
-        "in-progress item is closed or is one of its in-progress ancestors.",
+        "progress; mutating ops will refuse until every item before a " +
+        "started item is closed or is one of its in-progress ancestors.",
       "issues: 1 items store a legacy numbered prefix; the display omits it — " +
         "rewrite those texts without the prefix to clear this note.",
     ].join("\n"),

@@ -8,25 +8,30 @@
 //   anc(j, i) = numbers[i].startsWith(numbers[j] + ".")
 //
 //   legal(list) iff
-//     (A)  for every in_progress item i, for every j < i:
+//     (D)  for every item i with status !== "pending", for every j < i:
 //              CLOSED(items[j].status)
 //           || ( anc(j, i) && items[j].status === "in_progress" )
+//           || ( anc(j, i) && CLOSED(items[i].status) )
 //     (B)  for every closed item i, for every j > i:
 //              anc(i, j) ⇒ CLOSED(items[j].status)
 //     (C)  for every item i, for every descendant j:
 //              CLOSED(items[j].status) ⇒ items[i].status !== "pending"
 //
-// Rule A — the START rule. An item may be in progress only when every item
-// BEFORE it is already closed — the single exception being its own ancestors,
-// which must themselves be in progress. Nothing may be skipped; nothing may run
-// in a second branch. `pending` therefore BLOCKS an in-progress item that comes
-// after it (`1.1` while `1` has not started is invalid, USER correction
-// 2026-10-31), and an in-progress item never legalizes an earlier sibling or
-// another branch (`4.3` while `3.1` is in progress is invalid). A nested chain
-// (3, 3.1, 3.1.2) is legal because every ancestor on that path is itself in
-// progress. The v0.3.2 law "one in-progress item per level" is REJECTED (§2.3):
-// the level arithmetic is not the law. Items AFTER the in-progress one are
-// unconstrained by rule A: future work may exist.
+// Rule D — the ORDER rule (v0.3.6), which SUBSUMES the old start rule A: every
+// item that is not `pending` — starting OR closing/cancelling — requires every
+// earlier item to be closed, the single exception being its own ancestors while
+// they are in progress (and, for a closed item, its ancestors being closed too:
+// term 3, so a closed leaf under a closed chain never turns into a `cannot
+// close <closed item>` line — rule C owns that pair). Nothing may be skipped:
+// `1.1` while `1` has not started is invalid (USER correction 2026-10-31), and
+// so is closing `1.4` while `1.3` is pending, or closing root `2` while root `1`
+// still runs (USER, 2026-10-31: the live list held both). `pending` items block
+// everything that comes after them; an in-progress item never legalizes an
+// earlier sibling or another branch. A nested chain (3, 3.1, 3.1.2) is legal
+// because every ancestor on that path is itself in progress. The v0.3.2 law
+// "one in-progress item per level" is REJECTED (§2.3): level arithmetic is not
+// the law. Items AFTER a started one are unconstrained by rule D: future work
+// may exist.
 //
 // Rule B — the CLOSE rule. Closing is a commitment that the branch is over, so
 // it is only allowed bottom-up: a closed item may not have an OPEN descendant,
@@ -100,11 +105,12 @@ function slotOf(acc: Acc, offender: number): Record<Reason, number[]> {
 }
 
 /**
- * Rule A — the START rule: every in-progress item against every EARLIER item.
- * `starts` decides which member of the pair a line names (§4.1); when neither
- * member started, the fallback is the later item — the in-progress one.
+ * Rule D — the ORDER rule: every non-pending item against every EARLIER item.
+ * `starts` decides which member of the pair a line names (§4.1) when the pair
+ * is two running items; otherwise the offender is the later one — the item
+ * whose start/close the op is attempting.
  */
-function collectStartViolations(
+function collectOrderViolations(
   items: TodoItem[],
   numbers: string[],
   starts: ReadonlySet<number>,
@@ -112,19 +118,23 @@ function collectStartViolations(
 ): void {
   const anc = (j: number, i: number) => numbers[i].startsWith(`${numbers[j]}.`);
   for (let i = 0; i < items.length; i++) {
-    if (items[i].status !== "in_progress") continue;
+    if (items[i].status === "pending") continue; // not started yet: D is silent
+    const closedI = isClosedStatus(items[i].status);
     for (let j = 0; j < i; j++) { // every EARLIER item
       if (isClosedStatus(items[j].status)) continue; // closed: passes
-      if (anc(j, i) && items[j].status === "in_progress") continue; // the chain: passes
-      const started = starts.has(items[i].id)
+      if (anc(j, i) && items[j].status === "in_progress") continue; // chain running
+      if (closedI && anc(j, i)) continue; // term 3: closed under closed ancestor
+      // §4.1: the item this op starts is named when the pair is two running
+      // items; otherwise the later item (the one being moved) is the offender.
+      const offender = starts.has(items[i].id)
         ? i
-        : starts.has(items[j].id)
+        : starts.has(items[j].id) && !closedI
           ? j
-          : i; // §4.1: started item, else the later (in-progress) one
-      const blocker = started === i ? j : i;
+          : i;
+      const blocker = offender === i ? j : i;
       const reason: Reason =
         items[blocker].status === "in_progress" ? "in_progress" : "pending";
-      slotOf(acc, started)[reason].push(blocker);
+      slotOf(acc, offender)[reason].push(blocker);
     }
   }
 }
@@ -199,7 +209,7 @@ export function findOrderingViolations(
   void reverts;
   const numbers = deriveNumbers(items);
   const acc: Acc = new Map();
-  collectStartViolations(items, numbers, starts, acc);
+  collectOrderViolations(items, numbers, starts, acc);
   collectCloseViolations(items, numbers, acc);
   collectPendingViolations(items, numbers, acc);
   const out: OrderingViolation[] = [];
@@ -213,6 +223,7 @@ export function findOrderingViolations(
         blockerIds: blockers.map((k) => items[k].id),
         blockerNumbers: blockers.map((k) => numbers[k]),
         reason,
+        offenderStatus: items[offender].status,
       });
     }
   }
@@ -227,14 +238,16 @@ const STATE: Record<OrderingViolation["reason"], string> = {
   closed_descendant: "already closed.",
 };
 
-/** The per-reason head: rule A starts, B closes, C reverts to `pending` — the
- * target state is part of the head, not of the reason text (§4). */
-const HEAD: Record<OrderingViolation["reason"], (number: string) => string> = {
-  in_progress: (number) => `cannot start ${number}: `,
-  pending: (number) => `cannot start ${number}: `,
-  open_descendant: (number) => `cannot close ${number}: `,
-  closed_descendant: (number) => `cannot revert ${number} to pending: `,
-};
+/** The head of a line (§4): rule C always reverts to `pending`; every other
+ * reason takes its verb from the OFFENDER's own status — a closed offender is
+ * being closed, a running one is being started. */
+function head(variant: OrderingViolation): string {
+  if (variant.reason === "closed_descendant") {
+    return `cannot revert ${variant.number} to pending: `;
+  }
+  const verb = isClosedStatus(variant.offenderStatus) ? "close" : "start";
+  return `cannot ${verb} ${variant.number}: `;
+}
 
 /** Exact rejection text (contract §4): one line per offender AND reason, then
  * the trailer. `is`/`are` follows that line's own blocker count; a single line
@@ -245,7 +258,7 @@ export function formatOrderingRejection(
   const lines = violations.map((variant) => {
     const plural = variant.blockerNumbers.length === 1 ? "is" : "are";
     return (
-      `ERROR: ${HEAD[variant.reason](variant.number)}` +
+      `ERROR: ${head(variant)}` +
       `${variant.blockerNumbers.join(", ")} ${plural} ${STATE[variant.reason]}`
     );
   });

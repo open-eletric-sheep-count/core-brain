@@ -455,14 +455,20 @@ function opRead(sessionID: string): string {
           `refuse until every descendant of a pending item is pending too.`,
       );
     } else {
-      const state =
+      // Rule D (v0.3.6) owns both directions of the same pair: the earlier
+      // blocker's state decides the sentence, the offender's own status only
+      // decides whether the gesture was a start or a close.
+      const blockerState =
         first.reason === "in_progress"
           ? "is still in progress"
           : "is not in progress";
+      const offenderState = isClosedStatus(first.offenderStatus)
+        ? "is closed"
+        : "is in progress";
       notes.push(
-        `list is in an invalid state — ${first.number} is in progress while ` +
-          `${first.blockerNumbers[0]} ${state}; mutating ops will refuse until ` +
-          `every item before an in-progress item is closed or is one of its ` +
+        `list is in an invalid state — ${first.number} ${offenderState} while ` +
+          `${first.blockerNumbers[0]} ${blockerState}; mutating ops will refuse ` +
+          `until every item before a started item is closed or is one of its ` +
           `in-progress ancestors.`,
       );
     }
@@ -926,11 +932,13 @@ export default {
           "pending | in_progress | completed | cancelled. Priorities: " +
           "high | medium | low. Ids are stable integers, never reused — " +
           "always reuse the ids reported by previous calls. " +
-          "An item may be in progress only when every item before it is " +
-          "closed (completed/cancelled) or is one of its own ancestors in " +
-          "progress: `3`, `3.1`, `3.1.2` together are fine; `4.3` while " +
-          "`3.1` is in progress — or `1.1` while `1` has not started — is " +
-          "not. A closed item may not have an open descendant: finish or " +
+          "Order is one path, walked in order: to START, CLOSE or CANCEL an " +
+          "item, every item before it must already be closed " +
+          "(completed/cancelled) or be one of its own ancestors in progress: " +
+          "`3`, `3.1`, `3.1.2` together are fine; `4.3` while `3.1` is in " +
+          "progress, `1.1` while `1` has not started, closing `1.4` while " +
+          "`1.3` is pending, or closing `2` while `1` still runs are all " +
+          "refused. A closed item may not have an open descendant: finish or " +
           "cancel `1.1` before closing or cancelling `1`. A pending item may " +
           "not have a completed or cancelled descendant: start `1` (or close " +
           "it) before finishing `1.1`, and an item with a closed descendant " +

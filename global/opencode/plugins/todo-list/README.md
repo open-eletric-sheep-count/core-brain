@@ -48,16 +48,22 @@ insert right after an existing item.
 
 ## Ordering rule (v0.3)
 
-An item may run only when **every item before it is already `completed` or
-`cancelled`** — the single exception being its **own ancestors, which must
-themselves be `in_progress`**. The in-progress items form one path, walked in
-order: nothing may be skipped, and nothing may run in a second branch. `pending`
-is not a free pass — an unstarted item blocks everything that comes after it.
+An item may be **started, closed or cancelled** only when **every item before
+it is already `completed` or `cancelled`** — the single exception being its
+**own ancestors, which must themselves be `in_progress`** (and, for a closed
+item, its ancestors being closed too). The started items form one path, walked
+in order: nothing may be skipped and nothing may run in a second branch.
+`pending` is not a free pass — an unstarted item blocks everything after it,
+and the same holds for closing: jumping over an open item is refused.
 
 - **Legal** — `{1, 1.1}`: the parent runs, and the child runs with it.
 - **Legal** — `{3, 3.1, 3.1.2}`: one chain, every ancestor in progress.
 - **Rejected** — `{1.1}` while `1` is `pending`:
   `ERROR: cannot start 1.1: 1 is not in progress.`
+- **Rejected** — closing `1.4` while `1.3` is still `pending`:
+  `ERROR: cannot close 1.4: 1.3 is not in progress.`
+- **Rejected** — closing root `2` while root `1` still runs:
+  `ERROR: cannot close 2: 1 is still in progress.`
 - **Rejected** — `{3, 3.1, 4.3}`: `4.3` comes after `3` and `3.1`, so it needs
   both closed first — it is not a branch they may run beside.
 

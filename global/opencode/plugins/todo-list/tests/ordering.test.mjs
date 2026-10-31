@@ -1217,7 +1217,7 @@ test("T24 read announces an inconsistent list (F10)", async () => {
     res.content.endsWith(
       "issues: list is in an invalid state — 2 is in progress while 1 is " +
         "still in progress; mutating ops will refuse until every item before " +
-        "an in-progress item is closed or is one of its in-progress ancestors.",
+        "a started item is closed or is one of its in-progress ancestors.",
     ),
     res.content,
   );
@@ -1551,8 +1551,11 @@ test("T33 deep chain: a closed root over a pending branch, fixed bottom-up", asy
     number: "3",
   });
 
-  // The law-true escape, bottom-up — every step accepted.
-  for (const id of [6, 5, 4]) {
+  // The law-true escape, bottom-up — every step accepted. Re-derived for
+  // v0.3.6: rule D forbids closing `3.1.2` while its earlier sibling `3.1.1`
+  // is still pending, so the siblings close in order (5 then 6), then `3.1`,
+  // then the parent.
+  for (const id of [5, 6, 4]) {
     const closed = await call(
       { op: "update", items: [{ id, status: C }] },
       sid,
@@ -1966,9 +1969,14 @@ test("T44 add re-parents a closed item under a new pending item — refused", as
     },
     sid,
   );
+  // RE-DERIVED for v0.3.6 (spec §6 T44 + T60): rule D adds exactly one line. The
+  // closed leaf `1.2.1` also sits behind the running `1.1` — an earlier *sibling*
+  // of `1.2.1`, not an ancestor — so the refusal carries the `close` head beside
+  // the `revert` one, offender `1.2` (index 2) before offender `1.2.1` (index 3).
   assert.equal(
     added.content,
     "ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.\n" +
+      "ERROR: cannot close 1.2.1: 1.1 is still in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "nothing may be added by a refused add");
@@ -1976,11 +1984,16 @@ test("T44 add re-parents a closed item under a new pending item — refused", as
   assert.equal(tmpLeft(sid), false);
 });
 
-test("T45 remove re-clamps a closed child under a pending item — refused", async () => {
+test("RETIRED — T45 remove re-clamps a closed child under a pending item (mechanism impossible under rule D)", async () => {
   useHome();
   const sid = "t45";
-  // The §3 fixture: `[I@0, P@1, C@1, C@2]` — legal as it stands (the closed
-  // `1.2` keeps its own closed child `1.2.1`).
+  // RETIRED in v0.3.6 (spec §6 collateral ruling): this row used to build its
+  // violation with a `remove` that re-clamps a closed `1.2.1` under the pending
+  // `1.1`. Its seed `[I@0, P@1, C@1, C@2]` — `1.2` closed while `1.1` is still
+  // `pending` — is itself a rule-D violation, so the seed can never be stored and
+  // the mechanism is unreachable. The row stays VISIBLE and proves exactly that:
+  // the now-impossible seed is REFUSED. `remove` re-clamping stays covered by T44
+  // (`add`) and T60, which pin the same re-parenting path on legal seeds.
   const seeded = await call(
     {
       op: "write",
@@ -1993,24 +2006,17 @@ test("T45 remove re-clamps a closed child under a pending item — refused", asy
     },
     sid,
   );
-  assert.match(seeded.content, /^TODO list replaced\./);
-  assert.deepEqual(
-    rows(seeded.content).map((row) => row.number),
-    ["1", "1.1", "1.2", "1.2.1"],
+  assert.match(
+    seeded.content,
+    /^ERROR: cannot close 1\.2: 1\.1 is not in progress\./,
+    "rule D must refuse the retired seed — without it the row is unreachable",
   );
-  const before = readList(sid);
-  const bytesBefore = rawStore(sid);
-
-  // Removing `1.2` re-parents `1.2.1` to the pending `1.1` → candidate
-  // `1, 1.1, 1.1.1(closed)`, which rule C refuses. `remove` reverts nothing.
-  const removed = await call({ op: "remove", items: [{ id: 3 }] }, sid);
-  assert.equal(
-    removed.content,
-    "ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.\n" +
-      NOTHING_CHANGED,
+  assert.ok(
+    seeded.content.endsWith(NOTHING_CHANGED),
+    "a refusal always ends with the trailer",
   );
-  assert.deepEqual(readList(sid), before);
-  assert.equal(rawStore(sid), bytesBefore);
+  assert.equal(readList(sid), null, "no file may be written by a refused write");
+  assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
 });
 
 test("T46 reverts is a declaration, not a selector (§2.1 fifth property)", () => {
@@ -2167,10 +2173,16 @@ test("T49 a C-violating legacy store is repairable by cancelling the branch (Y15
   assert.doesNotMatch(view.content, /^issues: list is in an invalid state/m);
 });
 
-test("T50 a depth move lands a closed item under a pending ancestor — refused", async () => {
+test("RETIRED — T50 a depth move lands a closed item under a pending ancestor (mechanism impossible under rule D)", async () => {
   useHome();
   const sid = "t50";
-  // Accepted seed: `1` running, `1.1` pending, `1.2` closed (§6).
+  // RETIRED in v0.3.6 (spec §6 collateral ruling): this row used to build its
+  // violation with an `update` depth move that lands the closed `1.2` under the
+  // pending `1.1`. Its seed `[I@0, P@1, C@1]` — `1.2` closed while `1.1` is still
+  // `pending` — is itself a rule-D violation, so the seed can never be stored and
+  // the depth move is unreachable. The row stays VISIBLE and proves exactly that:
+  // the now-impossible seed is REFUSED. The closed-offender shape stays pinned by
+  // T59/T60.
   const seeded = await call(
     {
       op: "write",
@@ -2178,30 +2190,17 @@ test("T50 a depth move lands a closed item under a pending ancestor — refused"
     },
     sid,
   );
-  assert.match(seeded.content, /^TODO list replaced\./);
-  assert.deepEqual(
-    rows(seeded.content).map((row) => row.number),
-    ["1", "1.1", "1.2"],
+  assert.match(
+    seeded.content,
+    /^ERROR: cannot close 1\.2: 1\.1 is not in progress\./,
+    "rule D must refuse the retired seed — without it the row is unreachable",
   );
-  const before = readList(sid);
-  const bytesBefore = rawStore(sid);
-
-  // Moving `1.2` to depth 2 re-parents it under the pending `1.1`: the single
-  // offender is `1.1` (its root `1` is in progress, not pending), exactly as
-  // §6 T50 states. No `refused whole:` line follows: the only change this call
-  // made is the depth move on the blocker itself, so nothing non-offending was
-  // discarded (§9.1 F9).
-  const moved = await call({ op: "update", items: [{ id: 3, depth: 2 }] }, sid);
-  assert.equal(
-    moved.content,
-    "ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.\n" +
-      NOTHING_CHANGED,
+  assert.ok(
+    seeded.content.endsWith(NOTHING_CHANGED),
+    "a refusal always ends with the trailer",
   );
-  assert.deepEqual(readList(sid), before, "the move must not persist");
-  assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
+  assert.equal(readList(sid), null, "no file may be written by a refused write");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
-  const view = await call({ op: "read" }, sid);
-  assert.equal(rowById(view.content, 3).number, "1.2", "1.2 keeps its depth");
 });
 
 test("T51 C+A composition: reverting 4 to pending and starting 4.2 (row P2)", async () => {
@@ -2223,13 +2222,375 @@ test("T51 C+A composition: reverting 4 to pending and starting 4.2 (row P2)", as
   );
   // Three lines: the C offender (`4`, index 3) precedes the A offender (`4.2`,
   // index 5); inside `4.2` the in-progress group precedes the pending group.
+  // RE-DERIVED for v0.3.6 (spec §6 T51 + T60): four lines. The C offender (`4`,
+  // index 3) comes first; then the closed `4.1` offends under rule D because the
+  // running `3` precedes it (its own ancestor `4` is `pending`, which term 3
+  // forgives for a *closed* item — so only `3` blocks); then `4.2`'s two groups,
+  // in-progress before pending. Candidate order, never rule order.
   assert.equal(
     written.content,
     "ERROR: cannot revert 4 to pending: 4.1 is already closed.\n" +
+      "ERROR: cannot close 4.1: 3 is still in progress.\n" +
       "ERROR: cannot start 4.2: 3 is still in progress.\n" +
       "ERROR: cannot start 4.2: 4 is not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null);
   assert.equal(tmpLeft(sid), false);
+});
+
+// ===========================================================================
+// v0.3.6 — RULE D, THE STARTED RULE (spec-ordering.md §2, §6 T52–T60)
+//
+//   legal(list) iff  for every STARTED item i (status !== "pending"),
+//                    for every earlier item j:
+//                      CLOSED(j)                       (1) closed: passes
+//                      || anc(j,i) && status(j)=="in_progress"   (2) the chain
+//                      || anc(j,i) && CLOSED(i)                  (3) bottom-up close
+//
+// Finishing or cancelling is a commitment too: an item may be CLOSED only when
+// everything before it is closed, with the same ancestor exemption as starting.
+// Rule A (in-progress only) is D's corollary and is NOT a second check.
+// ===========================================================================
+
+// --- T52 -------------------------------------------------------------------
+
+test("T52 the live store: closing or cancelling behind a running root is refused (rule D)", async () => {
+  useHome();
+  const sid = "t52";
+  // Reduced fixture = §2.2 D3 (the USER's case 3): `1` runs; `1.1`, `1.2` closed;
+  // `1.3` pending; `2`, `3` closed; `4`, `5` pending; `6` closed.
+  // Spec §6 T52 pins the FULL seven-line live store only at its three measured
+  // anchors; the reduced fixture reproduces four of those lines. The remaining
+  // three are NOT invented here.
+  const previous = await call({ op: "write", items: [li(0, C, "previous")] }, sid);
+  assert.match(previous.content, /^TODO list replaced\./);
+  const bytesBefore = rawStore(sid);
+
+  const refused = await call(
+    {
+      op: "write",
+      items: [
+        li(0, I, "one"), //          1
+        li(1, C, "one one"), //      1.1
+        li(1, C, "one two"), //      1.2
+        li(1, P, "one three"), //    1.3
+        li(0, C, "two"), //          2
+        li(0, C, "three"), //        3
+        li(0, P, "four"), //         4
+        li(0, P, "five"), //         5
+        li(0, C, "six"), //          6
+      ],
+    },
+    sid,
+  );
+
+  const lines = refused.content.split("\n");
+  const at = (line) => lines.indexOf(line);
+  const anchor2 = at("ERROR: cannot close 2: 1 is still in progress.");
+  const anchor3 = at("ERROR: cannot close 3: 1 is still in progress.");
+  const anchor6ip = at("ERROR: cannot close 6: 1 is still in progress.");
+  const anchor6pending = at(
+    "ERROR: cannot close 6: 5, 4, 1.3 are not in progress.",
+  );
+  assert.ok(anchor2 >= 0, "`2` closed behind the running `1` must be refused");
+  assert.ok(anchor3 >= 0, "`3` closed behind the running `1` must be refused");
+  assert.ok(anchor6ip >= 0, "`6` closed behind the running `1` must be refused");
+  assert.ok(
+    anchor6pending >= 0,
+    "`6` also skips the pending `5`, `4` and `1.3` — listed nearest first",
+  );
+  assert.ok(
+    anchor2 < anchor3 && anchor3 < anchor6ip && anchor6ip < anchor6pending,
+    "offenders come in candidate order and the in-progress group precedes the pending group",
+  );
+  assert.equal(lines.pop(), NOTHING_CHANGED);
+  assert.equal(
+    rawStore(sid),
+    bytesBefore,
+    "a refused write must leave the store byte-identical",
+  );
+  assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
+});
+
+// --- T53 -------------------------------------------------------------------
+
+test("T53 a sibling skip on close is refused: 1.3 closed with 1.2 still pending", async () => {
+  useHome();
+  const sid = "t53";
+  // `[I@0, C@1, P@1, C@1]` — the candidate itself is the violation (`1.3` closed
+  // with `1.2` still `pending`), so it is attempted as a `write` over an existing
+  // legal store and must leave it byte-identical.
+  const previous = await call({ op: "write", items: [li(0, C, "previous")] }, sid);
+  assert.match(previous.content, /^TODO list replaced\./);
+  const bytesBefore = rawStore(sid);
+
+  const refused = await call(
+    {
+      op: "write",
+      items: [
+        li(0, I, "one"),
+        li(1, C, "one one"),
+        li(1, P, "one two"),
+        li(1, C, "one three"),
+      ],
+    },
+    sid,
+  );
+  assert.equal(
+    refused.content,
+    "ERROR: cannot close 1.3: 1.2 is not in progress.\n" + NOTHING_CHANGED,
+  );
+  assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
+  assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
+});
+
+// --- T54 -------------------------------------------------------------------
+
+test("T54 a root closed while an earlier root is running is refused (singular close line)", async () => {
+  useHome();
+  const sid = "t54";
+  const refused = await call(
+    { op: "write", items: [li(0, I, "one"), li(0, C, "two")] },
+    sid,
+  );
+  assert.equal(
+    refused.content,
+    "ERROR: cannot close 2: 1 is still in progress.\n" + NOTHING_CHANGED,
+  );
+  assert.equal(readList(sid), null, "no file may be written by a refused write");
+  assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
+});
+
+// --- T55 -------------------------------------------------------------------
+
+test("T55 the cells rule D must not break — the legitimate closes stay accepted (§2.2 D4)", async () => {
+  useHome();
+  // The four rows of §2.2 D4, each in its own session: bottom-up close under a
+  // running parent (term 3), a closed child under a closed parent, a cancelled
+  // child under a running parent, a cancelled child under a cancelled parent.
+  // A rule D that refuses any of them is a false red.
+  const legal = [
+    ["D4a", [li(0, I, "one"), li(1, C, "one one")]],
+    ["D4b", [li(0, C, "one"), li(1, C, "one one")]],
+    ["D4c", [li(0, I, "one"), li(1, X, "one one")]],
+    ["D4d", [li(0, X, "one"), li(1, C, "one one")]],
+  ];
+  for (const [row, items] of legal) {
+    const sid = `t55-${row}`;
+    const written = await call({ op: "write", items }, sid);
+    assert.match(
+      written.content,
+      /^TODO list replaced\./,
+      `${row} is a legal cell and must stay accepted`,
+    );
+    const view = await call({ op: "read" }, sid);
+    assert.deepEqual(
+      rows(view.content).map((stored) => stored.glyph),
+      items.map((item) =>
+        item.status === C ? "[x]" : item.status === X ? "[!]" : "[~]",
+      ),
+      `${row} must keep both items stored`,
+    );
+  }
+});
+
+// --- T56 -------------------------------------------------------------------
+
+test("T56 started parent, closed child and a trailing pending sibling are accepted (§2.2 D6)", async () => {
+  useHome();
+  const sid = "t56";
+  const written = await call(
+    {
+      op: "write",
+      items: [li(0, I, "one"), li(1, C, "one one"), li(1, P, "one two")],
+    },
+    sid,
+  );
+  assert.match(written.content, /^TODO list replaced\./);
+  const view = await call({ op: "read" }, sid);
+  assert.deepEqual(
+    rows(view.content).map((row) => [row.number, row.glyph]),
+    [
+      ["1", "[~]"],
+      ["1.1", "[x]"],
+      ["1.2", "[ ]"],
+    ],
+  );
+});
+
+// --- T57 -------------------------------------------------------------------
+
+test("T57 an all-closed prefix with a trailing pending root is accepted (§2.2 D5)", async () => {
+  useHome();
+  const sid = "t57";
+  const written = await call(
+    {
+      op: "write",
+      items: [li(0, C, "one"), li(0, C, "two"), li(0, P, "three")],
+    },
+    sid,
+  );
+  assert.match(written.content, /^TODO list replaced\./);
+  const view = await call({ op: "read" }, sid);
+  assert.deepEqual(
+    rows(view.content).map((row) => [row.number, row.glyph]),
+    [
+      ["1", "[x]"],
+      ["2", "[x]"],
+      ["3", "[ ]"],
+    ],
+  );
+});
+
+// --- T58 -------------------------------------------------------------------
+
+test("T58 read announces a rule-D-only store (fifth and sixth clauses)", async () => {
+  useHome();
+  const sid = "t58";
+  const base = (id, status, depth = 0) => ({
+    id,
+    content: `item ${id}`,
+    status,
+    priority: "medium",
+    depth,
+  });
+  const tail = {
+    in_progress:
+      "mutating ops will refuse until every item before a started item is " +
+      "closed or is one of its in-progress ancestors.",
+    pending:
+      "mutating ops will refuse until every item before a started item is " +
+      "closed or is one of its in-progress ancestors.",
+  };
+
+  // (a) `[I@0, C@0]` — `2` closed while `1` still runs: fifth clause.
+  writeList("t58a", {
+    sessionID: "t58a",
+    nextId: 3,
+    items: [base(1, I), base(2, C)],
+  });
+  const closedBehindRunning = await call({ op: "read" }, "t58a");
+  assert.equal(
+    closedBehindRunning.content.split("\n").pop(),
+    "issues: list is in an invalid state — 2 is closed while 1 is still in " +
+      `progress; ${tail.in_progress}`,
+  );
+  assert.doesNotMatch(closedBehindRunning.content, /^ERROR:/m);
+
+  // (b) `[I@0, C@1, C@1, P@1, C@1]` — `1.4` closed with `1.3` still pending:
+  // sixth clause. The clause names the closed offender (`1.4`), never `1.3`.
+  writeList(sid, {
+    sessionID: sid,
+    nextId: 6,
+    items: [base(1, I), base(2, C, 1), base(3, C, 1), base(4, P, 1), base(5, C, 1)],
+  });
+  const siblingSkip = await call({ op: "read" }, sid);
+  assert.equal(
+    siblingSkip.content.split("\n").pop(),
+    "issues: list is in an invalid state — 1.4 is closed while 1.3 is not in " +
+      `progress; ${tail.pending}`,
+  );
+  assert.doesNotMatch(siblingSkip.content, /^ERROR:/m);
+});
+
+// --- T59 -------------------------------------------------------------------
+
+test("T59 one offender carries both the rule-D and the rule-B line (groups 1 then 3)", async () => {
+  useHome();
+  const sid = "t59";
+  // Seeded behind the tool's back: `1` running, `2` closed, `2.1` pending — the
+  // single offender `2` breaks rule D (`1` runs before it) AND rule B (`2.1` is
+  // open underneath it). One offender, two groups, `close` head in both.
+  writeList(sid, {
+    sessionID: sid,
+    nextId: 4,
+    items: [
+      { id: 1, content: "one", status: I, priority: "medium", depth: 0 },
+      { id: 2, content: "two", status: C, priority: "medium", depth: 0 },
+      { id: 3, content: "two one", status: P, priority: "medium", depth: 1 },
+    ],
+  });
+  const bytesBefore = rawStore(sid);
+
+  // Any mutation is refused while the stored list is illegal; `add` adds nothing
+  // to the candidate's offenders (a trailing pending root is not a D subject).
+  const refused = await call(
+    { op: "add", items: [{ content: "later", status: P, depth: 0 }] },
+    sid,
+  );
+  assert.equal(
+    refused.content,
+    "ERROR: cannot close 2: 1 is still in progress.\n" +
+      "ERROR: cannot close 2: 2.1 is still open.\n" +
+      NOTHING_CHANGED,
+  );
+  assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
+  assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
+});
+
+// --- T60 -------------------------------------------------------------------
+
+test("T60 rule D adds exactly one line to the re-derived T44 and T51 candidates", () => {
+  // T44's candidate: `1 I, 1.1 I, 1.2 P, 1.2.1 C` — the C line plus ONE rule-D
+  // line for the closed leaf (`1.1` is an earlier *sibling*, not an ancestor;
+  // its own pending parent `1.2` is forgiven by term 3).
+  const t44 = [
+    { id: 1, content: "one", status: I, priority: "medium", depth: 0 },
+    { id: 2, content: "one one", status: I, priority: "medium", depth: 1 },
+    { id: 3, content: "inserted", status: P, priority: "medium", depth: 1 },
+    { id: 4, content: "leaf", status: C, priority: "medium", depth: 2 },
+  ];
+  assert.deepEqual(
+    findOrderingViolations(t44).map((v) => [
+      v.number,
+      v.reason,
+      v.blockerNumbers,
+    ]),
+    [
+      ["1.2", "closed_descendant", ["1.2.1"]],
+      ["1.2.1", "in_progress", ["1.1"]],
+    ],
+    "T44's candidate: offender 1.2 (rule C) then offender 1.2.1 (rule D), one line each",
+  );
+  assert.equal(
+    formatOrderingRejection(findOrderingViolations(t44)),
+    "ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.\n" +
+      "ERROR: cannot close 1.2.1: 1.1 is still in progress.\n" +
+      NOTHING_CHANGED,
+  );
+
+  // T51's candidate: `1 C, 2 C, 3 I, 4 P, 4.1 C, 4.2 I` — four lines, candidate
+  // order. `4.1`'s own ancestor `4` is pending, which term 3 forgives for a
+  // closed item, so only the running `3` blocks it; `4.2` carries both groups.
+  const t51 = [
+    { id: 1, content: "root one", status: C, priority: "medium", depth: 0 },
+    { id: 2, content: "root two", status: C, priority: "medium", depth: 0 },
+    { id: 3, content: "three", status: I, priority: "medium", depth: 0 },
+    { id: 4, content: "four", status: P, priority: "medium", depth: 0 },
+    { id: 5, content: "four one", status: C, priority: "medium", depth: 1 },
+    { id: 6, content: "four two", status: I, priority: "medium", depth: 1 },
+  ];
+  assert.deepEqual(
+    findOrderingViolations(t51).map((v) => [
+      v.number,
+      v.reason,
+      v.blockerNumbers,
+    ]),
+    [
+      ["4", "closed_descendant", ["4.1"]],
+      ["4.1", "in_progress", ["3"]],
+      ["4.2", "in_progress", ["3"]],
+      ["4.2", "pending", ["4"]],
+    ],
+    "T51's candidate: four records, candidate order, in-progress group before pending",
+  );
+  assert.equal(
+    formatOrderingRejection(findOrderingViolations(t51)),
+    "ERROR: cannot revert 4 to pending: 4.1 is already closed.\n" +
+      "ERROR: cannot close 4.1: 3 is still in progress.\n" +
+      "ERROR: cannot start 4.2: 3 is still in progress.\n" +
+      "ERROR: cannot start 4.2: 4 is not in progress.\n" +
+      NOTHING_CHANGED,
+  );
 });

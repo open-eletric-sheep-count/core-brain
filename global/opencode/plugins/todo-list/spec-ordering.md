@@ -1,11 +1,12 @@
 # ORDERING RULE — contract for `@oesc/todo-list` v0.3.0
 
-- Status: **ACTIVE — law AMENDED 2026-10-31 09:20** (contract revision v0.3.5:
+- Status: **ACTIVE — law AMENDED 2026-10-31 13:10** (contract revision v0.3.6:
   rule A restored in v0.3.3, **rule B — the close rule — added in v0.3.4**,
-  **rule C — the pending rule — added here**; the per-level law of v0.3.2 is
+  **rule C — the pending rule — in v0.3.5**, **rule D — the started rule, which
+  replaces A and deletes its loop — added here**; the per-level law of v0.3.2 is
   REJECTED, §2.3), §9 added 2026-10-30 20:55.
   The title tracks `package.json` (**0.3.0**); the `v0.3` / `v0.3.1` / `v0.3.2` /
-  `v0.3.3` / `v0.3.4` / `v0.3.5` markers in the section history below are
+  `v0.3.3` / `v0.3.4` / `v0.3.5` / `v0.3.6` markers in the section history below are
   **contract revisions**, not package versions.
 - Scope: `global/opencode/plugins/todo-list/` only
 - Parent contract: `todo-list-spec.md` (Q1–Q15 untouched)
@@ -71,19 +72,21 @@ states (`cancelled` counts, T6).
 `OPEN(s) = !CLOSED(s)` — `pending` and `in_progress`. "Open descendant" means a
 descendant whose status is `OPEN`; the word carries no other meaning here.
 `STARTED(s) = s !== "pending"` — in progress or closed; "started descendant"
-means a descendant whose status is `STARTED`. Rule C's **collection** predicate
-is `CLOSED`, not `STARTED` (§2): the `in_progress` half is already rule A's and
-must not be reported twice.
+means a descendant whose status is `STARTED`. It is the **subject of rule D**
+(v0.3.6): every started item — not only an `in_progress` one — must sit behind a
+closed prefix (§2). Rule C's **collection** predicate is `CLOSED`, not `STARTED`
+(§2): the `in_progress` half is already rule D's (formerly rule A's) and must not
+be reported twice.
 `anc(j, i) = numbers[i].startsWith(numbers[j] + ".")` — dot-prefix **is** ancestry
 on derived numbers (`anc(3, 3.1.2)` true; `anc(3, 4.3)` **false**; an item is not
 its own ancestor). `anc` is read left-to-right: `anc(a, b)` = **`a` is an
 ancestor of `b`**.
 `IN_PROGRESS` = items with `status === "in_progress"`.
-**Blocking**: every earlier item is a potential blocker of a later in-progress
-item. `completed` / `cancelled` never block; `pending` **does** block (`not in
-progress`); `in_progress` blocks unless it is an ancestor of the item (`still in
-progress`). The old line "`pending` never blocks" is **withdrawn** — it holds only
-for items *after* the in-progress one.
+**Blocking**: every earlier item is a potential blocker of a later **started**
+item (in progress or closed). `completed` / `cancelled` never block; `pending`
+**does** block (`not in progress`); `in_progress` blocks unless it is an ancestor
+of the item (`still in progress`). The old line "`pending` never blocks" is
+**withdrawn** — it holds only for items *after* the started one.
 **Closing blocks its own branch**: a closed item constrains everything **after**
 it — each of its descendants must be closed too (`open descendant`, §2 rule B).
 Both `pending` and `in_progress` block a close; the blocker is always a
@@ -96,33 +99,38 @@ nothing closed under pending**.
 
 ## 2. The law (normative)
 
-Three rules, all mandatory. **Rule A** — the start rule, unchanged since v0.3.3 —
-says when an item may be in progress. **Rule B** — the close rule, v0.3.4 — says
-what a closed item must leave behind it. **Rule C** — the pending rule, new in
-v0.3.5 — says what a `pending` item may have underneath it.
+Three rules, all mandatory. **Rule D** — the started rule, v0.3.6 — says where a
+**started** item may sit, whether it is in progress or closed; it is rule A
+widened, and A survives only as a corollary of it (§2, below). **Rule B** — the
+close rule, v0.3.4 — says what a closed item must leave behind it. **Rule C** —
+the pending rule, v0.3.5 — says what a `pending` item may have underneath it.
 
 ```
-numbers   = deriveNumbers(items)
-CLOSED(s) = s === "completed" || s === "cancelled"
-OPEN(s)   = !CLOSED(s)
-anc(j, i) = numbers[i].startsWith(numbers[j] + ".")
+numbers    = deriveNumbers(items)
+CLOSED(s)  = s === "completed" || s === "cancelled"
+OPEN(s)    = !CLOSED(s)
+STARTED(s) = s !== "pending"
+anc(j, i)  = numbers[i].startsWith(numbers[j] + ".")
 
 legal(list) iff
-  (A)  for every in_progress item i, for every j < i:
+  (D)  for every STARTED item i, for every j < i:
            CLOSED(items[j].status)
         || ( anc(j, i) && items[j].status === "in_progress" )
+        || ( anc(j, i) && CLOSED(items[i].status) )
   (B)  for every closed item i, for every j > i:
            anc(i, j) ⇒ CLOSED(items[j].status)
   (C)  for every item i, for every descendant j:
            CLOSED(items[j].status) ⇒ items[i].status !== "pending"
 ```
 
-In words: **(A)** the in-progress items form one path, walked in order — an item
-may be in progress only when every item before it is already closed, the single
-exception being its own ancestors, which must themselves be in progress; nothing
-may be skipped, nothing may run in a second branch. **(B)** nothing may be left
-open underneath a closed item — **a closed item with any open descendant is an
-invalid state**, whatever the descendant is doing (`pending` or `in_progress`).
+In words: **(D)** the started items — running **and** finished — form one path,
+walked in order: an item may be started only when every item before it is already
+closed, the exceptions being its own in-progress ancestors (term 2) and, for a
+**closed** item, its own ancestors whatever their status (term 3 — the bottom-up
+close); nothing may be skipped, nothing may run in a second branch, and finishing
+or cancelling is **not** a way to jump a `pending` sibling. **(B)** nothing may be
+left open underneath a closed item — **a closed item with any open descendant is
+an invalid state**, whatever the descendant is doing (`pending` or `in_progress`).
 **(C)** nothing may be closed underneath a `pending` item — **an item may be
 `pending` only while every descendant is `pending`**; the moment a descendant is
 `completed` or `cancelled`, its ancestors can no longer claim "never started".
@@ -138,14 +146,31 @@ one. Rule C closes that hole, and it is B's exact mirror: **a branch that has
 started (or finished) somewhere has started at its root**. Starting is a
 commitment too — in the other direction.
 
-What each earlier item `j` does to an in-progress item `i` (rule A):
+And the gap found in the USER's own store (v0.3.6): **closing or cancelling** was
+not ordered at all — `1.4` closed with `1.3` still `pending`, `2` and `3` closed
+while `1` was running — because rule A only ever looked at **in-progress** items.
+Rule D widens the subject of the start rule from `in_progress` to `STARTED`:
+finishing or cancelling is a commitment that the work **in front of it** is done,
+exactly like starting is.
 
-| earlier item `j` | verdict |
-| --- | --- |
-| `completed` / `cancelled` | passes — `CLOSED` (`cancelled` counts, T6) |
-| `in_progress` **and** an ancestor of `i` | passes — this is the chain (`3`, `3.1`, `3.1.2`) |
-| `in_progress`, **not** an ancestor | **blocks** — `… is still in progress.` |
-| `pending` — ancestor, earlier sibling or another branch | **blocks** — `… is not in progress.` |
+**Rule D subsumes rule A — and the A check is DELETED, not kept beside D.** Rule A
+(v0.3.3) is D restricted to `in_progress` items: term 3 requires `CLOSED(i)` and is
+therefore vacuous there, leaving exactly A's two terms. A survives **in this text
+only, as a corollary**; the runtime keeps **one** started-subject loop (§2.1),
+because two loops would print every `cannot start` line twice. Term 3 is mandatory,
+not an optimisation: it is what keeps rule C the **sole** owner of the
+closed-under-pending-ancestor class, so D never adds a `cannot close` line to a
+state C is already refusing.
+
+What each earlier item `j` does to a started item `i` (rule D):
+
+| earlier item `j` | `i` **in progress** (terms 1–2) | `i` **closed** (terms 1 and 3) |
+| --- | --- | --- |
+| `completed` / `cancelled` | passes — `CLOSED` (`cancelled` counts, T6) | passes — `CLOSED` |
+| `in_progress` **and** an ancestor of `i` | passes — this is the chain (`3`, `3.1`, `3.1.2`) | passes — term 3: the bottom-up close (`1` running, `1.1` finished) |
+| `pending` **and** an ancestor of `i` | **blocks** — `… is not in progress.` | passes here — term 3; rule **C** owns the pair and refuses it on the ancestor (`cannot revert <j> to pending`) |
+| `in_progress`, **not** an ancestor | **blocks** — `… is still in progress.` | **blocks** — `cannot close <i>: … is still in progress.` |
+| `pending` — earlier sibling or another branch | **blocks** — `… is not in progress.` | **blocks** — `cannot close <i>: … is not in progress.` |
 
 What each later item `j` does to a closed item `i` (rule B):
 
@@ -171,7 +196,7 @@ What each later item `j` does to a `pending` item `i` (rule C):
 | pair (`i` ancestor, `j` descendant) | covered by | new? |
 | --- | --- | --- |
 | `pending` + `pending` | nothing — legal | — |
-| `pending` + `in_progress` | **A** — `cannot start <j>: <i> is not in progress.` | no |
+| `pending` + `in_progress` | **D** (was rule A) — `cannot start <j>: <i> is not in progress.` | no |
 | **`pending` + `completed`** | **C** | **YES** |
 | **`pending` + `cancelled`** | **C** | **YES** |
 | `in_progress` + `pending` | nothing — legal (parent started, child not) | — |
@@ -182,15 +207,15 @@ What each later item `j` does to a `pending` item `i` (rule C):
 
 So rule C contributes **exactly two cells of the sixteen** — the two where a
 `pending` item has a **closed** descendant. Everything else was already decided
-by A or B, or is legal by design.
+by D or B, or is legal by design.
 
-No pair is visited twice, and rule C never adds a blocker to an A or B line:
-A pairs an **open earlier** member with an **in-progress later** one, B pairs a
+No pair is visited twice, and rule C never adds a blocker to a D or B line:
+D pairs an **open earlier** member with a **started later** one, B pairs a
 **closed earlier** member with an **open later** one, C pairs a **pending
 earlier** member with a **closed later** one. The three predicates are mutually
 exclusive on the same pair (an earlier member cannot be open and closed; a later
-member cannot be in-progress, open-not-in-progress and closed at once). That is
-why the `in_progress` half of C's statement is *not* collected (§1): rule A owns
+member cannot be started, open-not-started and closed at once). That is
+why the `in_progress` half of C's statement is *not* collected (§1): rule D owns
 it, with better attribution (it names the item the call started).
 
 Corollaries, **not** the law:
@@ -198,13 +223,19 @@ Corollaries, **not** the law:
 - At most one in-progress item per level — a same-level collision always has one
   member earlier than the other, and two items on the same level are never
   ancestor/descendant. v0.3.2 mistook that corollary for the law (§2.3).
-- Items *after* the in-progress one are unconstrained by rule A: future work may
-  exist. Unexplored future branches stay legal, so a plan is never rejected for
-  being a plan.
+- Items *after* the started one are unconstrained: future work may exist.
+  Unexplored future branches stay legal, so a plan is never rejected for being a
+  plan. (Since v0.3.6 this is narrower: an item *closed* after a still-running
+  earlier one **is** constrained by D — D2. The unconstrained part is the
+  `pending` suffix.)
 - Progress is **top-down to start, bottom-up to close**: you open the path
   (`3` → `3.1`) and you close it in reverse (`3.1` → `3`).
 - Closing an ancestor is never a shortcut past its children: the children must be
   closed (or removed) first.
+- **Finishing is ordered too.** Closing or cancelling is a step forward, not an
+  escape: an item may be closed only when everything before it is closed, with the
+  same ancestor exemption as starting (D). `4.3` cannot be closed while `4.1` is
+  pending, and no root can be closed while an earlier root is running.
 - A **`pending` item's whole branch is `pending`**. "I finished a child of
   something I never started" cannot be stored. A legacy list in that state is
   escapable only by starting the ancestor, by closing/cancelling it (rule B then
@@ -212,17 +243,23 @@ Corollaries, **not** the law:
 
 ### 2.1 Reference implementation (normative; drop-in body for `order.ts`)
 
-Three rules, collected first, grouped second. Rule A walks every in-progress item
+Three rules, collected first, grouped second. Rule D walks every **started** item
 `i` and every earlier `j`, keeping the violating pair with its reason (`j` in
 progress → `still in progress`; `j` pending → `not in progress`) and attributing it
 to the offender of §4.1 — the item this op starts, or the later item when the pair
-holds no start (in this directed rule the later member is always the in-progress
-one, `i`). Rule B walks every closed item `i` and every **later** `j` of its own
-branch, keeping `j` as a blocker when it is still open; its offender is always the
-closed item `i`. Rule C walks every `pending` item `i` and every **later** `j` of
-its own branch, keeping `j` as a blocker when it is **closed**; its offender is
-always the pending item `i` — B's mirror, with `reverts` as a declaration (D11,
-D14). All three rules feed one map, so the formatter stays a single loop.
+holds no start (in this directed rule the later member is always the started one,
+`i`) — except when `i` is **closed**: then the offender is always `i`, exactly as
+in rules B and C (`closes` is a declaration, §4.1, and a closed item's line has
+one possible subject). The two skip lines are term 2 and term 3 of §2 — the
+in-progress ancestor chain, and the closed item under its own ancestor. Rule B
+walks every closed item `i` and every **later** `j` of its own branch, keeping `j`
+as a blocker when it is still open; its offender is always the closed item `i`.
+Rule C walks every `pending` item `i` and every **later** `j` of its own branch,
+keeping `j` as a blocker when it is **closed**; its offender is always the pending
+item `i` — B's mirror, with `reverts` as a declaration (D11, D14). All three rules
+feed one map, so the formatter stays a single loop. **There is no rule-A loop**:
+D is A's superset (§2), and a second loop over the in-progress items would emit
+every `cannot start` line twice.
 
 ```ts
 export function findOrderingViolations(
@@ -233,6 +270,7 @@ export function findOrderingViolations(
 ): OrderingViolation[] {
   const numbers = deriveNumbers(items);
   const closed = (s: TodoStatus) => s === "completed" || s === "cancelled";
+  const started = (s: TodoStatus) => s !== "pending";               // STARTED (§1)
   const anc = (j: number, i: number) => numbers[i].startsWith(numbers[j] + ".");
   type Reason = "in_progress" | "pending" | "open_descendant" | "closed_descendant";
   const acc = new Map<number, Record<Reason, number[]>>(); // offender → reason → blockers
@@ -252,21 +290,25 @@ export function findOrderingViolations(
   void closes;
   void reverts;
 
-  // rule A — the START rule: an in_progress item and every EARLIER item.
+  // rule D — the STARTED rule: a not-pending item and every EARLIER item.
+  // (rule A is D restricted to in_progress; its own loop is DELETED, §2)
   for (let i = 0; i < items.length; i++) {
-    if (items[i].status !== "in_progress") continue;
+    if (!started(items[i].status)) continue;                        // pending: no D
     for (let j = 0; j < i; j++) {                                   // every EARLIER item
       if (closed(items[j].status)) continue;                        // closed: passes
-      if (anc(j, i) && items[j].status === "in_progress") continue;  // the chain: passes
-      const started = starts.has(items[i].id)
+      if (anc(j, i) && items[j].status === "in_progress") continue;  // term 2: the chain
+      if (anc(j, i) && closed(items[i].status)) continue;            // term 3: bottom-up close
+      const offender = closed(items[i].status)                      // closed item: one subject
         ? i
-        : starts.has(items[j].id)
-          ? j
-          : i;                                                      // §4.1 attribution
-      const blocker = started === i ? j : i;
+        : starts.has(items[i].id)
+          ? i
+          : starts.has(items[j].id)
+            ? j
+            : i;                                                    // §4.1 attribution
+      const blocker = offender === i ? j : i;
       const reason: Reason =
         items[blocker].status === "in_progress" ? "in_progress" : "pending";
-      slotOf(started)[reason].push(blocker);
+      slotOf(offender)[reason].push(blocker);
     }
   }
 
@@ -285,7 +327,7 @@ export function findOrderingViolations(
     if (items[i].status !== "pending") continue;                    // not pending: no C
     for (let j = i + 1; j < items.length; j++) {                    // every LATER item
       if (!anc(i, j)) continue;                                     // another branch: passes
-      if (!closed(items[j].status)) continue;                       // open descendant: A/B own it
+      if (!closed(items[j].status)) continue;                       // open descendant: D/B own it
       slotOf(i).closed_descendant.push(j);                          // the pending item offends
     }
   }
@@ -307,6 +349,7 @@ export function findOrderingViolations(
       out.push({
         itemId: items[offender].id,
         number: numbers[offender],
+        offenderStatus: items[offender].status,   // the formatter's head: start/close/revert (§4)
         blockerIds: blockers.map((k) => items[k].id),
         blockerNumbers: blockers.map((k) => numbers[k]),
         reason,
@@ -321,16 +364,18 @@ Five properties the implementation must keep:
 
 - **One record per pair.** Every `(i, j)` is visited exactly once, so no
   de-duplication pass is needed and no blocker is listed twice for one offender.
-  The three rules cannot visit the same pair: A pairs an **open earlier** member
-  with an **in-progress later** one, B pairs a **closed earlier** member with an
+  The three rules cannot visit the same pair: D pairs an **open earlier** member
+  with a **started later** one, B pairs a **closed earlier** member with an
   **open later** one, C pairs a **pending earlier** member with a **closed later**
   one.
-- **At most two records per offender** — rule A can yield two groups
-  (`in_progress`, then `pending`); every other offender yields exactly one
-  (`open_descendant` for a closed item, `closed_descendant` for a pending one). A
-  blocker has exactly one status, and an offender's own status fixes which groups
-  it can produce. Offenders are emitted in list order; for one offender the
-  records come in the fixed order of §4.
+- **At most two records per offender** — D can yield two groups (`in_progress`,
+  then `pending`), whether the offender is in progress or closed; B adds
+  `open_descendant` to a closed offender, C yields the single `closed_descendant`
+  group for a pending one. A blocker has exactly one status, and an offender's own
+  status fixes which groups it can produce: `{in_progress, pending}` for a started
+  item, `{in_progress, pending, open_descendant}` for a closed one, and
+  `{closed_descendant}` for a pending one. Offenders are emitted in list order; for
+  one offender the records come in the fixed order of §4.
 - **Blockers in full.** No block is truncated or collapsed: every unmet
   prerequisite is listed (D7). A pending blocker needs to be started or closed, an
   in-progress blocker needs to be closed, an open descendant needs to be closed or
@@ -341,8 +386,10 @@ Five properties the implementation must keep:
   site, exactly like `starts`, so the op states what it did (and a future op that
   closes several items does not change the signature). T35 pins the equality: the
   same candidate yields the same text with `closes` empty and with `closes` naming
-  the offender. Making `closes` a *filter* would silently tolerate an inherited
-  illegal state — the whole-candidate rule (§3) forbids that.
+  the offender. It cannot change rule D's closed branch either, for the same reason:
+  a closed item's line has exactly one possible subject (§2.1). Making `closes` a
+  *filter* would silently tolerate an inherited illegal state — the whole-candidate
+  rule (§3) forbids that.
 - **`reverts` is a declaration too — the same class as `closes`.** Rule C's
   offender is always the pending member — the only item of the pair whose pending
   state can be denied — so the set cannot change a verdict, a line or a blocker.
@@ -381,6 +428,13 @@ evidence). Y1–Y16 are the complete 4×4 matrix of (ancestor status × descenda
 status) at depth 1; Y17–Y24 are the depth-2 chains, the B+C compositions and the
 legal counterparts. They confirm the scope claim of §2: rule C changes **exactly
 two cells** (Y3, Y4).
+
+Rows **D1–D6** (rule D) are the USER's three cases from his own store plus the
+cells the rule was feared to break: D1–D3 are the refusals (term 1 and term 2 with
+the `close` verb), D4–D6 are the legal guards. They were re-derived with the **same**
+method as Y1–Y24 (verbatim `deriveNumbers` + the §2.1 body) and are contract
+evidence: the DEVELOPER reproduces them against the real `order.ts` in the red
+digest (T52–T60).
 
 **Re-derivation under A+B+C — what the new rule broke in the old fixtures.**
 `FOUR_TWO_PRE` had `4` **pending** above `4.1` **completed**: the USER's own
@@ -458,6 +512,12 @@ and its exact text.
 | Y22 | `[I@0, C@1, C@2]` — `1` started, both descendants closed | `1` | **legal** | legal |
 | Y23 | `[I@0, C@1, P@2]` — `1.1` completed with a pending child | `1` | **illegal** — rule **B** only | illegal |
 | Y24 | `[P@0, C@1, C@2]` — two closed descendants under one pending item (T43) | — | **illegal** — **C, plural** | illegal |
+| D1 | `[I@0, C@1, C@1, P@1, C@1]` — **USER's case 1**: `1.4` closed, `1.3` still `pending` | `1` | **illegal** — **D (NEW)**: 1.4 ← 1.3 | illegal |
+| D2 | `[I@0, C@0, C@0]` — **USER's case 2**: `2` and `3` closed while `1` runs | `1` | **illegal** — **D**: 2 ← 1; 3 ← 1 | illegal |
+| D3 | `[I@0, C@1, C@1, P@1, C@0, C@0, P@0, P@0, C@0]` — **USER's case 3** (reduced): `6` closed with `5` pending, `1` running | `1` | **illegal** — **D**: 2 ← 1; 3 ← 1; 6 ← 1 / 5, 4, 1.3 | illegal |
+| D4 | `[I@0, C@1]`, `[C@0, C@1]`, `[I@0, X@1]`, `[X@0, C@1]` — the legal cells D4 was feared to break | `1` (rows 1 and 3) | **legal** — term 3 (bottom-up close) and plain `CLOSED` | legal |
+| D5 | `[C@0, C@0, P@0]` — a fully closed prefix with a trailing `pending` root (T57) | — | **legal** — D only constrains items that are started | legal |
+| D6 | `[I@0, C@1, P@1]` — started parent, closed child, `pending` later item (T56) | `1` | **legal** — the closed child passes by term 3 (bottom-up close) and the `pending` item comes **after** the started one | legal |
 
 Every row matches the required verdict. Exact output of the illegal rows
 (character for character; `Nothing was changed.` is the last line of each):
@@ -557,6 +617,26 @@ Y20 ERROR: cannot revert 1 to pending: 1.1 is already closed.
 Y24 ERROR: cannot revert 1 to pending: 1.1, 1.1.1 are already closed.
 ```
 
+Rule D's own rows (each one ends with `Nothing was changed.`):
+
+```
+D1  ERROR: cannot close 1.4: 1.3 is not in progress.
+
+D2  ERROR: cannot close 2: 1 is still in progress.
+    ERROR: cannot close 3: 1 is still in progress.
+
+D3  ERROR: cannot close 2: 1 is still in progress.
+    ERROR: cannot close 3: 1 is still in progress.
+    ERROR: cannot close 6: 1 is still in progress.
+    ERROR: cannot close 6: 5, 4, 1.3 are not in progress.
+```
+
+D4, D5 and D6 produce **no line** — they are legal. In D3 the two lines of
+offender `6` are the USER's own text, character for character: the in-progress
+group first, then the `pending` group with its blockers **nearest first**
+(`5`, `4`, `1.3` — distances 1, 2, 5), and `1` never appears in both groups because
+a blocker has exactly one status.
+
 Y1, Y5, Y6, Y7, Y8, Y11, Y12, Y15, Y16, Y21 and Y22 produce **no line** — they
 are legal. Y2, Y9, Y10, Y13, Y14, Y18 and Y23 produce exactly their A/B lines and
 nothing more: rule C does not touch them.
@@ -591,6 +671,16 @@ of B and C on one candidate — offender order decides the line order (candidate
 index), not the rule number. Y18/Y23 are the negative controls: an `in_progress`
 descendant is rule A's business (or legal under a started ancestor), and a closed
 item with a pending child is rule B's.
+
+Rule D settles the gesture the USER reported from his own store: **finishing is not
+a way to jump the queue either**. `1.4` closed over a `pending` `1.3` (D1), `2` and
+`3` closed while `1` still runs (D2), `6` closed behind `4`/`5` (D3) are all refused,
+and each line names the **closed** item with the verb `close` — the class of state
+being refused — never `start`. The legal cells of D4 are the guard against
+over-refusal: closing a child under its running parent (term 3, Y7), a closed child
+under a closed parent (N5) and a cancelled child under a running parent (Y8) all
+stay accepted; D5/D6 pin that a `pending` suffix is never a violation by itself — D
+constrains only items that have **started**.
 
 ### 2.3 REJECTED law — "one in-progress item per level" (v0.3.2, shipped, now withdrawn)
 
@@ -638,7 +728,7 @@ law (§2) is strictly stronger: ancestry **plus** order.
 Empty-result branches (`write []`, `remove` leaving nothing) run first and are
 never rejected.
 
-**Three rules, the same four ops.** Rules B and C validate exactly the ops rule A
+**Three rules, the same four ops.** Rules B and C validate exactly the ops rule D
 validates — `write`, `add`, `update`, `remove` — at the same points, with the same
 whole-list refusal. Nothing new is validated and no new op is guarded: `read` and
 `clear` never produce a new state, so neither can create a closed item with an
@@ -652,10 +742,10 @@ mechanism** (all four executed, §6 T36–T51):
 | op | how rule C is produced | example |
 | --- | --- | --- |
 | `update` | **status revert**: an item with a closed descendant is set back to `pending` | T36: `1 completed` + `1.1 completed`, `update 1 → pending` |
-| `update` | **depth move**: an item's `depth` changes so it lands under a `pending` ancestor | T50: `1.2` moved to depth 2 under a `pending` `1.1` |
+| `update` | **depth move**: an item's `depth` changes so it lands under a `pending` ancestor — **unreachable since v0.3.6** (the pre-state needs a closed item behind a `pending` one, which rule D forbids): the retired T50 | — |
 | `write` | the list arrives with a `pending` item above a closed one | T40: `write [P@0, C@1]` |
 | `add` | **`after:` + `depth` insertion**: the new `pending` item becomes the parent of an existing **closed** item (it must be inserted *before* that item and one level shallower — the closed item is renumbered to `N.1`) | T44: `[I@0, I@1, C@2]` + `add {after: id 2, depth: 1, status: pending}` → `1.2` pending over `1.2.1` closed |
-| `remove` | **re-clamping**: the removed item's child is re-parented to the item that now precedes it, which may be `pending` | T45: `[I@0, P@1, C@1, C@2]` − id 3 → `1.1` pending over `1.1.1` closed |
+| `remove` | **re-clamping**: the removed item's child is re-parented to the item that now precedes it, which may be `pending` — **unreachable since v0.3.6**, same reason: the retired T45 | — |
 
 `add` at the **end** of the list can never create it (nothing follows it), and a
 removal that *removes* a closed descendant or a pending ancestor fixes it and is
@@ -678,37 +768,47 @@ is stored — no schema drift.
 One line per **offender and reason** (§4.1): offenders in **ascending candidate
 index**, and for one offender the lines come in one fixed order —
 
-1. `still in progress.` (rule A, blocker `in_progress`)
-2. `not in progress.` (rule A, blocker `pending`)
+1. `still in progress.` (rule D, blocker `in_progress` — verb `start` or `close`, §4 table)
+2. `not in progress.` (rule D, blocker `pending` — verb `start` or `close`, §4 table)
 3. `still open.` (rule B, open descendant)
 4. `already closed.` (rule C, closed descendant)
 
 — the same grouping discipline as before, with the close rule and then the
-pending rule appended in that order. Each line lists its blockers **nearest
-first** (ascending `|index(offender) − index(blocker)|`, tie broken by the
-**later** index), de-duplicated. Then a trailer.
+pending rule appended in that order. **The four groups are unchanged by rule D**:
+D feeds groups 1–2 with whichever verb its offender's status dictates; it adds no
+group, only strings. Each line lists its blockers **nearest first** (ascending
+`|index(offender) − index(blocker)|`, tie broken by the **later** index),
+de-duplicated. Then a trailer.
 
-Four reasons, four sentences; the singular/plural pair follows the blocker count
-of **that line**:
+Four reasons, **twelve** sentences (six shapes × singular/plural); the
+singular/plural pair follows the blocker count of **that line**. The **head**
+follows the **offender's status** (`offenderStatus` on the record, §2.1) —
+`in_progress` → `cannot start `, closed → `cannot close `, `pending` →
+`cannot revert ` + ` to pending` — so rule D and rule B share the `close` head,
+which is exactly why rule D adds only four strings and no new grammar:
 
-| reason | one blocker | several blockers |
-| --- | --- | --- |
-| `in_progress` | `ERROR: cannot start <N>: <B> is still in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are still in progress.` |
-| `pending` | `ERROR: cannot start <N>: <B> is not in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are not in progress.` |
-| `open_descendant` | `ERROR: cannot close <N>: <B> is still open.` | `ERROR: cannot close <N>: <B1>, <B2> are still open.` |
-| `closed_descendant` | `ERROR: cannot revert <N> to pending: <B> is already closed.` | `ERROR: cannot revert <N> to pending: <B1>, <B2> are already closed.` |
+| reason | offender | one blocker | several blockers |
+| --- | --- | --- | --- |
+| `in_progress` | `in_progress` | `ERROR: cannot start <N>: <B> is still in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are still in progress.` |
+| `pending` | `in_progress` | `ERROR: cannot start <N>: <B> is not in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are not in progress.` |
+| `in_progress` | **closed** (rule **D**) | `ERROR: cannot close <N>: <B> is still in progress.` | `ERROR: cannot close <N>: <B1>, <B2> are still in progress.` |
+| `pending` | **closed** (rule **D**) | `ERROR: cannot close <N>: <B> is not in progress.` | `ERROR: cannot close <N>: <B1>, <B2> are not in progress.` |
+| `open_descendant` | `closed` | `ERROR: cannot close <N>: <B> is still open.` | `ERROR: cannot close <N>: <B1>, <B2> are still open.` |
+| `closed_descendant` | `pending` | `ERROR: cannot revert <N> to pending: <B> is already closed.` | `ERROR: cannot revert <N> to pending: <B1>, <B2> are already closed.` |
 
 - trailer, always: `Nothing was changed.`
 
 `<N>`/`<B>` are derived numbers of the **candidate** list. Ids stay in the
 structured violation. A pair carries exactly one reason (its blocker has one
-status), so an offender yields **at most two** lines (rule A's two groups) and
+status), so an offender yields **at most two** lines (rule D's two groups) and
 never a mixed sentence; `is`/`are` never straddles two reasons, and a single line
-never mixes `start`, `close` or `revert`. In practice groups 1–2 come from an
-`in_progress` offender, group 3 from a closed one and group 4 from a `pending` one
-— a status is one of the three — so one offender carries one group, except an
-`in_progress` offender, which may carry both of rule A's; the fixed order keeps
-the formatter a single loop and the output deterministic.
+never mixes `start`, `close` or `revert`. An **in-progress** offender carries only
+groups 1–2; a **closed** offender carries groups 1–2 (rule D) and group 3 (rule B),
+so it may also reach two lines; a **pending** offender carries only group 4. The
+head and the offender's own status always agree — `cannot close <N>` names an item
+that really is `completed`/`cancelled` in the candidate, `cannot start <N>` an item
+that really is `in_progress` — and the fixed order keeps the formatter a single loop
+and the output deterministic.
 
 **Composition — one op, all rules.** A refusal carries every offender of the
 candidate, whatever produced it, in candidate order; there is no priority, no
@@ -809,8 +909,17 @@ When **both** members of a pair are starts (one `update` starting two items, or 
 only moves `depth`, or through an `add` that re-parents), the pair falls back
 deterministically: **later item in the candidate list = offender, earlier =
 blocker** — which, in this directed law, is the in-progress member `i` itself.
-So the offender is always an in-progress item of the candidate list; the blocker
-is whatever earlier item blocks it (in progress or pending).
+So, for rule D's **in-progress** half, the offender is always an in-progress item
+of the candidate list; the blocker is whatever earlier item blocks it (in progress
+or pending).
+
+**Rule D's closed branch has no attribution choice (v0.3.6).** When the later
+member `i` is `completed`/`cancelled`, the offender is **`i`** — the only member
+whose close can be denied — and `starts` plays no part: `closes` declares what the
+call did (see below), and blaming a started earlier item would print
+`cannot start <j>` for a call that only started `j` while `i` was already closed.
+Consequence for `starts`: it **selects** inside the in-progress half only; the
+closed half is B/C's shape (one possible subject per line).
 
 **`closes` — the sibling set (rule B, new in v0.3.4).** The same discipline, on
 the other side of the transition: `closes` is the set of items whose status this
@@ -956,6 +1065,21 @@ out.
 
 No `issues:` line is appended to a rejection.
 
+**`read`'s inconsistency clauses — fifth and sixth (rule D, v0.3.6).** The F10
+note (§9.2) gains two sentences for a **closed** offender, chosen exactly like the
+first two (by the reason of the first offence) and appended after the four
+existing clauses:
+
+```
+issues: list is in an invalid state — <N> is closed while <B> is still in progress; mutating ops will refuse until every item before a started item is closed or is one of its in-progress ancestors.
+issues: list is in an invalid state — <N> is closed while <B> is not in progress; mutating ops will refuse until every item before a started item is closed or is one of its in-progress ancestors.
+```
+
+`<N>` is the closed offender, `<B>` the first blocker of that clause; both are
+candidate numbers. Without them a store that violates **only** rule D would be
+read in silence — and the first/second clauses would print the false sentence
+`<N> is in progress while …` for an item that is closed. Tested by T58.
+
 ## 5. Implementation contract (DEVELOPER — attribution pass)
 
 `order.ts` keeps its two exports (and adds a third, see below);
@@ -998,24 +1122,27 @@ Everything else stays: four call sites (write/add/update/remove), `read`/`clear`
 unvalidated, empty-result branches first. `opRead`'s note (`:430`) keeps calling
 `findOrderingViolations(list.items)` with all three defaults.
 
-- `formatOrderingRejection`: **eight** strings, chosen by `v.reason` —
-  `is still in progress.` / `are still in progress.`, `is not in progress.` /
-  `are not in progress.`, `is still open.` / `are still open.`, `is already
-  closed.` / `are already closed.`; `is`/`are` follows the blocker count of that
-  line, and the head follows the reason: `cannot start ` (first two),
-  `cannot close `, `cannot revert ` **+ ` to pending` before the colon**. The head
-  is a per-reason prefix, not a bare verb, because the rule-C line carries the
-  target state between the number and the colon —
+- `formatOrderingRejection`: **twelve** strings, chosen by `v.reason` **and
+  `v.offenderStatus`** — `is still in progress.` / `are still in progress.`, `is
+  not in progress.` / `are not in progress.`, `is still open.` / `are still open.`,
+  `is already closed.` / `are already closed.`; `is`/`are` follows the blocker
+  count of that line, and the head follows the **offender's status**:
+  `in_progress` → `cannot start `, closed → `cannot close ` (rules D and B),
+  `pending` → `cannot revert ` **+ ` to pending` before the colon**. The head is
+  the pair (offender status, reason), because the rule-C line carries the target
+  state between the number and the colon —
   `ERROR: cannot revert 1 to pending: 1.1 is already closed.`
-- `types.ts`: `OrderingViolation.reason` becomes
-  `"in_progress" | "pending" | "open_descendant" | "closed_descendant"` and its doc
+- `types.ts`: `OrderingViolation.reason` stays
+  `"in_progress" | "pending" | "open_descendant" | "closed_descendant"` and gains
+  **`offenderStatus: TodoStatus`** (the formatter's head, §4); the `reason` doc
   comment is restated — the field is the **rule/blocker class**, not strictly the
   blocker's own status (an open descendant may be `pending` or `in_progress`; a
   closed descendant may be `completed` or `cancelled`); every other field and
   every other type unchanged.
-- `order.ts` header comment: restate §2 (**all three** rules) and delete "one item
-  per level"; keep the attribution note of §4.1, including the sentence that
-  `closes` and `reverts` are declarations, not selectors.
+- `order.ts` header comment: restate §2 (**all three** rules), name rule D and say
+  rule A survives only as its corollary (the A loop is deleted, not hidden), and
+  delete "one item per level"; keep the attribution note of §4.1, including the
+  sentence that `closes` and `reverts` are declarations, not selectors.
 - Tool `description`: *"An item may be in progress only when every item before it
   is closed (completed/cancelled) or is one of its own ancestors in progress:
   `3`, `3.1`, `3.1.2` together are fine; `4.3` while `3.1` is in progress — or
@@ -1049,14 +1176,19 @@ unvalidated, empty-result branches first. `opRead`'s note (`:430`) keeps calling
   itemising every requested change that was not applied (id + field), only when
   at least one non-offending change was discarded.
 - `opRead`: append the inconsistency `issues:` line (F10) and the legacy-prefix
-  note (F4). The F10 emitter gains its **third and fourth** clauses: when the
+  note (F4). The F10 emitter gains its **third to sixth** clauses: when the
   first offender is a closed item (rule B) the sentence is
   `issues: list is in an invalid state — 1 is closed while 1.1 is still open;
   mutating ops will refuse until every descendant of a closed item is closed too.`,
   and when it is a `pending` item (rule C) it is
   `issues: list is in an invalid state — 1 is pending while 1.1 is already closed;
-  mutating ops will refuse until every descendant of a pending item is pending too.`
-  (exact text §9.2; same emitter, same `findOrderingViolations`, no second pass;
+  mutating ops will refuse until every descendant of a pending item is pending too.`,
+  and when it is a **closed** item whose blocker is earlier (rule D) the fifth or
+  sixth clause of §4 applies:
+  `issues: list is in an invalid state — 2 is closed while 1 is still in progress;
+  mutating ops will refuse until every item before a started item is closed or is one
+  of its in-progress ancestors.` (or `… while 1.3 is not in progress; …`)
+  (exact text §9.2/§4; same emitter, same `findOrderingViolations`, no second pass;
   reason order `in_progress` → `pending` → `open_descendant` → `closed_descendant`
   when the first offender somehow carries two, and offenders by candidate index).
 - context hook: on `corrupt`/`unreadable`, push the §9.2 one-liner instead of
@@ -1066,7 +1198,7 @@ unvalidated, empty-result branches first. `opRead`'s note (`:430`) keeps calling
 Must NOT change: module shape (plain-object default export), zero runtime deps,
 erasable-only TS, store JSON format, `deriveNumbers`/`clampDepthAt`/
 `stripEnumeration`, the context hook, id stability, `after`, `issues` wording for
-accepted ops. Rules B and C store nothing either — the closed/open and
+accepted ops. Rules B, C and D store nothing either — the closed/open and
 closed/pending relations are recomputed
 from `deriveNumbers` on every candidate, so there is still **no schema drift** and
 a v0.2.2 store keeps loading unchanged.
@@ -1081,7 +1213,11 @@ baseline is the **v0.3.3 code on disk** (green, 70 rows), and T7 (re-derived),
 T32, T33, T35 must be RED against it — v0.3.3 accepts every one of those states.
 For **v0.3.5 the baseline is the v0.3.4 code on disk**, and the new rows
 **T36–T51 must be RED against it**: v0.3.4 accepts every rule-C state (it has no
-rule C at all), which is exactly the USER's defect. The DEVELOPER writes them
+rule C at all), which is exactly the USER's defect.
+For **v0.3.6 the baseline is the v0.3.5 code on disk** (green, 90 rows) and
+**T52–T60 must be RED against it**: v0.3.5 has no rule D, so it **accepts** closing
+or cancelling an item behind a `pending` sibling — the USER's live store. T55/T56/
+T57 are the legal guards and must stay green. The DEVELOPER writes them
 **before touching `order.ts`** and records the red digest in the forum first. The
 USER's order is explicit: *"crie testes pra todos estes casos, nao corrija ainda"*.
 
@@ -1116,13 +1252,19 @@ USER's order is explicit: *"crie testes pra todos estes casos, nao corrija ainda
 | T41 | **deep chain — every pending ancestor is named** — `write [P@0, P@1, C@2]` | two lines (Y17): `ERROR: cannot revert 1 to pending: 1.1.1 is already closed.` / `ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.` + trailer; no file written |
 | T42 | **B+C composition, both directions** — (a) `write [C@0, P@1, C@2]`; (b) `write [P@0, C@1, P@2]` | (a) `ERROR: cannot close 1: 1.1 is still open.` / `ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.` + trailer; (b) `ERROR: cannot revert 1 to pending: 1.1 is already closed.` / `ERROR: cannot close 1.1: 1.1.1 is still open.` + trailer — offender order, never rule order (Y19, Y20) |
 | T43 | **plural + nearest first** — `write [P@0, C@1, C@2]` | `ERROR: cannot revert 1 to pending: 1.1, 1.1.1 are already closed.` + trailer (Y24): both closed descendants listed, nearest first, `are` |
-| T44 | **`add` creates it** — seed `write [I@0, I@1, C@2]` (accepted, Y21), then `add {content: "inserted", status: "pending", after: <id of 1.1>, depth: 1}` | `ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.` + trailer; store unchanged (deep-equal, `nextId` same, no `.tmp`). The new `pending` item would become the parent of the existing closed `1.1.1` → renumbered `1.2.1` |
-| T45 | **`remove` creates it by re-clamping** — seed `write [I@0, P@1, C@1, C@2]` (accepted, numbers `1, 1.1, 1.2, 1.2.1`), then `remove` the `1.2` item | `ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.` + trailer; store unchanged (the item is still present). Re-parenting its closed child under the pending `1.1` is what the candidate cannot keep |
+| T44 | **`add` creates it** — seed `write [I@0, I@1, C@2]` (accepted, Y21), then `add {content: "inserted", status: "pending", after: <id of 1.1>, depth: 1}` (**re-derived for v0.3.6: +1 rule-D line**) | two lines: `ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.` / `ERROR: cannot close 1.2.1: 1.1 is still in progress.` + trailer; store unchanged (deep-equal, `nextId` same, no `.tmp`). The new `pending` item becomes the parent of the existing closed `1.1.1` → renumbered `1.2.1`, whose earlier sibling `1.1` is still running — so the closed leaf offends under D as well (T60) |
+| T45 | **RETIRED in v0.3.6** (see the §6 collateral ruling) — its seed `[I@0, P@1, C@1, C@2]` is a rule-D violation (`1.2` closed behind the running `1`), so the `remove` this row tests can never be performed. Withdrawn, not softened; `remove` re-clamping stays covered by T44/T60 | — | **no expectation** — the row must not exist in the suite |
 | T46 | **`reverts` is a declaration, not a selector** — the T42(a) candidate | `findOrderingViolations(items, ∅, ∅, {1})` and `findOrderingViolations(items, ∅, ∅, {1.1})` equal `findOrderingViolations(items)` — identical arrays (byte-compared via `JSON.stringify`). Mirror of T35 |
 | T48 | **the way out of the descendant-side case** — seed `write [P@0, P@1]` (accepted, Y1) | (a) `update 1.1 → completed` **refused**: `ERROR: cannot revert 1 to pending: 1.1 is already closed.` + trailer; (b) `update 1 → in_progress` **accepted**; (c) `update 1.1 → completed` **accepted** — C is about the state, not the direction of the gesture |
 | T49 | **a C-violating legacy store is repairable by cancelling the branch** — seed `1 pending` + `1.1 completed` behind the tool's back with real `writeList`, then `update 1 → cancelled` | accepted; candidate `1 cancelled`, `1.1 completed` is legal (Y15) — and `read` no longer prints the inconsistency note |
-| T50 | **`update` depth move creates it** — seed `write [I@0, P@1, C@1]` (accepted: `1` running, `1.1` pending, `1.2` closed), then `update` id 3 `depth: 2` | `ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.` + trailer; store unchanged (`1.2` still depth 1) |
-| T51 | **C+A composition on `write`** — `write [C@0, C@0, I@0, P@0, C@1, I@1]` (the old T15b literal fixture, now itself a C violation) | three lines (row P2): `ERROR: cannot revert 4 to pending: 4.1 is already closed.` / `ERROR: cannot start 4.2: 3 is still in progress.` / `ERROR: cannot start 4.2: 4 is not in progress.` + trailer; no file written |
+| T50 | **RETIRED in v0.3.6** (see the §6 collateral ruling) — its seed `[I@0, P@1, C@1]` is a rule-D violation (`1.2` closed behind the running `1`), so the depth move this row tests can never be performed. Withdrawn, not softened; the closed-offender shape stays pinned by T59/T60 | — | **no expectation** — the row must not exist in the suite |
+| T51 | **C+D+A composition on `write`** — `write [C@0, C@0, I@0, P@0, C@1, I@1]` (the old T15b literal fixture, now itself a C violation; **re-derived for v0.3.6: +1 rule-D line**) | four lines (row P2 + T60): `ERROR: cannot revert 4 to pending: 4.1 is already closed.` / `ERROR: cannot close 4.1: 3 is still in progress.` / `ERROR: cannot start 4.2: 3 is still in progress.` / `ERROR: cannot start 4.2: 4 is not in progress.` + trailer; no file written |
+| T52 | **the live store (7 lines)** — the USER's own list as measured (reduced fixture = §2.2 D3: `[I@0, C@1, C@1, P@1, C@0, C@0, P@0, P@0, C@0]`) | **seven** lines against the full store, offenders in candidate order, character for character; the anchors measured and quoted here are `ERROR: cannot close 2: 1 is still in progress.`, `ERROR: cannot close 6: 1 is still in progress.` and `ERROR: cannot close 6: 5, 4, 1.3 are not in progress.` The reduced fixture reproduces **four** of the seven (`2`, `3`, and `6`'s two lines); the remaining three are pinned from the ORACLE's digest of the live file. `Nothing was changed.`, store byte-identical, no `.tmp` |
+| T53 | **sibling skip on close** — `[I@0, C@1, P@1, C@1]` (`1.3` closed with `1.2` still `pending`) | `ERROR: cannot close 1.3: 1.2 is not in progress.` + trailer; store byte-identical |
+| T54 | **root closed while an earlier root runs** — `write [I@0, C@0]` | `ERROR: cannot close 2: 1 is still in progress.` + trailer; **no file written** (`readList` null, no `.tmp`) |
+| T58 | **`read` announces a rule-D-only store** (the fifth and sixth clauses) — seeded behind the tool's back with the real `writeList` | (a) `[I@0, C@0]` → dump + `issues: list is in an invalid state — 2 is closed while 1 is still in progress; mutating ops will refuse until every item before a started item is closed or is one of its in-progress ancestors.`; (b) `[I@0, C@1, C@1, P@1, C@1]` → the same note with `1.4 is closed while 1.3 is not in progress; …`. Both read **without** any `ERROR:` line |
+| T59 | **one offender, both D and B lines** — `[I@0, C@0, P@1]` seeded via `writeList` (`1` running, `2` closed, `2.1` pending) | `ERROR: cannot close 2: 1 is still in progress.` / `ERROR: cannot close 2: 2.1 is still open.` + trailer — **one offender, two groups**, group 1 then group 3, `close` head in both; store unchanged |
+| T60 | **D adds exactly one line to the re-derived T44 and T51 candidates** | T44's candidate (`1 I, 1.1 I, 1.2 P, 1.2.1 C`): the C line **and** `ERROR: cannot close 1.2.1: 1.1 is still in progress.` — offender `1.2` (index 2) before offender `1.2.1` (index 3). T51's candidate (`1 C, 2 C, 3 I, 4 P, 4.1 C, 4.2 I`): `cannot revert 4 to pending: 4.1 is already closed.` / `cannot close 4.1: 3 is still in progress.` / the two `4.2` lines — four lines, candidate order. Both rows: `Nothing was changed.`, store byte-identical |
 
 **Legal rows (must be accepted; T8/T9/T14/T15/T16 are the v0.3.2 rows that now
 flip to ILLEGAL, T31 is the row the restored law adds, and T34 is the row rule B
@@ -1138,6 +1280,9 @@ adds — the closes that stay legal):**
 | T11 | no false positives | chain list; `update` content/priority; `write []`; `clear` on an illegal store | all accepted |
 | T13a | legal `add` | `[C@0, I@0]` + `add I@1` | accepted; `2.1` `[~]` |
 | T47 | **the legal counterparts of the 4×4 matrix** — rule C must not over-refuse (Y1, Y5, Y6, Y7, Y8, Y11, Y12, Y15, Y16, Y21, Y22) | `write [P@0, P@1]`, `[I@0, P@1]`, `[I@0, I@1]`, `[I@0, C@1]`, `[I@0, X@1]`, `[C@0, C@1]`, `[C@0, X@1]`, `[X@0, C@1]`, `[X@0, X@1]`, `[I@0, I@1, C@2]`, `[I@0, C@1, C@2]` | **all eleven accepted** — in particular `I`+`P` (started parent, unstarted child), `I`+`C`/`X` (bottom-up close), `X`+`C` (a closed descendant does not constrain a cancelled ancestor) and the deep chain |
+| T55 | **the cells rule D must not break** (§2.2 D4) | `write [I@0, C@1]`, `write [C@0, C@1]`, `write [I@0, X@1]`, `write [X@0, C@1]` | **all four accepted** — bottom-up close under a running parent (term 3), closed child under a closed parent, cancelled child under a running parent, cancelled child under a cancelled parent. A rule D that refuses any of them is a false red |
+| T56 | **started parent + closed child + `pending` sibling** (§2.2 D6) | `write [I@0, C@1, P@1]` | accepted; the `pending` sibling sits **after** a started item, so D has nothing to say (D constrains only started items) and C sees no closed descendant |
+| T57 | **all-closed prefix, trailing `pending`** (§2.2 D5) | `write [C@0, C@0, P@0]` | accepted — the plan's suffix is untouched: the closed roots are behind a closed prefix and the `pending` root is not started |
 
 **Still green, must stay green:** T1 (numbering), T5, T6, T11, plus every §9 row
 (T22–T30) whose texts do not depend on the ordering law — T24's expected text is
@@ -1173,6 +1318,33 @@ T21's seed contain no closed item at all; T32/T33/T34's seeds put the closed ite
 **below**, never above, a pending one. Any further fixture that starts failing for
 rule C must be **re-examined and re-derived, never weakened** — and the reason
 recorded in the forum.
+
+**Collateral audit — rule D's price (v0.3.6), measured here so the DEVELOPER does
+not meet it blind.** Rule D forbids a closed item behind a non-closed prefix, so
+every fixture that **opens a `pending` item in front of a closed one** is now an
+invalid pre-state. Four consequences, and one of them is a **ruling**, not a
+re-derivation:
+
+1. **RULING — retire T45 and T50.** Both rows build their violation by *creating*
+   a closed item under a `pending` ancestor (`remove` re-clamping, and an `update`
+   depth move). Their mechanisms are **impossible under D+C**: the seed those rows
+   need — a closed item behind a `pending` one — cannot be stored, so the row can
+   never reach its own assertion. **T45 and T50 are withdrawn, not softened**; the
+   mechanisms they covered (`remove` re-clamping, `depth` move) stay covered by T44
+   (`add`) and by T60, which pin the same re-parenting path on legal seeds.
+2. **T44 re-derived — +1 rule-D line** (see the row): after the `add`, the closed
+   leaf `1.2.1` also sits behind the running `1.1`, so the refusal carries
+   `cannot close 1.2.1: 1.1 is still in progress.` beside the rule-C line.
+3. **T51 re-derived — +1 rule-D line** (see the row): its closed `4.1` sits behind
+   the running `3`, so `cannot close 4.1: 3 is still in progress.` joins the three
+   existing lines in candidate order.
+4. **`tests/tool.test.mjs:122-137` re-derived to `[C@0, I@0, P@0]`.** The context
+   hook row seeds `[I@0, P@0, C@0]` — a closed item behind a `pending` one, which D
+   forbids even though `seed()` writes it straight to disk. Re-order it to closed,
+   started, pending; the assertion it exists for
+   (`TODO: 3 items, 1 in progress — update it if something changed.`) is unchanged.
+   **Never weaken it.**
+
 
 Protocol: run the suite against the **current** implementation, record the red
 digest (names + actual vs expected) in the forum **before** editing `order.ts`,
@@ -1228,18 +1400,21 @@ the reason goes in the forum.
 - [ ] **v0.3.5 red digest, before any edit:** T36–T51 red against the v0.3.4 code — every rule-C state is **accepted** today, which is the USER's defect (*"crie testes pra todos estes casos, nao corrija ainda"*). The digest names each row and its actual (accepted) vs expected (refused) result.
 - [ ] **Rule C rejected character for character:** T36–T43 (the USER's case, the cancelled descendant, the `in_progress`/`cancelled` reverts, `write`, the deep chain, the two B+C compositions, the plural line), T44/T45/T50 (`add`, `remove`, depth move), T51 (C+A on `write`).
 - [ ] **Rule C accepted where it must be:** T47's eleven legal cells and T48's three steps — `I`+`P`, `I`+`C`/`X`, `X`+`C`, `P`+`P`, and the start-then-close route. A rule C that refuses any of them is a false red.
-- [ ] **The fourth wording, singular and plural:** `is already closed.` (T36) and `are already closed.` (T43) — **eight** sentences in the suite now.
+- [ ] **The fourth wording, singular and plural:** `is already closed.` (T36) and `are already closed.` (T43); with rule D's two close shapes, **twelve** strings in the suite.
 - [ ] **Group order pinned (four groups):** for one offender `still in progress` → `not in progress` → `still open` → `already closed`; offenders in candidate order (Y19/Y20, T42).
 - [ ] **`reverts` is a declaration:** T46 — `reverts` populated and empty produce identical output; `write`/`remove` pass `∅`.
 - [ ] **Store untouched after every rule-C refusal:** T36/T37/T38/T39/T40/T41/T42/T43/T44/T45/T50/T51 compare `readList` deep-equal or the raw bytes, `nextId` same, no `.tmp`.
 - [ ] **`read`'s fourth clause:** T49's seed (and T24's unchanged text) — a store violating only rule C is announced, never read in silence.
+- [ ] **No `cannot close <closed>` ever emitted:** every `cannot close <N>` names an item that is `completed`/`cancelled` in the candidate and every `cannot start <N>` an `in_progress` one — the head comes from `offenderStatus` (§4) — and D never adds a `cannot close` line to a state rule C already refuses (T44, T51, T60).
+- [ ] **Rule D subsumes A with the A loop DELETED:** `order.ts` holds **one** started-subject loop; no second pass over the in-progress items survives, and no refusal prints a `cannot start` line twice.
+- [ ] **Ordering enforced on close and cancel:** closing or cancelling behind a `pending` sibling or a running root is refused (T52–T54), `cancelled` counts as closed for D exactly as for B (T55), and the legitimate closes (T34, T55, T56, T57) stay accepted — plus `read`'s fifth/sixth clauses (T58).
 - [ ] `npm test` (`node --test tests/*.test.mjs`) green, zero new dependencies, non-zero exit on a deliberately broken assertion.
 - [ ] T8, T9, T14, T15a, T15b, T16 **rejected** with the §4 text character for character — no descendant runs under a `pending` ancestor, no earlier item is skipped.
 - [ ] **Rule B rejected character for character:** `update 1 → completed` and `update 1 → cancelled` over an open `1.1` answer `ERROR: cannot close 1: 1.1 is still open.` + `Nothing was changed.` (T32c/T32d); `write [C@0, P@1]` and `write [C@0, I@1]` answer the same line and write no file (T32a/T32b); the deep chain answers `cannot close 3: 3.1, 3.1.1, 3.1.2 are still open.` (T33); the re-parenting `remove` answers `cannot close 1: 1.1 is still open.` and leaves the store untouched (T35, T7).
 - [ ] **Rule B accepted where it must be:** T34(a)–(d) all accepted — `completed`/`cancelled` child under a closed parent, and closing bottom-up or after removing the open descendant. No legitimate close is blocked.
 - [ ] T31 (`{1, 1.1}`) and T2 (`{3, 3.1, 3.1.2}`) **accepted** — the ancestor chain is the only thing that runs ahead of a closed prefix.
 - [ ] T3, T4, T4b, T10, T12, T13b, T18, T19, T20, T21, T25 rejected with §4/§4.1 text **character for character**, including `Nothing was changed.`
-- [ ] **All three wordings exercised, singular and plural of each:** `is/are still in progress.` (T19, T20, T21), `is/are not in progress.` (T8, T9, T14, T16) and `is/are still open.` (T32 singular, T33 plural); with rule C, `is/are already closed.` (T36, T43) — **eight** sentences in the suite.
+- [ ] **All three wordings exercised, singular and plural of each:** `is/are still in progress.` (T19, T20, T21), `is/are not in progress.` (T8, T9, T14, T16) and `is/are still open.` (T32 singular, T33 plural); with rule C, `is/are already closed.` (T36, T43); with rule D's `close` head, `cannot close … is/are still in progress.` (T54 singular, T52 several) and `cannot close … is/are not in progress.` (T53 singular, T52) — **twelve** strings in the suite.
 - [ ] **Group order pinned:** for one offender `still in progress` → `not in progress` → `still open` → `already closed`; offenders in candidate order, so a close or revert line follows candidate position, not rule order (N8 / T32e / T42).
 - [ ] **Attribution:** T18's first line names `3.7` (the item the call started); the legacy `4.2` refusals follow, never precede it. Rule B's line always names the **closed** item and lists its open descendants nearest-first (T33, T35); rule C's always names the **pending** ancestor and lists its closed descendants nearest-first (T41, T43, T45).
 - [ ] T19: one line per offender, blockers nearest-first and de-duplicated; T20: later item is the offender; T21: fallback with neither member started; **T35: `closes` populated and `closes` empty produce the identical text**; **T46: `reverts` populated and empty produce the identical text** (both are declarations, not selectors).
@@ -1362,6 +1537,24 @@ the reason goes in the forum.
   state; "cannot keep/leave/set pending" were considered and are weaker (they
   suggest a no-op). The `to pending` qualifier is part of the head, not of the
   reason text, so the grammar stays one line per offender and reason.
+- **D18 rule D — the started rule, and it REPLACES rule A (decided 2026-10-31
+  13:10; evidence: the USER's live store).** The USER read his own list and found
+  `1.4` closed with `1.3` still `pending`, `2` and `3` closed while `1` was
+  running, and `6` closed behind `4`/`5` — every one of them **accepted** by
+  v0.3.5, because rule A only looked at `in_progress` items and a closed item is
+  not one (§2.2 D1–D3, T52). Rule D widens the **subject** from `in_progress` to
+  `STARTED` (`status !== "pending"`) and keeps A's two terms verbatim, so D is a
+  strict superset: every state A refuses, D refuses with the same text. A survives
+  **only as a corollary in §2's prose**, and its loop is **deleted** from the
+  runtime (§2.1) — two loops would print every `cannot start` line twice. Term 3
+  (`anc(j, i) && CLOSED(i)`) is mandatory, not an optimisation: it keeps a closed
+  item legal under its own ancestor whatever that ancestor is doing (the bottom-up
+  close, Y7/N5) and it leaves the closed-under-pending-ancestor class entirely to
+  rule C, so D never emits `cannot close` for a state C is already refusing. Verbs:
+  the **offender's status** decides the head — closed → `cannot close`,
+  `in_progress` → `cannot start` (§4) — so `cannot close <N>` always names a closed
+  item. `closes` stays a declaration; `starts` keeps its selecting role on the
+  in-progress half only (§4.1, T53).
 
 ### 8.1 OPEN (decided elsewhere, not by this revision)
 
@@ -1440,6 +1633,25 @@ the reason goes in the forum.
   over a fully closed branch lists **every** closed descendant (Y24), not just the
   nearest one.
 
+### 8.3 OPEN / raised by v0.3.6
+
+- **Code and tests untouched.** This revision is contract only: `order.ts` (rule A
+  loop **deleted**, closed-offender branch of what is now rule D, `offenderStatus`
+  on the record, twelve strings), `types.ts` (`offenderStatus`), `index.ts` (the
+  fifth and sixth `read` clauses; the tool `description`) and
+  `tests/ordering.test.mjs` (T52–T60, T55–T57 legal, T44/T51 +1 line,
+  `tool.test.mjs:122-137` re-derived) are the DEVELOPER's next pass — **tests
+  first, red digest in the forum before any edit**.
+- **Rows retired:** **T45** and **T50** are withdrawn (their seeds are impossible
+  under D+C, §6 ruling). Nothing is dropped silently: the re-parenting mechanism is
+  still pinned by T44 (`add`) and the closed-offender shape by T59/T60.
+- **Documentation** — `README.md` line 51 and line 58 and `CHANGELOG.md` still stop
+  at rule B; they follow the code fix, and now owe one sentence for rule D.
+  `todo-list-spec.md` §13 must point at §2 and mention **all three** rules.
+- **Deferred, not decided here:** whether `read`'s note should name **every**
+  offending pair (it names the first, D8). Rule D makes that question louder
+  (a live store yields seven lines), and it is a judgement call for the USER.
+
 ## 9. No silent failure
 
 USER requirement (2026-10-30, binding, verbatim): *"Importante que nao pode dar
@@ -1467,7 +1679,7 @@ by this section.
 | F7 | `opWrite` | if **every** requested item is rejected (e.g. `[{content: ""}]`), `items.length === 0` → `clearList()` → **the existing list is destroyed** and the answer is "TODO list cleared." | refuse: a request whose items were all rejected must not clear anything; only an explicit `items: []` (or no items) clears | T26 |
 | F8 | `opWrite` | with no prior file it still answers "TODO list cleared." | distinguishes absent / empty / removed (§9.2) | T29 |
 | F9 | `opUpdate` (multi-change) | a refusal names the offending item but not that the other requested changes were dropped | one `refused whole:` line itemising every discarded change (id + field), emitted only when at least one non-offending change was discarded | T25 |
-| F10 | `opRead` | an already-inconsistent stored list is printed without a word | the list, plus one `issues:` line naming the first offending pair and restating the law (§8 D8) — **four** clauses since v0.3.5: `in_progress` / `pending` / `open_descendant` / `closed_descendant` | T24, T32(e), T49 |
+| F10 | `opRead` | an already-inconsistent stored list is printed without a word | the list, plus one `issues:` line naming the first offending pair and restating the law (§8 D8) — **six** clauses since v0.3.6: `in_progress` / `pending` / `open_descendant` / `closed_descendant`, plus the two closed-offender clauses of rule D (fifth and sixth) | T24, T32(e), T49, T58 |
 | F11 | `index.ts` context hook | on a corrupt store the reminder is silently omitted | one line: `TODO: list unreadable (corrupt store) — run the todo tool op "read" for details.` | T30 |
 | F12 | `execute` catch | `ERROR: todo <op> failed: <msg>` does not say whether anything was persisted | append `. Nothing was changed.` and the reason it is safe (atomic tmp+rename) | T23b |
 
@@ -1562,6 +1774,8 @@ issues: list is in an invalid state — 2 is in progress while 1 is still in pro
 issues: list is in an invalid state — 2.1 is in progress while 2 is not in progress; mutating ops will refuse until every item before an in-progress item is closed or is one of its in-progress ancestors.
 issues: list is in an invalid state — 1 is closed while 1.1 is still open; mutating ops will refuse until every descendant of a closed item is closed too.
 issues: list is in an invalid state — 1 is pending while 1.1 is already closed; mutating ops will refuse until every descendant of a pending item is pending too.
+issues: list is in an invalid state — 2 is closed while 1 is still in progress; mutating ops will refuse until every item before a started item is closed or is one of its in-progress ancestors.
+issues: list is in an invalid state — 1.4 is closed while 1.3 is not in progress; mutating ops will refuse until every item before a started item is closed or is one of its in-progress ancestors.
 ```
 
 The third line is rule B (v0.3.4) and is emitted by the same pass: when the first
@@ -1569,7 +1783,11 @@ offender is a closed item, the clause is `<N> is closed while <B> is still open`
 (numbers of the candidate) and the tail is the close rule. Tested by T32(e). The
 **fourth** line is rule C (v0.3.5), same emitter and same records: when the first
 offender is a `pending` item, the clause is `<N> is pending while <B> is already
-closed` and the tail is the pending rule. Tested by T49.
+closed` and the tail is the pending rule. Tested by T49. The **fifth and sixth**
+lines are rule D (v0.3.6), same emitter and same records: when the first offender
+is a **closed** item, the clause is `<N> is closed while <B> is still in progress`
+or `<N> is closed while <B> is not in progress` (§4) and the tail restates rule D.
+Tested by T58.
 
 `read` when stored text carries a legacy prefix (F4):
 
