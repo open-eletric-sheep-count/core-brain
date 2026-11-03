@@ -10,8 +10,8 @@ set of **agents**, **skills**, **plugins**, and an **enhanced memory** for LLM
 agents — shipped as a complete suite and **prepared for OpenCode V2**
 ([OpenCode V2 documentation](https://opencode.ai/v2/docs/)).
 
-The suite ships **todo** (§1), **context-inject** (§2), the original core-brain
-memory engine, and the **agent team** (§4). `global/codex` contains the working
+The suite ships **todo** (§1), **context-inject** (§2), core-brain
+memory engine, and the **agent team** (§4). `opencode/codex` contains the working
 memory MCP/hook adaptation, native file injector, role prompts, global helpers
 and memory skills. The broader tiered-memory, dreams and
 mental-map design in §3 remains a roadmap, beyond the implemented memory store.
@@ -22,23 +22,17 @@ mental-map design in §3 remains a roadmap, beyond the implemented memory store.
 
 **Install by giving your coding agent the prompt below.** 
 
-
-
 ```plantext
 Visit https://github.com/open-eletric-sheep-count/core-brain and follow the "Agent Instalation Instructions"
 ```
 
-#
+# 
 
 ## Agent Instalation Instructions
-
-
 
 Set the target CLI to `opencode`, `codex`, or the name of another CLI that needs an explicit adaptation. The agent should inspect your machine and existing configuration,
 then execute and verify the installation. The complete manual is
 [INSTALATION.md](INSTALATION.md) at the repository root.
-
-
 
 ```text
 Install OESC core-brain from
