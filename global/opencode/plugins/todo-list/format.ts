@@ -52,16 +52,6 @@ export function clampDepthAt(
 
 /** Hierarchical numbers derived from order + depth (display-side sanitizing:
  * depth can never exceed previous + 1, so the counters never have "holes"). */
-export function deriveNumbers(items: TodoItem[]): string[] {
-  const out: string[] = [];
-  const counters: number[] = [];
-  let prev = -1;
-  for (const item of items) {
-    const depth = Math.min(normalizeDepth(item.depth), prev + 1);
-    counters.length = depth + 1;
-    counters[depth] = (counters[depth] ?? 0) + 1;
-    out.push(counters.join("."));
-    prev = depth;
-  }
-  return out;
-}
+// The numbering lives in the shared law library (also used by the Orca todo plugin);
+// re-exported here so the plugin's existing imports keep working.
+export { deriveNumbers } from "./lib/todo-laws.mjs";

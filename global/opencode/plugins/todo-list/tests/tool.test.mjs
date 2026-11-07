@@ -391,7 +391,7 @@ test("update that collides two in-progress items at one level is rejected", asyn
   });
   assert.equal(
     out,
-    "ERROR: cannot start 2: 1 is still in progress.\nNothing was changed.",
+    "ERROR: cannot start 2 (id 2): 1 (id 1) is still in progress.\nNothing was changed.",
   );
   assert.deepEqual(loadOk(sessionID).items, before.items);
   assert.equal(fs.readFileSync(filePathFor(sessionID), "utf-8"), bytesBefore);
@@ -413,7 +413,7 @@ test("a rejected update names the non-offending changes it discarded", async () 
   assert.equal(
     out,
     [
-      "ERROR: cannot start 2: 1 is still in progress.",
+      "ERROR: cannot start 2 (id 2): 1 (id 1) is still in progress.",
       "refused whole: 1 other requested change was not applied (id 1 content).",
       "Nothing was changed.",
     ].join("\n"),
@@ -469,7 +469,8 @@ test("remove that would leave an illegal state is rejected whole", async () => {
     // Numbers are DERIVED from the candidate: after removing id 2 the two
     // in-progress roots renumber to 1 and 2, so the offender is "2".
     await run(sessionID, { op: "remove", items: [{ id: 2 }] }),
-    "ERROR: cannot start 2: 1 is still in progress.\nNothing was changed.",
+    // Every item named in a rejection carries its stable id as well.
+    "ERROR: cannot start 2 (id 3): 1 (id 1) is still in progress.\nNothing was changed.",
   );
   assert.deepEqual(loadOk(sessionID).items, before.items);
 });

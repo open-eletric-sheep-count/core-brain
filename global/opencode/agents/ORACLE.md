@@ -58,9 +58,17 @@ The ORACLE is the last gate before the USER and attacks **every** work item — 
 
 ## Rules
 
+- **Never bypass a tool by writing its data store by hand — except with the USER's explicit
+  authorisation.** When a tool is unavailable or fails, do NOT edit the files it owns to "keep
+  something current" — a tool enforces invariants that its file format does not, so a hand-written
+  state bypasses them silently. The `todo` tool is the measured case: its ordering laws live in the
+  tool, and a direct write left an item open between closed ones (2026-11-07). The rule is general:
+  same for a queue, a cache, an index — any store a tool owns. Without that authorisation, report
+  that the tool is down, say the affected state is frozen, and wait. **With** it, a direct edit is
+  allowed — and then verify the tool's invariants on the whole state before and after publishing,
+  stating it in the report.
 - Prefer using specialized tools (Glob, Grep, Read) instead of bash for navigation.
 - If releasing a new version, use the `changelog-generator` skill.
-- A skill the USER names (by ID or by `@<id>`) is MANDATORY — obey the **Skill duty** block at the top of this file.
 
 ## Methodology gate
 

@@ -262,8 +262,8 @@ test("T3 headline — the USER's set {3, 3.1, 4.3}: 4.3 is blocked by 3.1 and 3"
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 4.3: 3.1, 3 are still in progress.\n" +
-      "ERROR: cannot start 4.3: 4.2, 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 4.3 (id 8): 3.1 (id 4), 3 (id 3) are still in progress.\n" +
+      "ERROR: cannot start 4.3 (id 8): 4.2 (id 7), 4.1 (id 6), 4 (id 5) are not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null, "store must still be empty");
@@ -288,8 +288,8 @@ test("T4 user example C — starting 4.2 while 3.7 is in progress is rejected", 
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 4.2: 3.7, 3 are still in progress.\n" +
-      "ERROR: cannot start 4.2: 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 4.2 (id 13): 3.7 (id 10), 3 (id 3) are still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 13): 4.1 (id 12), 4 (id 11) are not in progress.\n" +
       NOTHING_CHANGED,
   );
 
@@ -316,8 +316,8 @@ test("T4b the same pre-state with 3.7 pending: 4.2 is still blocked", async () =
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 4.2: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 4.1, 4, 3.7 are not in progress.\n" +
+    "ERROR: cannot start 4.2 (id 13): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 13): 4.1 (id 12), 4 (id 11), 3.7 (id 10) are not in progress.\n" +
       NOTHING_CHANGED,
   );
 
@@ -457,7 +457,7 @@ test("T7 deleting does not bypass the child: the removal itself is refused (rule
   // sit under the closed `2`, so the removal is refused (§6 T7).
   assert.equal(
     refused.content,
-    "ERROR: cannot close 2: 2.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 2 (id 2): 2.1 (id 4) is still open.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -525,7 +525,7 @@ test("T8 a pending parent blocks the child (2.1 under pending 2 is rejected)", a
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 2.1: 2 is not in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 2.1 (id 3): 2 (id 2) is not in progress.\n" + NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor(sid)), false, "no file may be written");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
@@ -550,7 +550,7 @@ test("T9 skipping a sibling is illegal — {2, 2.2} is rejected", async () => {
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 2.2: 2.1 is not in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 2.2 (id 4): 2.1 (id 3) is not in progress.\n" + NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor(sid)), false, "no file may be written");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
@@ -587,7 +587,7 @@ test("T10 write is rejected whole: existing list is byte-identical", async () =>
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 4: 3.1, 3 are still in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 4 (id 7): 3.1 (id 6), 3 (id 5) are still in progress.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -684,8 +684,8 @@ test("T12 legacy illegal list is never locked out (update/remove/clear)", async 
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot start 3.1: 2 is still in progress.\n" +
-      "ERROR: cannot start 3.1: 3 is not in progress.\n" +
+    "ERROR: cannot start 3.1 (id 4): 2 (id 2) is still in progress.\n" +
+      "ERROR: cannot start 3.1 (id 4): 3 (id 3) is not in progress.\n" +
       "refused whole: 1 other requested change was not applied (id 1 status).\n" +
       NOTHING_CHANGED,
   );
@@ -707,7 +707,7 @@ test("T12 legacy illegal list is never locked out (update/remove/clear)", async 
   const leavingIllegal = await call({ op: "remove", items: [{ id: 3 }] }, sid);
   assert.equal(
     leavingIllegal.content,
-    "ERROR: cannot start 2: 1 is still in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 2 (id 2): 1 (id 1) is still in progress.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(
     readList(sid),
@@ -786,7 +786,7 @@ test("T13 add obeys the law (legal child accepted, second root rejected)", async
   );
   assert.equal(
     illegalAdd.content,
-    "ERROR: cannot start 3: 2 is still in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 3 (id 3): 2 (id 2) is still in progress.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid2), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid2), bytesBefore, "store bytes must be untouched");
@@ -812,7 +812,7 @@ test("T14 an entirely-pending earlier branch blocks", async () => {
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 2: 1.1, 1 are not in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot start 2 (id 3): 1.1 (id 2), 1 (id 1) are not in progress.\n" + NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor(sid)), false, "no file may be written");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
@@ -841,8 +841,8 @@ test("T15 {3, 4.3} and {3, 4.2} are illegal (a pending root blocks)", async () =
   );
   assert.equal(
     a.content,
-    "ERROR: cannot start 4.3: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.3: 4.2, 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 4.3 (id 7): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.3 (id 7): 4.2 (id 6), 4.1 (id 5), 4 (id 4) are not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor("t15a")), false, "no file may be written");
@@ -866,8 +866,8 @@ test("T15 {3, 4.3} and {3, 4.2} are illegal (a pending root blocks)", async () =
   );
   assert.equal(
     b.content,
-    "ERROR: cannot start 4.2: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 4.2 (id 6): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 6): 4.1 (id 5), 4 (id 4) are not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor("t15b")), false, "no file may be written");
@@ -894,7 +894,7 @@ test("T16 level gap is illegal: {3, 3.1.2} with 3.1 pending", async () => {
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 3.1.2: 3.1.1, 3.1 are not in progress.\n" +
+    "ERROR: cannot start 3.1.2 (id 6): 3.1.1 (id 5), 3.1 (id 4) are not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor(sid)), false, "no file may be written");
@@ -931,9 +931,9 @@ test("T18 attribution — the started 3.7 is named; the legacy 4.2 refusals foll
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 3.7: 4.2 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 3.7 (id 10): 4.2 (id 13) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 13): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 13): 4.1 (id 12), 4 (id 11) are not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -982,8 +982,8 @@ test("T19 one update starting two conflicting items: one line per offender", asy
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 2.2: 2.1 is still in progress.\n" +
-      "ERROR: cannot start 2.3: 2.2, 2.1 are still in progress.\n" +
+    "ERROR: cannot start 2.2 (id 4): 2.1 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 2.3 (id 5): 2.2 (id 4), 2.1 (id 3) are still in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1005,8 +1005,8 @@ test("T20 write with three in-progress roots: later item is the offender", async
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 2: 1 is still in progress.\n" +
-      "ERROR: cannot start 3: 2, 1 are still in progress.\n" +
+    "ERROR: cannot start 2 (id 2): 1 (id 1) is still in progress.\n" +
+      "ERROR: cannot start 3 (id 3): 2 (id 2), 1 (id 1) are still in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(fs.existsSync(filePathFor(sid)), false, "no file may be written");
@@ -1042,8 +1042,8 @@ test("T21 fallback — remove re-clamps 1.1.1 next to 2.1, later item is the off
   const res = await call({ op: "remove", items: [{ id: 2 }] }, sid);
   assert.equal(
     res.content,
-    "ERROR: cannot start 2.1: 1.1, 1 are still in progress.\n" +
-      "ERROR: cannot start 2.1: 2 is not in progress.\n" +
+    "ERROR: cannot start 2.1 (id 5): 1.1 (id 3), 1 (id 1) are still in progress.\n" +
+      "ERROR: cannot start 2.1 (id 5): 2 (id 4) is not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1246,8 +1246,8 @@ test("T25 multi-change update refused whole itemises the discarded changes (F9)"
   );
   assert.equal(
     res.content,
-    "ERROR: cannot start 4.2: 3.7, 3 are still in progress.\n" +
-      "ERROR: cannot start 4.2: 4.1, 4 are not in progress.\n" +
+    "ERROR: cannot start 4.2 (id 13): 3.7 (id 10), 3 (id 3) are still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 13): 4.1 (id 12), 4 (id 11) are not in progress.\n" +
       "refused whole: 2 other requested changes were not applied " +
       "(id 5 content, id 8 priority).\n" +
       NOTHING_CHANGED,
@@ -1425,7 +1425,7 @@ test("T32 a closed parent may not keep an open child (the USER's case)", async (
   );
   assert.equal(
     closedPending.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 1): 1.1 (id 2) is still open.\n" + NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null, "no file may be written by a refused write");
 
@@ -1437,7 +1437,7 @@ test("T32 a closed parent may not keep an open child (the USER's case)", async (
   );
   assert.equal(
     closedRunning.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 1): 1.1 (id 2) is still open.\n" + NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null, "no file may be written by a refused write");
 
@@ -1455,7 +1455,7 @@ test("T32 a closed parent may not keep an open child (the USER's case)", async (
   );
   assert.equal(
     completed.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 1): 1.1 (id 2) is still open.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -1468,7 +1468,7 @@ test("T32 a closed parent may not keep an open child (the USER's case)", async (
   );
   assert.equal(
     cancelled.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 1): 1.1 (id 2) is still open.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -1514,7 +1514,7 @@ test("T33 deep chain: a closed root over a pending branch, fixed bottom-up", asy
   );
   assert.equal(
     refusedFixture.content,
-    "ERROR: cannot close 3: 3.1, 3.1.1, 3.1.2 are still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 3 (id 3): 3.1 (id 4), 3.1.1 (id 5), 3.1.2 (id 6) are still open.\n" + NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null, "no file may be written by a refused write");
   // A LEGAL seed with the same six ids as the §6 fixture (`3` not yet closed):
@@ -1680,7 +1680,7 @@ test("T35 a remove that re-parents an open item under a closed one is refused", 
   const refused = await call({ op: "remove", items: [{ id: 1 }] }, sid);
   assert.equal(
     refused.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 2): 1.1 (id 3) is still open.\n" + NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -1703,7 +1703,7 @@ test("T35 a remove that re-parents an open item under a closed one is refused", 
     formatOrderingRejection(
       findOrderingViolations(candidate, new Set(), new Set([2])),
     ),
-    "ERROR: cannot close 1: 1.1 is still open.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1 (id 2): 1.1 (id 3) is still open.\n" + NOTHING_CHANGED,
   );
 
   // Escape: remove the open descendant first, then the parent.
@@ -1745,7 +1745,7 @@ test("T36 a completed item reverted to pending over a closed child is refused", 
   );
   assert.equal(
     reverted.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1776,7 +1776,7 @@ test("T37 a cancelled descendant blocks the revert too (Y4)", async () => {
   );
   assert.equal(
     reverted.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1803,7 +1803,7 @@ test("T38 revert from in_progress over a closed child is refused (Y7→Y3)", asy
   );
   assert.equal(
     reverted.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1832,7 +1832,7 @@ test("T39 reverting a cancelled item over a closed child is refused (Y15→Y3)",
   );
   assert.equal(
     reverted.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "readList must deep-equal the pre-state");
@@ -1855,7 +1855,7 @@ test("T40 write refuses a list arriving with a closed item under a pending one (
     );
     assert.equal(
       written.content,
-      "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+      "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
         NOTHING_CHANGED,
       `a ${label} child under a pending root must be refused`,
     );
@@ -1881,8 +1881,8 @@ test("T41 deep chain: every pending ancestor of a closed leaf is an offender", a
   );
   assert.equal(
     written.content,
-    "ERROR: cannot revert 1 to pending: 1.1.1 is already closed.\n" +
-      "ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1.1 (id 3) is already closed.\n" +
+      "ERROR: cannot revert 1.1 (id 2) to pending: 1.1.1 (id 3) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null);
@@ -1901,8 +1901,8 @@ test("T42 B and C on one candidate — line order follows candidate order", asyn
   );
   assert.equal(
     a.content,
-    "ERROR: cannot close 1: 1.1 is still open.\n" +
-      "ERROR: cannot revert 1.1 to pending: 1.1.1 is already closed.\n" +
+    "ERROR: cannot close 1 (id 1): 1.1 (id 2) is still open.\n" +
+      "ERROR: cannot revert 1.1 (id 2) to pending: 1.1.1 (id 3) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList("t42a"), null);
@@ -1918,8 +1918,8 @@ test("T42 B and C on one candidate — line order follows candidate order", asyn
   );
   assert.equal(
     b.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
-      "ERROR: cannot close 1.1: 1.1.1 is still open.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
+      "ERROR: cannot close 1.1 (id 2): 1.1.1 (id 3) is still open.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList("t42b"), null);
@@ -1938,7 +1938,7 @@ test("T43 two closed descendants under one pending item are listed in full", asy
   );
   assert.equal(
     written.content,
-    "ERROR: cannot revert 1 to pending: 1.1, 1.1.1 are already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2), 1.1.1 (id 3) are already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null);
@@ -1975,8 +1975,8 @@ test("T44 add re-parents a closed item under a new pending item — refused", as
   // the `revert` one, offender `1.2` (index 2) before offender `1.2.1` (index 3).
   assert.equal(
     added.content,
-    "ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.\n" +
-      "ERROR: cannot close 1.2.1: 1.1 is still in progress.\n" +
+    "ERROR: cannot revert 1.2 (id 4) to pending: 1.2.1 (id 3) is already closed.\n" +
+      "ERROR: cannot close 1.2.1 (id 3): 1.1 (id 2) is still in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "nothing may be added by a refused add");
@@ -2008,7 +2008,7 @@ test("RETIRED — T45 remove re-clamps a closed child under a pending item (mech
   );
   assert.match(
     seeded.content,
-    /^ERROR: cannot close 1\.2: 1\.1 is not in progress\./,
+    /^ERROR: cannot close 1\.2 \(id 3\): 1\.1 \(id 2\) is not in progress\./,
     "rule D must refuse the retired seed — without it the row is unreachable",
   );
   assert.ok(
@@ -2113,7 +2113,7 @@ test("T48 the way out of the descendant-side case (Y1 → start, then close)", a
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot revert 1 to pending: 1.1 is already closed.\n" +
+    "ERROR: cannot revert 1 (id 1) to pending: 1.1 (id 2) is already closed.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "the refusal must not persist");
@@ -2192,7 +2192,7 @@ test("RETIRED — T50 a depth move lands a closed item under a pending ancestor 
   );
   assert.match(
     seeded.content,
-    /^ERROR: cannot close 1\.2: 1\.1 is not in progress\./,
+    /^ERROR: cannot close 1\.2 \(id 3\): 1\.1 \(id 2\) is not in progress\./,
     "rule D must refuse the retired seed — without it the row is unreachable",
   );
   assert.ok(
@@ -2229,10 +2229,10 @@ test("T51 C+A composition: reverting 4 to pending and starting 4.2 (row P2)", as
   // in-progress before pending. Candidate order, never rule order.
   assert.equal(
     written.content,
-    "ERROR: cannot revert 4 to pending: 4.1 is already closed.\n" +
-      "ERROR: cannot close 4.1: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 4 is not in progress.\n" +
+    "ERROR: cannot revert 4 (id 4) to pending: 4.1 (id 5) is already closed.\n" +
+      "ERROR: cannot close 4.1 (id 5): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 6): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 6): 4 (id 4) is not in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null);
@@ -2286,13 +2286,16 @@ test("T52 the live store: closing or cancelling behind a running root is refused
   );
 
   const lines = refused.content.split("\n");
-  const at = (line) => lines.indexOf(line);
-  const anchor2 = at("ERROR: cannot close 2: 1 is still in progress.");
-  const anchor3 = at("ERROR: cannot close 3: 1 is still in progress.");
-  const anchor6ip = at("ERROR: cannot close 6: 1 is still in progress.");
-  const anchor6pending = at(
-    "ERROR: cannot close 6: 5, 4, 1.3 are not in progress.",
-  );
+  // Rejection lines now carry the item id ("… close 2 (id 3): …"), so each
+  // anchor is located by the offender prefix instead of the whole sentence.
+  const at = (offender, state) =>
+    lines.findIndex(
+      (line) => line.startsWith(`ERROR: cannot close ${offender} `) && line.endsWith(state),
+    );
+  const anchor2 = at("2", "still in progress.");
+  const anchor3 = at("3", "still in progress.");
+  const anchor6ip = at("6", "still in progress.");
+  const anchor6pending = at("6", "are not in progress.");
   assert.ok(anchor2 >= 0, "`2` closed behind the running `1` must be refused");
   assert.ok(anchor3 >= 0, "`3` closed behind the running `1` must be refused");
   assert.ok(anchor6ip >= 0, "`6` closed behind the running `1` must be refused");
@@ -2339,7 +2342,7 @@ test("T53 a sibling skip on close is refused: 1.3 closed with 1.2 still pending"
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot close 1.3: 1.2 is not in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 1.3 (id 5): 1.2 (id 4) is not in progress.\n" + NOTHING_CHANGED,
   );
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
@@ -2356,7 +2359,7 @@ test("T54 a root closed while an earlier root is running is refused (singular cl
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot close 2: 1 is still in progress.\n" + NOTHING_CHANGED,
+    "ERROR: cannot close 2 (id 2): 1 (id 1) is still in progress.\n" + NOTHING_CHANGED,
   );
   assert.equal(readList(sid), null, "no file may be written by a refused write");
   assert.equal(tmpLeft(sid), false, "no .tmp may be left behind");
@@ -2521,8 +2524,8 @@ test("T59 one offender carries both the rule-D and the rule-B line (groups 1 the
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot close 2: 1 is still in progress.\n" +
-      "ERROR: cannot close 2: 2.1 is still open.\n" +
+    "ERROR: cannot close 2 (id 2): 1 (id 1) is still in progress.\n" +
+      "ERROR: cannot close 2 (id 2): 2.1 (id 3) is still open.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");
@@ -2555,8 +2558,8 @@ test("T60 rule D adds exactly one line to the re-derived T44 and T51 candidates"
   );
   assert.equal(
     formatOrderingRejection(findOrderingViolations(t44)),
-    "ERROR: cannot revert 1.2 to pending: 1.2.1 is already closed.\n" +
-      "ERROR: cannot close 1.2.1: 1.1 is still in progress.\n" +
+    "ERROR: cannot revert 1.2 (id 3) to pending: 1.2.1 (id 4) is already closed.\n" +
+      "ERROR: cannot close 1.2.1 (id 4): 1.1 (id 2) is still in progress.\n" +
       NOTHING_CHANGED,
   );
 
@@ -2587,10 +2590,10 @@ test("T60 rule D adds exactly one line to the re-derived T44 and T51 candidates"
   );
   assert.equal(
     formatOrderingRejection(findOrderingViolations(t51)),
-    "ERROR: cannot revert 4 to pending: 4.1 is already closed.\n" +
-      "ERROR: cannot close 4.1: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 3 is still in progress.\n" +
-      "ERROR: cannot start 4.2: 4 is not in progress.\n" +
+    "ERROR: cannot revert 4 (id 4) to pending: 4.1 (id 5) is already closed.\n" +
+      "ERROR: cannot close 4.1 (id 5): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 6): 3 (id 3) is still in progress.\n" +
+      "ERROR: cannot start 4.2 (id 6): 4 (id 4) is not in progress.\n" +
       NOTHING_CHANGED,
   );
 });

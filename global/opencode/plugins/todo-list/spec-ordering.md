@@ -523,7 +523,12 @@ Every row matches the required verdict. Exact output of the illegal rows
 (character for character; `Nothing was changed.` is the last line of each):
 
 ```
-B   ERROR: cannot start 1.1: 1 is not in progress.
+
+> **Every item named in a rejection carries its STABLE ID next to the display
+> number** (`cannot start 4.3 (id 8): 3.1 (id 4) is not in progress.`). The number
+> is regenerated on every insert/remove, so a caller that reads only `4.3` cannot
+> address the item afterwards; the id is what it must send back (2026-11-05).
+B   ERROR: cannot start 1.1 (id 2): 1 (id 1) is not in progress.
 
 D   ERROR: cannot start 4.3: 3.1, 3 are still in progress.
     ERROR: cannot start 4.3: 4.2, 4.1, 4 are not in progress.

@@ -26,6 +26,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { clearList, filePathFor, loadList, writeList } from "./store.ts";
+import { isChange } from "./changed.ts";
+import { registerTodoRpc } from "./rpc.ts";
 import {
   clampDepthAt,
   deriveNumbers,
@@ -88,6 +90,13 @@ interface TodoPluginContext {
       name: "context",
       callback: (event: ContextHookEvent) => void | Promise<void>,
     ): Promise<Registration>;
+  };
+  /** Optional: runtimes without plugin RPC omit it, and nothing is announced. */
+  rpc?: {
+    register?(
+      definition: unknown,
+      handlers: unknown,
+    ): Promise<Registration & { events?: { emit?: (name: string, data: unknown) => Promise<unknown> } }>;
   };
 }
 
@@ -909,6 +918,20 @@ async function execute(
 export default {
   id: "todo-list",
   async setup(ctx: TodoPluginContext) {
+    // Announce "something changed" after a successful mutation, so a listener (today:
+    // the Orca panel bridge) can react without this plugin knowing it exists. A runtime
+    // without RPC, or with no listener, changes nothing here.
+    const announce = await registerTodoRpc(ctx, (message) => console.error(`${LOG_TAG} ${message}`));
+    const executeAndAnnounce = async (input: unknown, toolArg?: unknown) => {
+      const outcome = await execute(input, toolArg);
+      const op = (input as Partial<TodoToolInput> | undefined)?.op;
+      if (announce && isChange(op, outcome?.content)) {
+        const sessionID = resolveSessionID(toolArg);
+        if (sessionID) announce(sessionID);
+      }
+      return outcome;
+    };
+
     const toolRegistration = await ctx.tool.transform((editor) => {
       editor.add({
         name: "todo",
@@ -985,7 +1008,7 @@ export default {
           },
           required: ["op"],
         },
-        execute,
+        execute: executeAndAnnounce,
       });
     });
 

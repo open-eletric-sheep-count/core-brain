@@ -76,7 +76,7 @@ rule a fourth):
 
 | blocker state | one blocker | several blockers |
 | --- | --- | --- |
-| `in_progress` | `ERROR: cannot start <N>: <B> is still in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are still in progress.` |
+| `in_progress` | `ERROR: cannot start <N> (id <i>): <B> (id <b>) is still in progress.` | `ERROR: cannot start <N> (id <i>): <B1> (id <b1>), <B2> (id <b2>) are still in progress.` |
 | `pending` | `ERROR: cannot start <N>: <B> is not in progress.` | `ERROR: cannot start <N>: <B1>, <B2> are not in progress.` |
 
 `write`, `add`, `update` and `remove` validate the **whole resulting list** (a
