@@ -149,7 +149,7 @@ Assumes no prior knowledge. Terms are grouped by theme.
   are needed.
 - **Semantic memory** — facts and general knowledge ("what is true").
 - **Episodic memory** — an append-only log of events and what happened ("what I
-  did"), e.g. the journal.
+  did").
 - **Procedural memory** — "how to do things", e.g. skills.
 
 #### Tiers and movement
