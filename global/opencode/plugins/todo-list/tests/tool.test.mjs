@@ -210,75 +210,47 @@ test("update and remove on an empty store have distinct messages", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. add — empty, all-invalid, `after` hit, `after` miss.
+// 4. add — REMOVED (2026-11-16). Adding is `write` with the whole list, only.
 // ---------------------------------------------------------------------------
 
-test("add with no items writes nothing", async () => {
-  const sessionID = "add-none";
-  assert.equal(
-    await run(sessionID, { op: "add" }),
-    "TODO: nothing valid to add (no items given).",
-  );
-  assert.equal(loadList(sessionID).status, "absent");
-});
-
-test("add with only invalid items is rejected and writes nothing", async () => {
-  const sessionID = "add-invalid";
-  assert.equal(
-    await run(sessionID, { op: "add", items: [{ content: "   " }] }),
-    "TODO: nothing valid to add (no items given).\nissues: skipped an item with no content",
-  );
-  assert.equal(loadList(sessionID).status, "absent");
-});
-
-test("add with `after` inserts directly after the anchor id", async () => {
-  const sessionID = "add-after-hit";
-  seed(sessionID, [makeItem(1), makeItem(2), makeItem(3)]);
-  const out = await run(sessionID, {
-    op: "add",
-    items: [{ content: "inserted", after: 2 }],
-  });
-  assert.equal(
-    out,
-    [
-      "TODO updated (added: 4).",
-      "TODO: 4 items (4 pending)",
-      "1: [ ] 1) item 1",
-      "2: [ ] 2) item 2",
-      "4: [ ] 3) inserted",
-      "3: [ ] 4) item 3",
-    ].join("\n"),
-  );
-  const list = loadOk(sessionID);
-  assert.deepEqual(
-    list.items.map((it) => it.id),
-    [1, 2, 4, 3],
-  );
-  assert.equal(list.nextId, 5);
-});
-
-test("add with an unknown `after` appends and reports it", async () => {
-  const sessionID = "add-after-miss";
+test("there is no add op: the refusal names the way out and writes nothing", async () => {
+  const sessionID = "add-removed";
   seed(sessionID, [makeItem(1), makeItem(2)]);
+  const before = fs.readFileSync(filePathFor(sessionID), "utf-8");
   const out = await run(sessionID, {
     op: "add",
-    items: [{ content: "tail", after: 99 }],
+    items: [{ content: "inserted", after: 1 }],
   });
-  assert.equal(
-    out,
-    [
-      "TODO updated (added: 3).",
-      "TODO: 3 items (3 pending)",
-      "1: [ ] 1) item 1",
-      "2: [ ] 2) item 2",
-      "3: [ ] 3) tail",
-      "issues: id 3: after 99 not found — appended at the end",
-    ].join("\n"),
-  );
+  assert.match(out, /^ERROR: there is no `add` op\./);
+  assert.match(out, /send the WHOLE list with `write`/);
+  assert.match(out, /Nothing was changed\./);
+  // the list is exactly what it was: the refusal is not a silent append
+  assert.equal(fs.readFileSync(filePathFor(sessionID), "utf-8"), before);
   assert.deepEqual(
     loadOk(sessionID).items.map((it) => it.id),
-    [1, 2, 3],
+    [1, 2],
   );
+});
+
+test("adding happens through write: the whole list goes back, ids preserved", async () => {
+  const sessionID = "add-via-write";
+  seed(sessionID, [makeItem(1), makeItem(2)]);
+  const out = await run(sessionID, {
+    op: "write",
+    items: [
+      { id: 1, content: "item 1" },
+      { id: 2, content: "item 2" },
+      { content: "inserted" },
+    ],
+  });
+  assert.match(out, /^TODO list replaced\./);
+  // `write` assigns fresh ids to EVERY item (the base ids are already taken),
+  // so the caller re-reads the list to learn the new ones — ids are never reused.
+  assert.deepEqual(
+    loadOk(sessionID).items.map((it) => it.id),
+    [3, 4, 5],
+  );
+  assert.equal(loadOk(sessionID).items[2].content, "inserted");
 });
 
 // ---------------------------------------------------------------------------
@@ -483,12 +455,12 @@ test("execute refuses an unknown op with the expected vocabulary", async () => {
   const sessionID = "unknown-op";
   assert.equal(
     await run(sessionID, { op: "frobnicate" }),
-    'ERROR: unknown op "frobnicate"; expected one of: read, write, add, ' +
+    'ERROR: unknown op "frobnicate"; expected one of: read, write, ' +
       "update, remove, clear.",
   );
   assert.equal(
     await run(sessionID, { op: 42 }),
-    "ERROR: unknown op 42; expected one of: read, write, add, update, " +
+    "ERROR: unknown op 42; expected one of: read, write, update, " +
       "remove, clear.",
   );
   assert.equal(exists(sessionID), false);
@@ -793,16 +765,19 @@ test("store reports corrupt shapes precisely and refuses unusable ids", () => {
 // 16. Remaining guarantees: id stability, hook/host robustness, dispose.
 // ---------------------------------------------------------------------------
 
-test("add continues the stored nextId — ids are never reused", async () => {
+test("write continues the stored nextId — ids are never reused", async () => {
   const sessionID = "nextid-stable";
   seed(sessionID, [makeItem(1)], 50);
-  const out = await run(sessionID, { op: "add", items: [{ content: "new" }] });
-  assert.equal(out.split("\n")[0], "TODO updated (added: 50).");
+  const out = await run(sessionID, {
+    op: "write",
+    items: [{ id: 1, content: "item 1" }, { content: "new" }],
+  });
+  assert.equal(out.split("\n")[0], "TODO list replaced.");
   assert.deepEqual(
     loadOk(sessionID).items.map((it) => it.id),
-    [1, 50],
+    [50, 51],
   );
-  assert.equal(loadOk(sessionID).nextId, 51);
+  assert.equal(loadOk(sessionID).nextId, 52);
 });
 
 test("the hook swallows a host that refuses the push — admission never breaks", async () => {
@@ -826,8 +801,8 @@ test("an item whose text is only a legacy prefix keeps its text, never vanishes"
   // "1)" strips to nothing: the stored/displayed text must fall back to the
   // original instead of turning the item into an empty row (format.ts).
   assert.equal(
-    (await run(sessionID, { op: "add", items: [{ content: "1)" }] })).split("\n")[0],
-    "TODO updated (added: 1).",
+    (await run(sessionID, { op: "write", items: [{ content: "1)" }] })).split("\n")[0],
+    "TODO list replaced.",
   );
   assert.equal(loadOk(sessionID).items[0].content, "1)");
   assert.equal(

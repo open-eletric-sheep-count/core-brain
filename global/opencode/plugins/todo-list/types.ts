@@ -25,7 +25,7 @@ export interface TodoList {
   items: TodoItem[];
 }
 
-export type TodoOp = "read" | "write" | "add" | "update" | "remove" | "clear";
+export type TodoOp = "read" | "write" | "update" | "remove" | "clear";
 
 export interface TodoOpItem {
   id?: number;

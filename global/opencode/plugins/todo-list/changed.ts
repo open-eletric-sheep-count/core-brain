@@ -5,7 +5,7 @@
  * a string starting with "ERROR" (see `execute`), so a successful mutation is
  * exactly: a mutating op whose output does not start with "ERROR".
  */
-export const MUTATING_OPS = ["write", "add", "update", "remove", "clear"] as const;
+export const MUTATING_OPS = ["write", "update", "remove", "clear"] as const;
 
 export type MutatingOp = (typeof MUTATING_OPS)[number];
 

@@ -1,6 +1,6 @@
 {
   "name": "@oesc/todo-list",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "OpenCode V2 plugin: session todo tool (`todo`) + live TUI sidebar panel",
   "license": "MIT",

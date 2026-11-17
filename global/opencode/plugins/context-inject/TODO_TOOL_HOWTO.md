@@ -25,19 +25,24 @@ There are TWO tools named `todo` in this environment; only ONE works:
   (`clear`) — never clear without asking.
 
 ## How (plugin tool `todo`, field `op`; always via `execute` -> `tools["todo"]`)
-- `add` — append items, or insert with `after: <id>` (right after that item);
-  stable integer ids are assigned and reported.
+- **There is no `add` op** (removed 2026-11-16: agents kept missing `after` and
+  never knew where an item landed). **Adding = `write` with the WHOLE list**:
+  `read` first, insert the new item where it belongs, send every item back.
+  A partial list deletes whatever you leave out.
 - `update` — change content/status/priority/depth by `id`.
 - `remove` — delete by `id`; `read` — dump; `clear` — delete the whole list;
   `write` — replace the whole list.
 - Status: pending `[ ]` · in_progress `[~]` · completed `[x]` (struck) ·
   cancelled `[!]` (struck). Priority: high | medium | low.
-- Ids are stable and never reused — always reuse the ids from previous calls.
+- `read` is the way to VERIFY what you wrote: it returns the list with every
+  id, glyph, generated number, depth and any `issues:` line.
+- `write` assigns fresh ids to every item (an id already in the store is never
+  reused), so `read` again after a `write` before any `update`/`remove`.
 
 ## Structure & numbering
-- Before adding a NEW item, check the existing list for a fitting parent: if
-  the item is a sub-step, nest it (add with `after: <parent id>` and
-  `depth: <parent depth + 1>`) instead of creating another root item.
+- Before adding a NEW item, check the existing list for a fitting parent with
+  `read`: if the item is a sub-step, write it right after its parent with
+  `depth: <parent depth + 1>` instead of creating another root item.
 - Set `depth` (0 = top, 1 = child, …) to nest; do NOT write numbers like `1)`
   in the content — the numbering (1, 1.1, 1.1.1…) is generated automatically
   and renumbers itself on insert/remove.

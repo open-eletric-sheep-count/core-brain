@@ -751,20 +751,21 @@ test("T12 legacy illegal list is never locked out (update/remove/clear)", async 
 
 // --- T13 -----------------------------------------------------------------
 
-test("T13 add obeys the law (legal child accepted, second root rejected)", async () => {
+test("T13 write obeys the law (legal child accepted, second root rejected)", async () => {
   useHome();
   const sid = "t13";
 
-  // (a) in-progress child under an in-progress parent: levels 0 and 1.
-  await call(
-    { op: "write", items: [li(0, C, "root one"), li(0, I, "root two")] },
+  // (a) in-progress child under an in-progress parent: levels 0 and 1, written
+  // as the whole list (`add` was removed on 2026-11-16 — `write` is the only
+  // way to add, and the law is the same for it).
+  const legalWrite = await call(
+    {
+      op: "write",
+      items: [li(0, C, "root one"), li(0, I, "root two"), li(1, I, "child of two")],
+    },
     sid,
   );
-  const legalAdd = await call(
-    { op: "add", items: [li(1, I, "child of two")] },
-    sid,
-  );
-  assert.match(legalAdd.content, /^TODO updated \(added: 3\)\./);
+  assert.match(legalWrite.content, /^TODO list replaced\./);
   const view = await call({ op: "read" }, sid);
   assert.deepEqual(rowOf(view.content, "2.1"), {
     id: 3,
@@ -774,23 +775,18 @@ test("T13 add obeys the law (legal child accepted, second root rejected)", async
 
   // (b) a second level-0 in-progress item while a previous root is in progress.
   const sid2 = "t13b";
-  await call(
-    { op: "write", items: [li(0, C, "root one"), li(0, I, "root two")] },
-    sid2,
-  );
-  const before = readList(sid2);
-  const bytesBefore = rawStore(sid2);
-  const illegalAdd = await call(
-    { op: "add", items: [li(0, I, "root three")] },
+  const illegalWrite = await call(
+    {
+      op: "write",
+      items: [li(0, C, "root one"), li(0, I, "root two"), li(0, I, "root three")],
+    },
     sid2,
   );
   assert.equal(
-    illegalAdd.content,
+    illegalWrite.content,
     "ERROR: cannot start 3 (id 3): 2 (id 2) is still in progress.\n" + NOTHING_CHANGED,
   );
-  assert.deepEqual(readList(sid2), before, "readList must deep-equal the pre-state");
-  assert.equal(rawStore(sid2), bytesBefore, "store bytes must be untouched");
-  assert.equal(readList(sid2).nextId, before.nextId, "nextId must not move");
+  assert.equal(readList(sid2), null, "a refused first write must leave no store");
   assert.equal(tmpLeft(sid2), false, "no .tmp may be left behind");
 });
 
@@ -1098,7 +1094,6 @@ test("T22 corrupt store is not overwritten (F1)", async () => {
 
   const attempts = [
     { op: "update", items: [{ id: 1, content: "x" }] },
-    { op: "add", items: [li(0, P, "x")] },
     { op: "write", items: [li(0, P, "x")] },
     { op: "remove", items: [{ id: 1 }] },
   ];
@@ -1944,7 +1939,7 @@ test("T43 two closed descendants under one pending item are listed in full", asy
   assert.equal(readList(sid), null);
 });
 
-test("T44 add re-parents a closed item under a new pending item — refused", async () => {
+test("T44 write re-parents a closed item under a new pending item — refused", async () => {
   useHome();
   const sid = "t44";
   // The §3 fixture: `[I@0, I@1, C@2]`; the new pending item is inserted after
@@ -1960,12 +1955,19 @@ test("T44 add re-parents a closed item under a new pending item — refused", as
   const before = readList(sid);
   const bytesBefore = rawStore(sid);
 
+  // §6: the candidate has a NEW pending item after `1.1` at depth 1, so the
+  // existing closed `1.1.1` is renumbered to `1.2.1` under it. `add` was
+  // removed on 2026-11-16, so the candidate is sent whole through `write` —
+  // every item gets a fresh id (4..7), and the refusal is the same law.
   const added = await call(
     {
-      op: "add",
-      // §6: insert a NEW pending item after `1.1` (id 2) at depth 1; the
-      // existing closed `1.1.1` is renumbered to `1.2.1` under it.
-      items: [{ content: "inserted", status: P, after: 2, depth: 1 }],
+      op: "write",
+      items: [
+        { content: "one", status: I, priority: "medium", depth: 0 },
+        { content: "one one", status: I, priority: "medium", depth: 1 },
+        { content: "inserted", status: P, priority: "medium", depth: 1 },
+        { content: "leaf", status: C, priority: "medium", depth: 2 },
+      ],
     },
     sid,
   );
@@ -1975,8 +1977,8 @@ test("T44 add re-parents a closed item under a new pending item — refused", as
   // the `revert` one, offender `1.2` (index 2) before offender `1.2.1` (index 3).
   assert.equal(
     added.content,
-    "ERROR: cannot revert 1.2 (id 4) to pending: 1.2.1 (id 3) is already closed.\n" +
-      "ERROR: cannot close 1.2.1 (id 3): 1.1 (id 2) is still in progress.\n" +
+    "ERROR: cannot revert 1.2 (id 6) to pending: 1.2.1 (id 7) is already closed.\n" +
+      "ERROR: cannot close 1.2.1 (id 7): 1.1 (id 5) is still in progress.\n" +
       NOTHING_CHANGED,
   );
   assert.deepEqual(readList(sid), before, "nothing may be added by a refused add");
@@ -2516,16 +2518,24 @@ test("T59 one offender carries both the rule-D and the rule-B line (groups 1 the
   });
   const bytesBefore = rawStore(sid);
 
-  // Any mutation is refused while the stored list is illegal; `add` adds nothing
-  // to the candidate's offenders (a trailing pending root is not a D subject).
+  // Any mutation is refused while the stored list is illegal. `add` was removed
+  // on 2026-11-16, so the same three items go back through `write` (fresh ids
+  // 4..6); the candidate carries exactly the same offenders.
   const refused = await call(
-    { op: "add", items: [{ content: "later", status: P, depth: 0 }] },
+    {
+      op: "write",
+      items: [
+        { content: "one", status: I, priority: "medium", depth: 0 },
+        { content: "two", status: C, priority: "medium", depth: 0 },
+        { content: "two one", status: P, priority: "medium", depth: 1 },
+      ],
+    },
     sid,
   );
   assert.equal(
     refused.content,
-    "ERROR: cannot close 2 (id 2): 1 (id 1) is still in progress.\n" +
-      "ERROR: cannot close 2 (id 2): 2.1 (id 3) is still open.\n" +
+    "ERROR: cannot close 2 (id 5): 1 (id 4) is still in progress.\n" +
+      "ERROR: cannot close 2 (id 5): 2.1 (id 6) is still open.\n" +
       NOTHING_CHANGED,
   );
   assert.equal(rawStore(sid), bytesBefore, "store bytes must be untouched");

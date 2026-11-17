@@ -400,7 +400,7 @@ def atomic_write(path, data, mode):
         Path(temporary).unlink(missing_ok=True)
 
 
-def apply(changes):
+def apply(changes, target_root):
     before = {
         path: (path.read_bytes(), path.stat().st_mode & 0o777)
         if path.exists()
@@ -414,8 +414,22 @@ def apply(changes):
     try:
         for path, data in changes.items():
             old = before[path]
+            # Conteúdo igual não se toca. Reescrever tudo a cada instalação muda datas, enche a
+            # pasta de backups (-oesc-backup-) e faz o OpenCode recarregar o servidor — e é no
+            # recarregamento que os agentes se perdem (defeito relatado pelo USER a 2026-11-12).
+            if old is not None and old[0] == data:
+                continue
             if old is not None:
-                atomic_write(path.with_name(path.name + ".oesc-backup-" + stamp), *old)
+                # Os backups viviam DENTRO da pasta de config — e o OpenCode vigia essa pasta:
+                # cada instalação criava ficheiros novos e provocava recarregamento. Passam a viver
+                # no estado do core-brain, fora do alcance do vigia.
+                try:
+                    destino = Path.home() / ".local/state/core-brain/backups" / stamp
+                    alvo = destino / Path(path).resolve().relative_to(Path(target_root).resolve())
+                    alvo.parent.mkdir(parents=True, exist_ok=True)
+                    atomic_write(alvo, *old)
+                except Exception:
+                    atomic_write(path.with_name(path.name + ".oesc-backup-" + stamp), *old)
             mode = (
                 old[1]
                 if old is not None
@@ -476,6 +490,15 @@ def main():
         action="store_true",
         help="Also provision the pinned embedding runtime with npm",
     )
+    parser.add_argument(
+        "--skip-list",
+        help=(
+            "Ficheiro com caminhos relativos que NÃO devem ser escritos: são os que uma camada "
+            "superior (Jarvis, taulukko) instala por cima. Sem isto, cada instalação escreve a "
+            "versão base e a camada de cima repõe a dela — dois escritas por ficheiro, em todas as "
+            "instalações, e o OpenCode recarrega por causa de uma data (2026-11-12)."
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if args.agent and args.host != "opencode":
@@ -485,6 +508,21 @@ def main():
     if args.context_inject_only and args.install_runtime:
         parser.error("--context-inject-only does not use the embedding runtime")
     changes, report = plan(args)
+    if getattr(args, "skip_list", None):
+        ignorar = {
+            linha.strip()
+            for linha in Path(args.skip_list).read_text(encoding="utf-8").splitlines()
+            if linha.strip()
+        }
+        raiz = Path(args.target).resolve()
+
+        def relativo(caminho):
+            try:
+                return str(Path(caminho).resolve().relative_to(raiz))
+            except ValueError:
+                return None
+
+        changes = {p: d for p, d in changes.items() if relativo(p) not in ignorar}
     if args.install_runtime:
         runtime = absolute(args.runtime_dir or Path(report["memory_home"]) / "runtime")
         env = {**os.environ, "CORE_BRAIN_RUNTIME_DIR": str(runtime)}
@@ -496,7 +534,7 @@ def main():
         if not args.dry_run:
             subprocess.run(command, check=True, env=env)
     if not args.dry_run:
-        apply(changes)
+        apply(changes, Path(args.target))
     print(json.dumps(report, indent=2))
     if args.host == "codex":
         print("Restart Codex; review the installed native handlers in /hooks.")

@@ -32,10 +32,17 @@ Single tool, `op` field (ids are stable integers, never reused):
 | -------- | ------------------------------------------------------------- |
 | `read`   | return the current list                                       |
 | `write`  | replace the whole list (`items`; empty array clears)           |
-| `add`    | append items (new ids assigned and reported)                  |
 | `update` | change `content`/`status`/`priority`/`depth` of items addressed by id |
 | `remove` | delete items by id                                             |
 | `clear`  | delete the entire list (storage file removed)                 |
+
+> **`add` was REMOVED (2026-11-16, v0.4.0).** Agents could not use it: they
+> missed `after`, never knew where an item landed, and only got it right when
+> they rewrote the whole list. **Adding now happens only through `write`** with
+> the whole list — `read`, insert the new item where it belongs, send every item
+> back (a partial list deletes the rest). Calling `op: "add"` answers with an
+> `ERROR` that names this way out. `write` assigns fresh ids to every item, so
+> `read` again afterwards before any `update`/`remove`.
 
 Statuses: `pending` `[ ]` · `in_progress` `[~]` · `completed` `[x]` `(struck)` ·
 `cancelled` `[!]` `(struck)`. Priorities: `high` `medium` `low`.
@@ -43,8 +50,7 @@ Statuses: `pending` `[ ]` · `in_progress` `[~]` · `completed` `[x]` `(struck)`
 Items carry an optional **`depth`** (0 = top; children +1). The hierarchical
 numbering (`1)`, `1.1)`) is **generated** from depth + order at display time —
 never stored nor written in content (legacy prefixes are stripped); it
-renumbers automatically on add/remove, and `add` accepts **`after: <id>`** to
-insert right after an existing item.
+renumbers automatically on insert/remove.
 
 ## Ordering rule (v0.3)
 

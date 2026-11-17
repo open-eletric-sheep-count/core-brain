@@ -5,6 +5,18 @@ Newest on top.
 
 ## [Unreleased]
 
+### Removed — 2026-11-16
+
+- **`@oesc/todo-list` — op `add` removido (v0.4.0).** Pedido do USER: os agentes **não sabiam usar
+  `add`** — falhavam o `after`, não sabiam onde o item tinha caído, e só acertavam quando reescreviam
+  a lista inteira. Agora **adicionar é `write` com a lista completa** (ler, inserir no sítio, devolver
+  tudo). `op: "add"` responde com um `ERROR` que nomeia essa saída, e nada é escrito. Saiu também do
+  contrato (`types.ts`), da lista de ops mutantes (`changed.ts`) e do `TODO_TOOL_HOWTO.md`, que é o
+  texto injetado nas sessões. Nota medida: `write` atribui ids novos a todos os itens, por isso o
+  agente tem de reler (`read`) antes de `update`/`remove`.
+- **`read` já existia** e continua a ser o modo de consulta: devolve a lista com id, glifo, número
+  gerado, profundidade e as notas `issues:` — é o que permite ao agente confirmar o que escreveu.
+
 ### Added — 2026-11-07
 
 - **`@oesc/todo-list` — evento `todo.changed` (RPC).** `rpc.ts` define o contrato (`id: todo`, evento

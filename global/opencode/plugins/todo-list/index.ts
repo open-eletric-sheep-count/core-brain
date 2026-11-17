@@ -109,7 +109,6 @@ const LOG_TAG = "[todo-list]";
 const OPS: readonly TodoOp[] = [
   "read",
   "write",
-  "add",
   "update",
   "remove",
   "clear",
@@ -212,7 +211,7 @@ function withIssues(base: string, issues: string[]): string {
 
 /**
  * v0.3 ordering rule (spec-ordering.md §2/§3): the CANDIDATE list is validated
- * whole — `add`/`remove` renumber and re-parent later items, so a per-item
+ * whole — `write`/`remove` renumber and re-parent later items, so a per-item
  * check would miss the state that is about to be stored. `starts` carries the
  * ids this op actually STARTS (§4.1), so a rejection blames the item the caller
  * asked to start instead of the one already running. `closes` carries the ids
@@ -312,7 +311,7 @@ function formatList(list: TodoList): string {
 /**
  * Builds a fresh item array from raw input, assigning stable ids that are
  * never reused within the file's lifetime. `base` continues the id sequence
- * (used by write/add); pass null to start at id 1.
+ * (used by write); pass null to start at id 1.
  */
 function buildItems(
   rawItems: TodoOpItem[],
@@ -545,59 +544,6 @@ function opWrite(sessionID: string, rawItems: TodoOpItem[] | undefined): string 
   const list: TodoList = { sessionID, nextId, items };
   writeList(sessionID, list);
   return withIssues(`TODO list replaced.\n${formatList(list)}`, issues);
-}
-
-function opAdd(sessionID: string, rawItems: TodoOpItem[] | undefined): string {
-  const loaded = loadList(sessionID);
-  if (isBadLoad(loaded)) return storeRefusal(loaded, "mutate");
-  const base = loaded.status === "ok" ? loaded.list : null;
-  const previous: TodoList = base ?? { sessionID, nextId: 1, items: [] };
-  const { items, afters, nextId, issues } = buildItems(rawItems ?? [], previous);
-  if (items.length === 0) {
-    return withIssues("TODO: nothing valid to add (no items given).", issues);
-  }
-  // 0.2: `after: <id>` inserts right after that item (default: append at the
-  // end); each insert's depth is clamped against its position.
-  const merged = [...previous.items];
-  items.forEach((item, i) => {
-    const after = afters[i];
-    let index = merged.length;
-    if (after !== undefined) {
-      const anchor = merged.findIndex((candidate) => candidate.id === after);
-      if (anchor >= 0) {
-        index = anchor + 1;
-      } else {
-        issues.push(
-          `id ${item.id}: after ${after} not found — appended at the end`,
-        );
-      }
-    }
-    merged.splice(index, 0, item);
-    clampDepthAt(merged, index, issues);
-  });
-  // §4.1: only the items created by THIS call can be starts — and only those
-  // that arrive already closed can be closes, or already `pending` a revert.
-  // All three sets are declarations (§2.1, D11/D14), never selectors.
-  const rejection = orderRejection(
-    merged,
-    new Set(
-      items.filter((item) => item.status === "in_progress").map((item) => item.id),
-    ),
-    new Set(
-      items.filter((item) => isClosedStatus(item.status)).map((item) => item.id),
-    ),
-    new Set(
-      items.filter((item) => item.status === "pending").map((item) => item.id),
-    ),
-  );
-  if (rejection !== null) return rejection;
-  const list: TodoList = { sessionID, nextId, items: merged };
-  writeList(sessionID, list);
-  const added = items.map((item) => item.id).join(", ");
-  return withIssues(
-    `TODO updated (added: ${added}).\n${formatList(list)}`,
-    issues,
-  );
 }
 
 function opUpdate(
@@ -862,7 +808,21 @@ async function execute(
     };
   }
   const parsed = (input ?? {}) as Partial<TodoToolInput>;
-  const op = parsed.op;
+  const op = parsed.op as string | undefined;
+  // The `add` op was REMOVED on 2026-11-16 (USER): agents could not use it —
+  // they missed `after`, never knew where an item landed, and only got it right
+  // when they rewrote the whole list. Adding happens ONLY through `write` with
+  // the whole list, and the refusal names the way out instead of leaving the
+  // caller guessing what "unknown op" means.
+  if (op === "add") {
+    return {
+      content:
+        "ERROR: there is no `add` op. To add an item, send the WHOLE list with " +
+        "`write`: call `read` first, insert the new item where it belongs, " +
+        "and send every item back — a partial list deletes the rest. " +
+        "Nothing was changed.",
+    };
+  }
   if (typeof op !== "string" || !OPS.includes(op as TodoOp)) {
     return {
       content: `ERROR: unknown op ${JSON.stringify(parsed.op)}; expected one of: ${OPS.join(", ")}.`,
@@ -882,8 +842,6 @@ async function execute(
         return { content: opRead(sessionID) };
       case "write":
         return { content: opWrite(sessionID, parsed.items) };
-      case "add":
-        return { content: opAdd(sessionID, parsed.items) };
       case "update":
         return { content: opUpdate(sessionID, parsed.items) };
       case "remove":
@@ -941,14 +899,18 @@ export default {
           "language — the user reads the panel (no internal jargon). " +
           "Ops: read — return the current list; write — " +
           "replace the whole list with `items` (an empty array clears it); " +
-          "add — append or insert items (`after: <id>` inserts right after " +
-          "an item; stable integer ids are assigned and reported); update — " +
-          "change content/status/priority/depth of items addressed by `id`; " +
-          "remove — delete items by `id`; clear — delete the entire list. " +
-          "Structure: before adding an item, check the existing list for a " +
-          "fitting parent — sub-steps should be nested (add with `after: " +
-          "<parent id>` and `depth: <parent depth + 1>`), not added as new " +
-          "roots. Set `depth` (0 = top level, 1 = child, …); do NOT " +
+          "update — change content/status/priority/depth of items addressed " +
+          "by `id`; remove — delete items by `id`; clear — delete the whole " +
+          "list. THERE IS NO `add` OP — and no way to add an item except " +
+          "`write`: call `read`, insert the new item where it belongs in the " +
+          "list you got back, and send the WHOLE list in `items`. A partial " +
+          "list deletes whatever you leave out, so never send only the new " +
+          "item. `write` assigns fresh ids to every item (an id already in " +
+          "the store is never reused): call `read` afterwards to see the ids " +
+          "you now have, and use those for `update`/`remove`. " +
+          "Structure: sub-steps are nested under their parent, never new " +
+          "roots — set `depth` (0 = top level, 1 = child, …) and write the " +
+          "child right after its parent. Do NOT " +
           "write numbers like `1)` in content — the hierarchical numbering " +
           "(1, 1.1, 1.1.1…) is generated automatically and renumbers itself " +
           "on insert/remove; a level jump is clamped and reported. Statuses: " +
@@ -981,12 +943,6 @@ export default {
                     type: "integer",
                     description:
                       "Existing item id (required for update/remove).",
-                  },
-                  after: {
-                    type: "integer",
-                    description:
-                      "add only: insert right after this item id " +
-                      "(default: append at the end).",
                   },
                   content: {
                     type: "string",
