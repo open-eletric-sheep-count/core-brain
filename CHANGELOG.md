@@ -5,6 +5,65 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-11-18 (nomes das skills)
+
+- **`batman-e-robin` → `batman-and-robin` em todas as referências vivas.** O repositório instalava a
+  skill com o nome inglês mas mandava carregá-la com o português: `agents/DEVELOPER.md` (3 sítios,
+  incluindo o `SKILL LOADED:`), o helper da metodologia e `agents/ORACLE.md` apontavam para
+  `batman-e-robin` / `METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`. Resultado: a cópia antiga em português
+  **sobrevivia na home** e era a única que os agentes encontravam. Corrigido: helper renomeado para
+  `METHODOLOGY_BATMAN_AND_ROBIN_HELPERS.md`, referências de `ORACLE.md`, `DEVELOPER.md` e do próprio
+  helper actualizadas, e a especificação do `todo-list` que citava o caminho antigo. Verificação:
+  `grep -rn "BATMAN_E_ROBIN|batman-e-robin" agents helpers plugins skills` → **0 resultados** (o
+  CHANGELOG é histórico e não se reescreve).
+- **Nota operacional:** o instalador copia mas **não remove** o que já está na home. Ficam dois
+  resíduos a apagar pelo USER: `~/.config/opencode/skills/batman-e-robin/` e
+  `~/.config/opencode/helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`.
+
+### Added — 2026-11-18 (modelo)
+
+- **`core-brain` — escolha do modelo de embeddings por perfil.** Pedido do USER: *«baixa outro modelo
+  sem remover o atual e vamos corrigir o índice»*. `config.json` aceita `"embedModel"` (dado, lido no
+  arranque) e `CORE_BRAIN_EMBED_MODEL` sobrepõe-se; a omissão continua `bge-small-en`, portanto quem
+  não diz nada não muda de comportamento. Perfis: `bge-small-en` (384, cls) e `multilingual-minilm`
+  (`Xenova/paraphrase-multilingual-MiniLM-L12-v2`, 384, mean). Nome desconhecido é **recusado** — um
+  erro de escrita nunca cai noutro espaço. Os dois modelos convivem na cache; nada é removido.
+- **Correcção do fingerprint do artefacto (`findOnnxFile`).** O código só conhecia a árvore HF
+  (`models--org--name/snapshots/…`), mas o `transformers.js` escreve a árvore plana
+  (`<org>/<name>/onnx/model.onnx`) — todas as revisões saíam `@unavailable`. Agora aceita as duas; a
+  revisão real lida foi `…@fp32@185ae63f47e17a7e`.
+- **Índice reconstruído** com o modelo novo: 18 espaços, **2074 vectores**. O modelo novo carrega em
+  1,2 s a partir da cache. Aviso operacional: enquanto o processo que serve a memória não reiniciar,
+  `recall` responde `STALE_INDEX` (fail-closed) — é o comportamento desenhado, não avaria.
+- Provas: `test/embedder-profile.selftest.mjs` (7 asserções, suite G) e a suite completa
+  `matrix 13/13 + probes + hooks + timeline + dedup + dedupe + profile`.
+
+### Added — 2026-11-18
+
+- **`core-brain` — ação `dedupe` no `admin-cli`.** Pedido do USER: *«varre a memória procurando
+  memórias iguais e, se achar, remove uma e reforça a outra»*. Dentro de cada espaço, os registos
+  **activos** com o mesmo **texto normalizado** (trim, espaços colapsados, minúsculas) formam um
+  grupo: sobrevive o mais recuperado (depois o mais recente), que **soma** os `retrievals` e os
+  contadores de `feedback` dos outros; as cópias ficam **reformadas** com `meta.absorbedInto` — o
+  texto não é apagado. **Dry-run por omissão**: só escreve com `--apply`. Idempotente por construção
+  (um reformado nunca é candidato), pelo que uma segunda passagem não muda nada. `--ns` limita a um
+  espaço. Provas: `test/dedupe.selftest.mjs` (12 asserções, suite F do `check.sh`) — vermelho antes
+  (`unknown action 'dedupe'`), verde depois; `matrix 13/13`, `hooks`, `timeline` e `promote dedup`
+  continuam a passar.
+
+### Fixed — 2026-11-18
+
+- **`core-brain` — `promote` recusa uma conclusão duplicada.** Pedido do USER: *«a original fica, a
+  nova não pode ser criada»*. Antes, promover duas vezes o mesmo episódio com o mesmo texto gravava
+  **dois** registos com ids diferentes (o `store` faz sempre `randomUUID()` + `push`, sem comparar);
+  o `recall` passava a devolver a mesma frase duas vezes. Agora, se já existir no espaço do chamador um
+  registo **activo** com o **texto normalizado** igual (trim, espaços colapsados, minúsculas), o
+  `promote` **lança erro** e não escreve nada — nem registo, nem vector, nem `engramIds`. Um registo
+  **reformado** não conta: depois de `forget`, o mesmo texto pode ser promovido outra vez. O erro nomeia
+  o id existente e o espaço. Provas: `test/promote-dedup.selftest.mjs` (TL7, 11 asserções, suite E do
+  `check.sh`) — vermelho antes (7 falhas, 2 registos criados), verde depois; `matrix 13/13`, `hooks` e
+  `timeline` continuam a passar.
+
 ### Removed — 2026-11-16
 
 - **`@oesc/todo-list` — op `add` removido (v0.4.0).** Pedido do USER: os agentes **não sabiam usar

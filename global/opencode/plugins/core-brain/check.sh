@@ -131,4 +131,46 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
-echo "core-brain check.sh: matrix 13/13 PASS + probes PASS + hooks PASS + timeline PASS (CORE_BRAIN_HOME cleaned up)"
+# --- 9. Suite E: a duplicate `promote` is REFUSED (CONTRACT.md §10, dedup) ---
+# A conclusion that already exists as an ACTIVE memory of the caller must not be
+# created twice ("the original stays, the new one may not be created", USER
+# 2026-11-18). The suite makes and removes its own temp root (rule 21).
+DEDUP_LOG="$CORE_BRAIN_HOME/dedup.log"
+if ! run_script "$DIR/test/promote-dedup.selftest.mjs" "$DEDUP_LOG"; then
+  status=1
+fi
+cat "$DEDUP_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: promote dedup FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+# --- 10. Suite F: the maintenance pass that collapses duplicated memories ---
+# "Remove one and reinforce the other" (USER, 2026-11-18): dry-run writes nothing, apply retires
+# the copies and sums the counters, a second run is a no-op. Own temp root (rule 21).
+DEDUPE_LOG="$CORE_BRAIN_HOME/dedupe.log"
+if ! run_script "$DIR/test/dedupe.selftest.mjs" "$DEDUPE_LOG"; then
+  status=1
+fi
+cat "$DEDUPE_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: dedupe FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+# --- 11. Suite G: the embedding-model profiles ------------------------------
+# `CORE_BRAIN_EMBED_MODEL` picks the model; silence keeps bge-small; a typo is refused.
+PROFILE_LOG="$CORE_BRAIN_HOME/profile.log"
+if ! run_script "$DIR/test/embedder-profile.selftest.mjs" "$PROFILE_LOG"; then
+  status=1
+fi
+cat "$PROFILE_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: embedder profile FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+echo "core-brain check.sh: matrix 13/13 PASS + probes PASS + hooks PASS + timeline PASS + dedup PASS + dedupe PASS + profile PASS (CORE_BRAIN_HOME cleaned up)"

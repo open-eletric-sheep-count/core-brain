@@ -591,6 +591,13 @@ the ORACLE may rule):
 - `promote` writes the memory into the caller's **own** namespace (`self`; the
   plan gives no `target`), carrying `meta.derivedFrom = <episodeId>`. Nothing is
   copied from the episode: the caller supplies `text`.
+- `promote` **refuses a duplicate** (USER, 2026-11-18 — *"the original stays, the
+  new one may not be created"*). Duplicate = an **ACTIVE** record of the caller's
+  own namespace whose **normalised text** (trimmed, whitespace collapsed, case
+  folded) equals the requested `text`. The call **throws** and writes nothing: no
+  record, no vector, no `engramIds` entry — so a repeat is never a silent second
+  memory. A **retired** record is not a duplicate: `forget` frees the text again.
+  The error names the existing memory id and the namespace.
 
 ### 10.3 Identity is the session (spec §12.1 / AC-TL1)
 
@@ -682,6 +689,7 @@ never a bare boolean. `check.sh` exits `0` only when every ledger PASSes.
 | **TL4** | episodes = `PROBE_TEXTS.semanticParaphrase` and `PROBE_TEXTS.semanticDecoy`; `timeline {query: PROBE_TEXTS.semanticQuery}` | both episodes returned; the paraphrase ranks **strictly above** the decoy (search by meaning; the paraphrase shares no content word with the query) |
 | **TL5** | `episode E` → `promote {episodeId:E.id, text:M, tags}` | result `{ok:true, episodeId:E.id, memoryId}`; `agents/CB_ALPHA/memories.json` holds a record `{id:memoryId, text:M, meta.derivedFrom:E.id}`; `agents/CB_ALPHA/episodes.json` shows `E.engramIds` includes `memoryId`; every other field of `E` is unchanged (snapshot compare) |
 | **TL6** | — | **SKIP**: the 13/13 matrix is enforced by `check.sh` Suite A (`matrix.selftest.mjs`, unchanged); the backup mirror is **UNKNOWN** (another repo, plan §7.2) and is **not** tested here |
+| **TL7** (`test/promote-dedup.selftest.mjs`) | promote the same conclusion 2× (same episode; then another episode; with stray spaces/case) | the 2nd/3rd calls **throw**; `agents/CB_ALPHA/memories.json` keeps exactly **1** active record; `E.engramIds` stays length 1; a **different** text is accepted; after `forget` of the original the same text is accepted again |
 
 ### 10.8 RED-then-GREEN, and the declared UNKNOWNs
 

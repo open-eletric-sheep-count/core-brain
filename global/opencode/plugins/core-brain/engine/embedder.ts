@@ -189,8 +189,19 @@ export function hfCacheDirName(modelId: string): string {
   return `models--${modelId.replace(/\//g, "--")}`;
 }
 
-/** Locates `onnx/model.onnx` under the HF cache dir, or `null`. */
+/**
+ * Locates `onnx/model.onnx` in either cache layout, or `null`.
+ *
+ * <p>Two layouts exist in the wild: the Hugging Face snapshot tree
+ * (`models--org--name/snapshots/<rev>/onnx/model.onnx`) and the flat tree transformers.js writes
+ * when `env.cacheDir` is a plain directory (`<org>/<name>/onnx/model.onnx`). The store here uses the
+ * second one — reading only the first made every fingerprint `@unavailable` (found 2026-11-18),
+ * which is exactly the silent gap the D5 stamp exists to prevent.
+ */
 export function findOnnxFile(modelsDir: string, modelId: string): string | null {
+  const flat = join(modelsDir, modelId, "onnx", "model.onnx");
+  if (existsSync(flat)) return flat;
+
   const snapshots = join(modelsDir, hfCacheDirName(modelId), "snapshots");
   if (!existsSync(snapshots)) return null;
   let revisions: string[];
@@ -312,6 +323,72 @@ export function createBgeSmallEmbedder(options: BgeSmallEmbedderOptions = {}): E
       return Array.from(vector);
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Model profiles — one store, one model at a time (`CORE_BRAIN_EMBED_MODEL`)
+// ---------------------------------------------------------------------------
+
+/** Which profile the store uses. Absent = the original bge-small, so silence changes nothing. */
+export const EMBED_MODEL_ENV = "CORE_BRAIN_EMBED_MODEL";
+
+export interface EmbedProfile {
+  modelId: string;
+  dim: number;
+  pooling: string;
+}
+
+/**
+ * The models this build knows. Adding one here is the whole ceremony: the store picks it up from
+ * the environment, and the index fingerprint (`modelId@dtype@hash`) makes an old index stale, so a
+ * model swap can never silently compare vectors from two different spaces.
+ *
+ * `multilingual-minilm` (USER, 2026-11-18) exists because the corpus is Portuguese and the original
+ * model is English-trained: same 384 dimensions, mean pooling, multilingual training.
+ */
+export const EMBED_PROFILES: Record<string, EmbedProfile> = {
+  "bge-small-en": { modelId: BGE_SMALL_MODEL_ID, dim: BGE_SMALL_DIM, pooling: BGE_SMALL_POOLING },
+  "multilingual-minilm": {
+    modelId: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+    dim: 384,
+    pooling: "mean",
+  },
+};
+
+/** The profile name in use: an explicit choice, then the env, then the default. */
+export function activeProfileName(explicit?: string): string {
+  if (typeof explicit === "string" && explicit.trim() !== "") return explicit.trim();
+  const raw = process.env[EMBED_MODEL_ENV];
+  return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : "bge-small-en";
+}
+
+/** `createConfiguredEmbedder` options: the bge options plus the profile choice. */
+export interface ConfiguredEmbedderOptions extends BgeSmallEmbedderOptions {
+  /** Wins over `CORE_BRAIN_EMBED_MODEL` — the store passes the value read from `config.json`. */
+  profile?: string;
+}
+
+/**
+ * The embedder the store uses: the profile named by the explicit choice (config.json), else by
+ * `CORE_BRAIN_EMBED_MODEL`, else bge-small. An unknown name is REFUSED — a typo must not fall back
+ * to another space.
+ */
+export function createConfiguredEmbedder(options: ConfiguredEmbedderOptions = {}): Embedder {
+  const { profile: explicit, ...rest } = options;
+  const name = activeProfileName(explicit);
+  const profile = EMBED_PROFILES[name];
+  if (!profile) {
+    throw new Error(
+      `core-brain embedder: unknown model profile '${name}' ` +
+        `(expected ${Object.keys(EMBED_PROFILES).join("|")})`,
+    );
+  }
+  return createBgeSmallEmbedder({
+    ...rest,
+    modelId: profile.modelId,
+    dim: profile.dim,
+    pooling: profile.pooling,
+  });
 }
 
 // ---------------------------------------------------------------------------

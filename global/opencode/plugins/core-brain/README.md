@@ -365,13 +365,32 @@ dependencies**: the newline-delimited JSON-RPC 2.0 transport lives in the repo
 | `core_doctor` | the five health checks, each with an id, an ok flag and a detail |
 | `core_receipt` | counted report of what was stored and retrieved |
 
-Maintenance (`purge` / `reindex` / `export` / `import` / `compact`) is **not
+Maintenance (`purge` / `reindex` / `export` / `import` / `compact` / `dedupe`) is **not
 exposed as an MCP tool**. The MCP has no caller identity, so a maintenance tool
 there would be reachable by every agent, including restricted ones. It lives in
 `mcp/admin-cli.js` instead, run with `bash` by the operator (or the ORACLE) —
 see the context-inject `ADMIN_CLI_HOWTO.md`. A restricted agent cannot run it; a
 bash-capable agent is already fully privileged, so the CLI adds no new
 capability for it.
+
+`dedupe` collapses records that say the same thing (USER, 2026-11-18): within each namespace, the
+records whose **normalised text** is equal form one group; the most-retrieved survives, absorbs the
+others' `retrievals`/`feedback` counters, and the copies are **retired** with `meta.absorbedInto` —
+the text stays on disk. It is a **dry-run unless `--apply`** is passed, and idempotent: a retired
+record is never a candidate again.
+### Choosing the embedding model
+
+`config.json` accepts a top-level `"embedModel"` (data, so the running plugin picks it up on restart);
+`CORE_BRAIN_EMBED_MODEL` overrides it. The default is `bge-small-en` — silence changes nothing.
+
+| profile | model | dim | pooling |
+|---|---|---|---|
+| `bge-small-en` (default) | `Xenova/bge-small-en-v1.5` | 384 | cls |
+| `multilingual-minilm` | `Xenova/paraphrase-multilingual-MiniLM-L12-v2` | 384 | mean |
+
+The two models live side by side in the cache — nothing is removed. Swapping the model makes every
+index stale (`STALE_INDEX`) by design: rebuild with `node mcp/admin-cli.js reindex`.
+
 
 Invalid requests are JSON-RPC errors (`-32602`); a refusal raised by the store comes back as a tool result with `isError: true` and an `ERROR: …` text — the MCP convention for protocol errors versus tool-level errors.
 

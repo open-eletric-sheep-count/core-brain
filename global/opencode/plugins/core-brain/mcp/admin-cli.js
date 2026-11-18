@@ -7,22 +7,23 @@
 // security boundary is the ABSENCE of the tool, not the secrecy of the command.
 //
 // Usage:
-//   node admin-cli.js <purge|reindex|export|import|compact> [options]
+//   node admin-cli.js <purge|reindex|export|import|compact|dedupe> [options]
 //     --ns <label>   target namespace (required for purge; optional filter for
 //                    reindex/export/compact)
 //     --file <path>  export/import document (must live inside the data root)
 //     --force        purge a private agent namespace
+//     --apply        dedupe only: really retire the duplicates (without it, dry-run)
 //
 // Exit codes: 0 ok, 1 engine error, 2 usage error.
 import { createEngine } from "../store.ts";
 
-const ACTIONS = new Set(["purge", "reindex", "export", "import", "compact"]);
+const ACTIONS = new Set(["purge", "reindex", "export", "import", "compact", "dedupe"]);
 
 function usage(message) {
   if (message) console.error(`error: ${message}`);
   console.error(
     `usage: node admin-cli.js <${[...ACTIONS].join("|")}> ` +
-      `[--ns <label>] [--file <path>] [--force]`,
+      `[--ns <label>] [--file <path>] [--force] [--apply]`,
   );
   process.exit(2);
 }
@@ -41,6 +42,8 @@ function parseArgv(argv) {
       i += 1;
     } else if (flag === "--force") {
       args.force = true;
+    } else if (flag === "--apply") {
+      args.apply = true;
     } else {
       usage(`unknown flag '${flag}'`);
     }

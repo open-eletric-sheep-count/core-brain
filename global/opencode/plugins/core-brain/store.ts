@@ -35,7 +35,7 @@ import type {
   WhoResult,
 } from "./types.ts";
 
-import { createBgeSmallEmbedder, type Embedder } from "./engine/embedder.ts";
+import { createConfiguredEmbedder, type Embedder } from "./engine/embedder.ts";
 import { createMsMarcoReranker, resolveRerankerName, type Reranker } from "./engine/reranker.ts";
 import { searchHybrid, type SearchRecord } from "./engine/search.ts";
 
@@ -431,6 +431,21 @@ const AGENT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * (`true` / `false` / `false`); a present non-boolean still throws; any resolved
  * `private:false && hasGlobalAccess:false` row aborts the engine.
  */
+/**
+ * `embedModel` from `config.json` — the model choice as DATA, so the running plugin picks it up on
+ * its next start without an environment change. Absent or unreadable = undefined (env/default wins).
+ */
+function readEmbedModel(configPath: string | null): string | undefined {
+  if (configPath === null || !existsSync(configPath)) return undefined;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { embedModel?: unknown };
+    const value = parsed.embedModel;
+    return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function loadPolicies(configPath: string | null): AgentPolicy[] {
   if (!configPath) return [];
 
@@ -658,7 +673,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
   // (fail-closed when the runtime is absent — never a silent hash-ngram
   // fallback, D1). The reranker is OFF unless `options.reranker` is injected or
   // `CORE_BRAIN_RERANKER=ms-marco` opts in (C1/D7).
-  const active: Embedder = options.embedder ?? createBgeSmallEmbedder();
+  const active: Embedder =
+    options.embedder ??
+    createConfiguredEmbedder({ profile: readEmbedModel(existsSync(configPath) ? configPath : null) });
   const reranker: Reranker | undefined =
     options.reranker ?? (resolveRerankerName() === "off" ? undefined : createMsMarcoReranker());
 
@@ -1069,11 +1086,23 @@ export function createEngine(options: EngineOptions = {}): Engine {
   }
 
   /**
+   * The text a duplicate check compares: trimmed, whitespace collapsed, case folded. Two promotions
+   * of the same conclusion differ in spacing or case, never in meaning, so the key ignores both.
+   */
+  const normalizeMemoryText = (text: string): string =>
+    text.trim().replace(/\s+/g, " ").toLowerCase();
+
+  /**
    * `promote` (§10.2/§10.3/§10.5, T2): write a NEW memory in the caller's own
    * namespace carrying `meta.derivedFrom = <episodeId>`, then append that
    * memory's id to the episode's `engramIds`. Nothing is copied from the
    * episode — the caller supplies `text`. The episode must be readable by the
    * caller (the same read matrix as `feedback`).
+   *
+   * <p>A DUPLICATE is refused (USER, 2026-11-18): when an ACTIVE memory of the caller's own namespace
+   * already carries the same normalised text, the second promote throws and writes nothing — no
+   * record, no vector, no `engramIds` entry. Retiring the original with `forget` frees the text again;
+   * a retired record is not a duplicate (§ "the original stays, the new one may not be created").
    */
   async function promoteOp(policy: AgentPolicy, request: PromoteRequest): Promise<PromoteResult> {
     const episodeId = request.episodeId;
@@ -1101,6 +1130,19 @@ export function createEngine(options: EngineOptions = {}): Engine {
       throw new Error(
         `core_memory promote: agent '${policy.name}' cannot promote episode '${episodeId}': ` +
           `the episode is not readable by '${policy.name}' (private namespace or unknown id)`,
+      );
+    }
+
+    // A duplicate conclusion is refused: the original stays, the new one is not created.
+    const ownNamespace = authorizeWrite(policy, "self", lookup);
+    const wanted = normalizeMemoryText(request.text);
+    const duplicate = readRecords(recordsFileFor(root, ownNamespace)).find(
+      (record) => typeof record.retiredAt !== "string" && normalizeMemoryText(record.text) === wanted,
+    );
+    if (duplicate) {
+      throw new Error(
+        `core_memory promote: this conclusion is already memory '${duplicate.id}' in '${nsLabel(ownNamespace)}' — ` +
+          "the new one was not created (retire it with forget, or promote a different text)",
       );
     }
 
@@ -1691,9 +1733,70 @@ export function createEngine(options: EngineOptions = {}): Engine {
       return { ok: true, action: "compact", detail: `${dropped} vector(s) dropped` };
     }
 
+    // --- dedupe: collapse records that say the same thing (USER, 2026-11-18) -----------
+    // Dry-run by default (`apply: true` writes). Within each namespace, records whose
+    // NORMALISED text is equal form one group: the most-retrieved (then the newest) survives and
+    // absorbs the others' counters; the rest are RETIRED with `meta.absorbedInto` — the text stays
+    // on disk, so nothing is lost. Idempotent by construction: a retired record is not a candidate.
+    if (action === "dedupe") {
+      const apply = args?.apply === true;
+      const groups: Array<{ ns: string; kept: string; retired: string[] }> = [];
+      let retiredTotal = 0;
+
+      for (const ns of activeNamespaces()) {
+        const label = nsLabel(ns);
+        if (nsFilter !== null && label !== nsFilter) continue;
+
+        const records = readRecords(recordsFileFor(root, ns));
+        const bucketsByText = new Map<string, MemoryRecord[]>();
+        for (const record of records) {
+          if (typeof record.retiredAt === "string") continue;
+          const key = normalizeMemoryText(record.text);
+          const bucket = bucketsByText.get(key);
+          if (bucket) bucket.push(record);
+          else bucketsByText.set(key, [record]);
+        }
+
+        let namespaceChanged = false;
+        for (const [key, bucket] of bucketsByText) {
+          void key;
+          if (bucket.length < 2) continue;
+          const ordered = [...bucket].sort((a, b) => {
+            const byRetrievals = (b.retrievals ?? 0) - (a.retrievals ?? 0);
+            if (byRetrievals !== 0) return byRetrievals;
+            const byDate = String(b.updatedAt).localeCompare(String(a.updatedAt));
+            if (byDate !== 0) return byDate;
+            return String(a.id).localeCompare(String(b.id));
+          });
+          const [survivor, ...absorbed] = ordered;
+          groups.push({ ns: label, kept: survivor.id, retired: absorbed.map((record) => record.id) });
+          if (!apply) continue;
+
+          const now = new Date().toISOString();
+          survivor.retrievals = bucket.reduce((sum, record) => sum + (record.retrievals ?? 0), 0);
+          const useful = bucket.reduce((sum, record) => sum + (record.feedback?.useful ?? 0), 0);
+          const useless = bucket.reduce((sum, record) => sum + (record.feedback?.useless ?? 0), 0);
+          if (useful > 0 || useless > 0) survivor.feedback = { useful, useless };
+          survivor.updatedAt = now;
+          for (const record of absorbed) {
+            record.retiredAt = now;
+            record.meta = { ...(record.meta ?? {}), absorbedInto: survivor.id };
+            retiredTotal += 1;
+          }
+          namespaceChanged = true;
+        }
+        if (namespaceChanged) writeFileAtomic(recordsFileFor(root, ns), records);
+      }
+
+      const detail = apply
+        ? `${groups.length} group(s) collapsed, ${retiredTotal} record(s) retired`
+        : `${groups.length} group(s) found, nothing written (pass { apply: true } to collapse)`;
+      return { ok: true, action: "dedupe", detail, groups };
+    }
+
     throw new Error(
       `core-brain admin: unknown action '${action}' ` +
-        `(expected purge|reindex|export|import|compact)`,
+        `(expected purge|reindex|export|import|compact|dedupe)`,
     );
   }
 

@@ -233,6 +233,8 @@ export interface AdminResult {
   ok: true;
   action: string;
   detail?: string;
+  /** `dedupe` only: one entry per group of records that say the same thing. */
+  groups?: Array<{ ns: string; kept: string; retired: string[] }>;
 }
 
 export type CoreMemoryResult =

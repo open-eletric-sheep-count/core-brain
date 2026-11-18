@@ -172,7 +172,7 @@ Item:
   (`project-generator/global/opencode/AGENTS.md`).
 - Also fix the two skills that reference the standard:
   `skills/a-new-brain-storm/SKILL.md` (l.131) and
-  `skills/batman-e-robin/SKILL.md` (l.33).
+  `skills/batman-and-robin/SKILL.md` (l.33).
 - Nothing about the plugin is written into `AGENTS.md`.
 
 ## 9. Cleanup skill (`cleanup-todo-list`)
