@@ -78,11 +78,16 @@ class InstallTests(unittest.TestCase):
         session = [h for group in hooks['hooks']['SessionStart'] for h in group['hooks']]
         self.assertIn(unrelated, session)
         self.assertEqual(sum(h.get('statusMessage', '').startswith('core-brain:') for h in session), 1)
+        memory_config = json.loads((self.memory / 'config.json').read_text())
+        self.assertEqual(memory_config.get('embedModel'), 'multilingual-minilm',
+                         'the model choice must travel with the installation')
         identity = json.loads((self.memory / 'config.json').read_text())['agents'][0]
         self.assertEqual(identity, {'name': 'codex', 'private': True, 'hasGlobalAccess': False, 'inject': True})
         self.assertEqual({p.parent.name for p in self.skills.glob('*/SKILL.md')}, {
-            'core-brain-memory', 'core-brain-create-memories', 'core-brain-session-end', 'a-new-brain-storm'})
-        self.assertTrue(list(self.target.rglob('*.oesc-backup-*')))
+            'core-brain-memory', 'core-brain-create-memories', 'core-brain-session-end', 'a-new-brain-storm',
+            'clean-code-mode'})
+        # No backups (USER, 2026-11-18): git is the archive.
+        self.assertFalse(list(self.target.rglob('*.oesc-backup-*')))
 
     def test_reinstall_is_idempotent(self):
         self.run_install()
@@ -182,7 +187,7 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertEqual(json.loads(run.stdout)['hookSpecificOutput']['additionalContext'], oracle)
 
-    def test_agent_upgrade_backs_up_changed_oracle_and_preserves_unmanaged_agents(self):
+    def test_agent_upgrade_replaces_oracle_without_backup_and_preserves_unmanaged_agents(self):
         roles = self.target / 'roles'
         roles.mkdir(parents=True)
         (roles / 'ORACLE.md').write_text('Previous installed oracle')
@@ -190,7 +195,8 @@ class InstallTests(unittest.TestCase):
         self.run_install()
         self.assertEqual((roles / 'ORACLE.md').read_bytes(), (ROOT / 'global/codex/rules/ORACLE.md').read_bytes())
         self.assertEqual((roles / 'USER_ONLY.md').read_text(), 'Keep this user agent')
-        self.assertEqual(next(roles.glob('ORACLE.md.oesc-backup-*')).read_text(), 'Previous installed oracle')
+        self.assertFalse(list(roles.glob('ORACLE.md.oesc-backup-*')))
+        self.assertEqual((roles / 'ORACLE.md').read_bytes(), (ROOT / 'global/codex/rules/ORACLE.md').read_bytes())
 
     def test_opencode_injector_reads_installed_guides_on_start_and_compaction(self):
         self.run_install('opencode')

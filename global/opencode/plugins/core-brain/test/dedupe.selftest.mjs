@@ -48,41 +48,42 @@ const check = (name, ok, detail) => {
 // ---------------------------------------------------------------------------
 // Arrange: three records that say the same thing (spacing/case differ) + one distinct
 // ---------------------------------------------------------------------------
-const SAME = "A chave do Jarvis vive em ~/.config/jarvis-client/config.json.";
+const SAME = "The Jarvis key lives in ~/.config/jarvis-client/config.json.";
 const first = await engine.invoke("CB_ALPHA", { op: "store", text: SAME });
 const second = await engine.invoke("CB_ALPHA", { op: "store", text: `  ${SAME.toUpperCase()}  ` });
 const third = await engine.invoke("CB_ALPHA", { op: "store", text: SAME.replace(" ", "  ") });
-await engine.invoke("CB_ALPHA", { op: "store", text: "O glossário de Ravenloft tem 17 termos." });
+await engine.invoke("CB_ALPHA", { op: "store", text: "The Ravenloft glossary has 17 terms." });
 
 // Give the copies different weights, so "reinforce" has something measurable to do.
 await engine.invoke("CB_ALPHA", { op: "feedback", id: first.id, useful: true });
 await engine.invoke("CB_ALPHA", { op: "feedback", id: second.id, useful: true });
 await engine.invoke("CB_ALPHA", { op: "feedback", id: third.id, useful: false });
 
-check("4 registos activos antes da varredura", active().length === 4, `activos=${active().length}`);
+check("4 active records before the scan", active().length === 4, `active=${active().length}`);
 
 // ---------------------------------------------------------------------------
 // 1. Dry-run: reports the group, writes nothing
 // ---------------------------------------------------------------------------
 const dry = await engine.invoke("CB_ALPHA", { op: "admin", action: "dedupe", args: {} });
-check("dry-run encontra 1 grupo", Array.isArray(dry.groups) && dry.groups.length === 1, JSON.stringify(dry.groups));
-check("dry-run aponta 2 reformas", dry.groups?.[0]?.retired?.length === 2, JSON.stringify(dry.groups?.[0]));
-check("dry-run não escreve", active().length === 4, `activos=${active().length}`);
+check("dry-run finds 1 group", Array.isArray(dry.groups) && dry.groups.length === 1, JSON.stringify(dry.groups));
+check("dry-run points at 2 retirements", dry.groups?.[0]?.retired?.length === 2, JSON.stringify(dry.groups?.[0]));
+check("dry-run writes nothing", active().length === 4, `active=${active().length}`);
 
 // ---------------------------------------------------------------------------
 // 2. Apply: one survivor, two retired, counters summed
 // ---------------------------------------------------------------------------
 const applied = await engine.invoke("CB_ALPHA", { op: "admin", action: "dedupe", args: { apply: true } });
-check("apply devolve ok", applied.ok === true, JSON.stringify(applied));
-check("sobra 1 registo activo do texto repetido", active().length === 2, `activos=${active().length}`);
+check("apply returns ok", applied.ok === true, JSON.stringify(applied));
+check("1 active record of the repeated text remains", active().length === 2, `active=${active().length}`);
 
-const survivor = active().find((record) => record.text.trim().toUpperCase().includes("CHAVE DO JARVIS"));
-check("sobrevivente tem o feedback somado", survivor?.feedback?.useful === 2 && survivor?.feedback?.useless === 1,
+const survivor = active().find((record) => record.text.trim().toUpperCase().includes("JARVIS KEY"));
+check("the survivor has the summed feedback",
+  survivor?.feedback?.useful === 2 && survivor?.feedback?.useless === 1,
   JSON.stringify(survivor?.feedback));
 
 const retired = records().filter((record) => typeof record.retiredAt === "string");
-check("2 reformados", retired.length === 2, `reformados=${retired.length}`);
-check("os reformados apontam o sobrevivente",
+check("2 retired records", retired.length === 2, `retired=${retired.length}`);
+check("the retired ones point at the survivor",
   retired.every((record) => record.meta?.absorbedInto === survivor?.id),
   JSON.stringify(retired.map((record) => record.meta)));
 
@@ -91,24 +92,24 @@ check("os reformados apontam o sobrevivente",
 // ---------------------------------------------------------------------------
 const snapshot = JSON.stringify(records());
 const again = await engine.invoke("CB_ALPHA", { op: "admin", action: "dedupe", args: { apply: true } });
-check("segunda passagem não encontra grupos", Array.isArray(again.groups) && again.groups.length === 0,
+check("the second pass finds no groups", Array.isArray(again.groups) && again.groups.length === 0,
   JSON.stringify(again.groups));
-check("segunda passagem não altera o ficheiro", JSON.stringify(records()) === snapshot, "ficheiro mudou");
+check("the second pass does not change the file", JSON.stringify(records()) === snapshot, "file changed");
 
 // ---------------------------------------------------------------------------
 // 4. --ns filter: another namespace is left alone
 // ---------------------------------------------------------------------------
-await engine.invoke("CB_BETA", { op: "store", text: "Duplicado no Beta." });
-await engine.invoke("CB_BETA", { op: "store", text: "Duplicado no Beta." });
+await engine.invoke("CB_BETA", { op: "store", text: "Duplicate in Beta." });
+await engine.invoke("CB_BETA", { op: "store", text: "Duplicate in Beta." });
 const betaBefore = readFileSync(join(ROOT, "agents", "CB_BETA", "memories.json"), "utf8");
-const filtered = await engine.invoke("CB_ALPHA", {
+await engine.invoke("CB_ALPHA", {
   op: "admin",
   action: "dedupe",
   args: { apply: true, ns: "agent:CB_ALPHA" },
 });
-check("filtro --ns não toca noutro espaço",
+check("the --ns filter leaves another space untouched",
   readFileSync(join(ROOT, "agents", "CB_BETA", "memories.json"), "utf8") === betaBefore,
-  "o espaço do CB_BETA mudou");
+  "the CB_BETA space changed");
 
 console.log(failures === 0 ? "DEDUPE OK" : `DEDUPE FAILED (${failures})`);
 process.exitCode = failures === 0 ? 0 : 1;

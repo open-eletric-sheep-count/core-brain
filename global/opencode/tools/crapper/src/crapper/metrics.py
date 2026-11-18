@@ -1,3 +1,4 @@
+import math
 """Write the crap4clj snapshot uml-viewer reads."""
 
 from pathlib import Path
@@ -15,7 +16,7 @@ def _edn_string(value: str) -> str:
 
 
 def _edn_number(value: float) -> str:
-    text = f"{value:.4f}".rstrip("0").rstrip(".")
+    text = f"{math.floor(value * 10_000) / 10_000:.4f}".rstrip("0").rstrip(".")
     if "." not in text:
         text += ".0"
     return text

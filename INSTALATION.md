@@ -322,7 +322,7 @@ environment variables. The file installer does not change your shell profile or
 the environment of an already running OpenCode process.
 
 Re-run the same command to update. Identical files are left untouched. Every
-changed existing file receives an adjacent `.oesc-backup-TIMESTAMP-ID` copy;
+changed existing file receives **no** copy: the installer keeps no backups at all — the repository is the archive, and a replaced file is one `git show` away;
 configuration is validated before writing. File-write errors restore the
 previous written files; a separately requested npm runtime installation is not
 part of that file transaction. Backups may contain your existing configuration;

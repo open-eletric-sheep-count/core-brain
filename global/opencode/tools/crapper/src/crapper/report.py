@@ -1,16 +1,17 @@
+import math
 from crapper.model import Entry
 
 
 def _format_coverage(coverage: float | None) -> str:
     if coverage is None:
         return "  N/A "
-    return f"{coverage:5.1f}%"
+    return f"{math.floor(coverage * 10) / 10:5.1f}%"
 
 
 def _format_crap(score: float | None) -> str:
     if score is None:
         return "     N/A"
-    return f"{score:8.1f}"
+    return f"{math.floor(score * 10) / 10:8.1f}"
 
 
 def format_report(entries: list[Entry]) -> str:

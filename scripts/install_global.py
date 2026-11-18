@@ -3,7 +3,6 @@
 
 import argparse
 import copy
-from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -14,7 +13,6 @@ import subprocess
 import sys
 import tempfile
 import tomllib
-from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 STATUS = "core-brain: original OpenCode automatic layer"
@@ -123,6 +121,16 @@ def merged_policy(path, host, source, agents):
     rows = policy.setdefault("agents", [])
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
         raise ValueError("Memory policy agents must be an array of objects")
+    # The model choice travels with the installation: a machine that never had it (fresh install,
+    # recreated config) must not fall back to a model whose index is not the one on disk — that is
+    # the STALE_INDEX loop of 2026-11-18. The value comes from the repository template, so there is
+    # one source of truth.
+    if not isinstance(policy.get("embedModel"), str) or policy.get("embedModel") == "":
+        template = Path(__file__).resolve().parent.parent / "global/opencode/plugins/core-brain/config.json"
+        if template.is_file():
+            value = read_object(template).get("embedModel")
+            if isinstance(value, str) and value:
+                policy["embedModel"] = value
     names = [row.get("name") for row in rows]
     if len(names) != len(set(names)):
         raise ValueError("Memory policy contains duplicate agent identities")
@@ -407,29 +415,16 @@ def apply(changes, target_root):
         else None
         for path in changes
     }
-    stamp = (
-        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
-    )
     written = []
     try:
         for path, data in changes.items():
             old = before[path]
-            # Conteúdo igual não se toca. Reescrever tudo a cada instalação muda datas, enche a
-            # pasta de backups (-oesc-backup-) e faz o OpenCode recarregar o servidor — e é no
-            # recarregamento que os agentes se perdem (defeito relatado pelo USER a 2026-11-12).
+            # Same content is not touched. Rewriting everything on every install bumps dates and
+            # makes OpenCode reload the server — and it is during the reload that the agents get
+            # lost (defect reported by the USER on 2026-11-12).
             if old is not None and old[0] == data:
                 continue
-            if old is not None:
-                # Os backups viviam DENTRO da pasta de config — e o OpenCode vigia essa pasta:
-                # cada instalação criava ficheiros novos e provocava recarregamento. Passam a viver
-                # no estado do core-brain, fora do alcance do vigia.
-                try:
-                    destino = Path.home() / ".local/state/core-brain/backups" / stamp
-                    alvo = destino / Path(path).resolve().relative_to(Path(target_root).resolve())
-                    alvo.parent.mkdir(parents=True, exist_ok=True)
-                    atomic_write(alvo, *old)
-                except Exception:
-                    atomic_write(path.with_name(path.name + ".oesc-backup-" + stamp), *old)
+            # No backup at all (USER, 2026-11-18): the repository is the archive.
             mode = (
                 old[1]
                 if old is not None

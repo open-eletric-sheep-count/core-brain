@@ -262,7 +262,9 @@ const TOOL_DESCRIPTION =
   "most-recent-first when no `query` is given and ranked by meaning by the same " +
   "hybrid search when one is; promote — write a new memory derived from a " +
   "readable episode (carrying `derivedFrom`) and list it in the episode's " +
-  "`engramIds`. The calling agent's identity is " +
+  "`engramIds`; a conclusion that is already an ACTIVE memory of this agent is " +
+  "REFUSED — the original stays and the new one is not created (retire it with " +
+  "`forget` to reuse the text). The calling agent's identity is " +
   "taken from the running session — it is NOT an input field and cannot " +
   "be supplied or impersonated.";
 

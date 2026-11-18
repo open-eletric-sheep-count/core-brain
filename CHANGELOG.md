@@ -5,6 +5,22 @@ Newest on top.
 
 ## [Unreleased]
 
+### Removed — 2026-11-18 (backups do instalador)
+
+- **O instalador não cria cópias nenhumas.** Decisão do USER: *«eu controlo tudo por
+  git — primeiro altero no diretório do git, comito e faço a cópia; os anteriores estão todos no meu
+  git, não preciso de backup»*. O bloco que escrevia a versão anterior (no estado do core-brain e, em
+  fallback, ao lado do ficheiro) foi removido de `scripts/install_global.py`; `before` fica **apenas**
+  para o rollback em memória quando uma escrita falha a meio.
+- **Limpeza executada:** **605** ficheiros `*.oesc-backup-*` em `~/.config` removidos, verificação
+  posterior = **0**. As 19 cópias em `~/.local/state/core-brain/backups/` **não** foram tocadas
+  (ficam fora da pasta de configuração; decisão pendente).
+- **Testes ajustados:** `test_install.py` passou a afirmar a **ausência** de cópias (antes afirmava a
+  presença) e a lista de skills do codex foi actualizada (`clean-code-mode`). As cópias do motor em
+  `global/codex/adapters/core-brain/` foram sincronizadas com `global/opencode/plugins/core-brain/`
+  (`index.ts`, `store.ts`, `types.ts`, `engine/*.ts`) — estavam atrasadas pelas alterações de hoje.
+- Provas: `python3 -m unittest discover -s tests -p "test_install.py"` → **20 testes, OK** (1 skip).
+
 ### Changed — 2026-11-18 (nomes das skills)
 
 - **`batman-e-robin` → `batman-and-robin` em todas as referências vivas.** O repositório instalava a

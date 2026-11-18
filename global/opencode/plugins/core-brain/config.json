@@ -1,7 +1,20 @@
 {
+  "embedModel": "multilingual-minilm",
   "agents": [
-    { "name": "CB_ALPHA", "hasGlobalAccess": true, "private": false },
-    { "name": "CB_BETA", "hasGlobalAccess": true, "private": true },
-    { "name": "CB_GAMMA", "hasGlobalAccess": false, "private": true }
+    {
+      "name": "CB_ALPHA",
+      "hasGlobalAccess": true,
+      "private": false
+    },
+    {
+      "name": "CB_BETA",
+      "hasGlobalAccess": true,
+      "private": true
+    },
+    {
+      "name": "CB_GAMMA",
+      "hasGlobalAccess": false,
+      "private": true
+    }
   ]
 }

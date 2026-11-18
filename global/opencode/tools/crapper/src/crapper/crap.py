@@ -1,3 +1,4 @@
+import math
 """CRAP formula shared by crap4clj, crap4java, and crap4go."""
 
 from crapper.model import Entry, Function
@@ -18,9 +19,14 @@ def crap_score(complexity: int, coverage_pct: float | None) -> float | None:
 
 
 def round_metric(value: float | None) -> float | None:
+    """Truncate to 4 decimals — rounding is ALWAYS DOWN (USER, 2026-11-18).
+
+    Rounding up would flatter the number: 99.96% would print as 100.0% and a score could cross a
+    threshold it never reached. Down is the conservative, honest direction.
+    """
     if value is None:
         return None
-    return round(float(value), 4)
+    return math.floor(float(value) * 10_000) / 10_000
 
 
 def make_entry(function: Function, coverage: float | None) -> Entry:

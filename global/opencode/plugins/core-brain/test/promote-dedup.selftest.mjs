@@ -1,13 +1,13 @@
 // test/promote-dedup.selftest.mjs — a duplicate `promote` must not create a second memory.
 //
-// USER decision (2026-11-18): "a original fica, a nova não pode ser criada". Promoting an episode
-// whose conclusion is already an ACTIVE memory of the caller is REFUSED with an error — not silently
-// duplicated, not silently merged.
+// USER decision (2026-11-18): "the original stays, the new one may not be created" (translated).
+// Promoting an episode whose conclusion is already an ACTIVE memory of the caller is REFUSED with
+// an error — not silently duplicated, not silently merged.
 //
 // Rule under test: in the caller's own namespace, if an ACTIVE record has the same NORMALISED text
 // (trimmed, whitespace collapsed, case folded), `promote` throws and writes nothing: no record, no
-// vector, no `engramIds` entry. A retired record is not a duplicate — retiring means "not in use", so
-// the conclusion may be promoted again.
+// vector, no `engramIds` entry. A retired record is not a duplicate — retiring means "not in use",
+// so the conclusion may be promoted again.
 //
 // Fixture embedder: deterministic, no model download.
 
@@ -52,15 +52,15 @@ const check = (name, ok, detail) => {
 // ---------------------------------------------------------------------------
 // Arrange: two episodes, one conclusion
 // ---------------------------------------------------------------------------
-const CONCLUSIONS = "A chave do Jarvis vive em ~/.config/jarvis-client/config.json.";
+const CONCLUSIONS = "The Jarvis key lives in ~/.config/jarvis-client/config.json.";
 
 const firstEpisode = await engine.invoke("CB_ALPHA", {
   op: "episode",
-  summary: "Descoberta a localização da chave do Jarvis.",
+  summary: "Found where the Jarvis key lives.",
 });
 const secondEpisode = await engine.invoke("CB_ALPHA", {
   op: "episode",
-  summary: "A mesma descoberta foi repetida numa sessão seguinte.",
+  summary: "The same discovery was repeated in a later session.",
 });
 
 // ---------------------------------------------------------------------------
@@ -71,8 +71,8 @@ const first = await engine.invoke("CB_ALPHA", {
   episodeId: firstEpisode.id,
   text: CONCLUSIONS,
 });
-check("primeiro promote devolve memoryId", typeof first.memoryId === "string", JSON.stringify(first));
-check("um registo activo depois do primeiro promote", activeMemories().length === 1, `activos=${activeMemories().length}`);
+check("first promote returns a memoryId", typeof first.memoryId === "string", JSON.stringify(first));
+check("one active record after the first promote", activeMemories().length === 1, `active=${activeMemories().length}`);
 
 // ---------------------------------------------------------------------------
 // 2. The SAME episode, same text ⇒ refused, nothing written
@@ -83,12 +83,12 @@ try {
 } catch (error) {
   secondError = String((error && error.message) || error);
 }
-check("segundo promote do MESMO episódio é recusado", secondError !== null, "não lançou erro");
-check("nada foi escrito (1 registo activo)", activeMemories().length === 1, `activos=${activeMemories().length}`);
+check("second promote of the SAME episode is refused", secondError !== null, "no error was thrown");
+check("nothing was written (1 active record)", activeMemories().length === 1, `active=${activeMemories().length}`);
 
 const firstEpisodeAfter = readJson(EPISODES).find((episode) => episode.id === firstEpisode.id);
 check(
-  "engramIds não cresceu",
+  "engramIds did not grow",
   Array.isArray(firstEpisodeAfter?.engramIds) && firstEpisodeAfter.engramIds.length === 1,
   JSON.stringify(firstEpisodeAfter?.engramIds),
 );
@@ -102,8 +102,8 @@ try {
 } catch (error) {
   otherError = String((error && error.message) || error);
 }
-check("mesmo texto de outro episódio é recusado", otherError !== null, "não lançou erro");
-check("continua a haver 1 registo activo", activeMemories().length === 1, `activos=${activeMemories().length}`);
+check("same text from another episode is refused", otherError !== null, "no error was thrown");
+check("still exactly 1 active record", activeMemories().length === 1, `active=${activeMemories().length}`);
 
 // ---------------------------------------------------------------------------
 // 4. A DIFFERENT conclusion is not blocked
@@ -111,10 +111,10 @@ check("continua a haver 1 registo activo", activeMemories().length === 1, `activ
 const different = await engine.invoke("CB_ALPHA", {
   op: "promote",
   episodeId: secondEpisode.id,
-  text: "O glossário de Ravenloft tem 17 termos.",
+  text: "The Ravenloft glossary has 17 terms.",
 });
-check("texto diferente passa", typeof different.memoryId === "string", JSON.stringify(different));
-check("passa a haver 2 registos activos", activeMemories().length === 2, `activos=${activeMemories().length}`);
+check("a different text goes through", typeof different.memoryId === "string", JSON.stringify(different));
+check("now there are 2 active records", activeMemories().length === 2, `active=${activeMemories().length}`);
 
 // ---------------------------------------------------------------------------
 // 5. Retiring the first memory frees the text again
@@ -126,8 +126,8 @@ try {
 } catch (error) {
   afterForgetError = String((error && error.message) || error);
 }
-check("texto reformado pode ser promovido outra vez", afterForgetError === null, afterForgetError);
-check("volta a haver 2 registos activos", activeMemories().length === 2, `activos=${activeMemories().length}`);
+check("a retired text can be promoted again", afterForgetError === null, afterForgetError);
+check("back to 2 active records", activeMemories().length === 2, `active=${activeMemories().length}`);
 
 console.log(failures === 0 ? "DEDUP OK" : `DEDUP FAILED (${failures})`);
 process.exitCode = failures === 0 ? 0 : 1;
