@@ -17,6 +17,8 @@ import type {
   CoreMemoryResult,
   DoctorCheck,
   DoctorResult,
+  DreamRecord,
+  DreamResult,
   Engine,
   EngineOptions,
   Episode,
@@ -24,7 +26,6 @@ import type {
   FeedbackResult,
   ForgetResult,
   MemoryRecord,
-  PromoteResult,
   ReceiptResult,
   RecallHit,
   RecallMode,
@@ -203,6 +204,13 @@ function episodesFileFor(root: string, ns: Namespace): string {
     : join(root, "agents", ns.name, "episodes.json");
 }
 
+/** `dreams.json` beside the episodes: `global/dreams.json` | `agents/<name>/dreams.json`. */
+function dreamsFileFor(root: string, ns: Namespace): string {
+  return ns.kind === "global"
+    ? join(root, "global", "dreams.json")
+    : join(root, "agents", ns.name, "dreams.json");
+}
+
 /** §4: `vectors/global/index.json` | `vectors/<name>/index.json`. */
 function vectorsFileFor(root: string, ns: Namespace): string {
   return join(root, "vectors", ns.kind === "global" ? "global" : ns.name, "index.json");
@@ -228,6 +236,32 @@ function readRecords(file: string): MemoryRecord[] {
 function readEpisodes(file: string): Episode[] {
   const parsed = readJsonOrNull(file);
   return Array.isArray(parsed) ? (parsed as Episode[]) : [];
+}
+
+
+/**
+ * Append-only dream log (USER, 2026-11-19): one line per event — START, END or ERROR — so a dream
+ * can be followed from outside the store. It lives at the data root, not inside a namespace.
+ */
+function appendDreamLog(root: string, line: string): void {
+  try {
+    const file = join(root, "logs", "dream.log");
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `[${new Date().toISOString()}] ${line}\n`, { flag: "a" });
+  } catch {
+    // Logging is advisory: a failed line never breaks a dream.
+  }
+}
+
+/** The dreams on disk; a missing or unreadable file is an empty list, never a throw. */
+function readDreams(file: string): DreamRecord[] {
+  if (!existsSync(file)) return [];
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+    return Array.isArray(parsed) ? (parsed as DreamRecord[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -446,6 +480,54 @@ function readEmbedModel(configPath: string | null): string | undefined {
   }
 }
 
+/**
+ * `dreamEpisodesPerPass` from `config.json` (USER, 2026-11-19): the ceiling on how many episodes a
+ * single dream reads. It is a POLICY, not a call argument — the skill respects it. 0 = no ceiling.
+ */
+function readDreamEpisodesPerPass(configPath: string | null): number {
+  if (configPath === null || !existsSync(configPath)) return 5;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamEpisodesPerPass?: unknown };
+    const value = parsed.dreamEpisodesPerPass;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
+    return Math.floor(value);
+  } catch {
+    return 5;
+  }
+}
+
+/**
+ * `dreamIdleHours` from `config.json` (USER, 2026-11-19): the rest the scheduler must respect before
+ * a dream. Default 4; the skill compares it with the idle time the scheduler passes.
+ */
+function readDreamIdleHours(configPath: string | null): number {
+  if (configPath === null || !existsSync(configPath)) return 4;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamIdleHours?: unknown };
+    const value = parsed.dreamIdleHours;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 4;
+    return value;
+  } catch {
+    return 4;
+  }
+}
+
+/**
+ * `dreamPerDay` from `config.json` (USER, 2026-11-19). Default 1: a store that dreams every hour
+ * turns consolidation into a factory. `0` disables dreaming entirely; a manual `force` still works.
+ */
+function readDreamPerDay(configPath: string | null): number {
+  if (configPath === null || !existsSync(configPath)) return 1;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamPerDay?: unknown };
+    const value = parsed.dreamPerDay;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 1;
+    return Math.floor(value);
+  } catch {
+    return 1;
+  }
+}
+
 function loadPolicies(configPath: string | null): AgentPolicy[] {
   if (!configPath) return [];
 
@@ -549,7 +631,7 @@ type ForgetRequest = Extract<CoreMemoryRequest, { op: "forget" }>;
 type FeedbackRequest = Extract<CoreMemoryRequest, { op: "feedback" }>;
 type EpisodeRequest = Extract<CoreMemoryRequest, { op: "episode" }>;
 type TimelineRequest = Extract<CoreMemoryRequest, { op: "timeline" }>;
-type PromoteRequest = Extract<CoreMemoryRequest, { op: "promote" }>;
+type DreamRequest = Extract<CoreMemoryRequest, { op: "dream" }>;
 
 /** One namespace loaded during a recall scan, with its records in memory. */
 interface ScannedNamespace {
@@ -876,6 +958,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
         rrf: Number(hit.rrf.toFixed(6)),
         legs: hit.legs,
         retrievals: found.record.retrievals,
+        ...(found.record.meta && Object.keys(found.record.meta).length > 0
+          ? { meta: found.record.meta }
+          : {}),
       });
     }
 
@@ -1092,77 +1177,153 @@ export function createEngine(options: EngineOptions = {}): Engine {
   const normalizeMemoryText = (text: string): string =>
     text.trim().replace(/\s+/g, " ").toLowerCase();
 
+  /** `DR-<epoch ms>-<4 chars>` — the same readable shape the episodes use. */
+  function dreamId(): string {
+    return `DR-${Date.now()}-${randomUUID().slice(0, 4)}`;
+  }
+
   /**
-   * `promote` (§10.2/§10.3/§10.5, T2): write a NEW memory in the caller's own
-   * namespace carrying `meta.derivedFrom = <episodeId>`, then append that
-   * memory's id to the episode's `engramIds`. Nothing is copied from the
-   * episode — the caller supplies `text`. The episode must be readable by the
-   * caller (the same read matrix as `feedback`).
+   * `dream` (USER, 2026-11-19): episodes in, memories out.
    *
-   * <p>A DUPLICATE is refused (USER, 2026-11-18): when an ACTIVE memory of the caller's own namespace
-   * already carries the same normalised text, the second promote throws and writes nothing — no
-   * record, no vector, no `engramIds` entry. Retiring the original with `forget` frees the text again;
-   * a retired record is not a duplicate (§ "the original stays, the new one may not be created").
+   * <p>With no payload it LISTS the episodes still waiting — those without `dreamedAt`, oldest
+   * first. With `episodeIds` and `memories` it performs the pass: every memory is stored with
+   * `meta.derivedFrom` (the first episode) and `meta.dreams` (this dream, with its DATE), each
+   * episode is marked `dreamedAt` and gains the new ids in `engramIds`, and one dream record links
+   * both sides. Nothing is written unless the whole pass is valid: an unknown episode, an already
+   * dreamed episode or a duplicate memory refuses the call BEFORE the first write.
    */
-  async function promoteOp(policy: AgentPolicy, request: PromoteRequest): Promise<PromoteResult> {
-    const episodeId = request.episodeId;
-    if (typeof episodeId !== "string" || episodeId.trim() === "") {
-      throw new Error("core_memory promote: 'episodeId' must be a non-empty string");
-    }
-    if (typeof request.text !== "string" || request.text.trim() === "") {
-      throw new Error("core_memory promote: 'text' must be a non-empty string");
+  async function dreamOp(policy: AgentPolicy, request: DreamRequest): Promise<DreamResult> {
+    const own = authorizeWrite(policy, "self", lookup);
+    const episodesFile = episodesFileFor(root, own);
+    const episodes = readEpisodes(episodesFile);
+
+    const ids = Array.isArray(request.episodeIds) ? request.episodeIds.filter((id) => typeof id === "string") : [];
+    const wanted = Array.isArray(request.memories) ? request.memories : [];
+
+    // Listing mode: nothing to write, just what is waiting.
+    if (ids.length === 0 && wanted.length === 0) {
+      const waiting = episodes
+        .filter((episode) => typeof episode.dreamedAt !== "string")
+        .sort((a, b) => String(a.at).localeCompare(String(b.at)));
+      return {
+        ok: true,
+        episodes: waiting,
+        idleHoursRequired: readDreamIdleHours(existsSync(configPath) ? configPath : null),
+        episodesPerPass: readDreamEpisodesPerPass(existsSync(configPath) ? configPath : null),
+      };
     }
 
-    // The episode must be READABLE by the caller (§10.6): search the readable
-    // union; a private namespace outside it hides the episode.
-    const readable = authorizeRead(policy, null, policies, lookup);
-    let foundNs: Namespace | null = null;
-    let foundEpisodes: Episode[] | null = null;
-    for (const ns of readable) {
-      const episodes = readEpisodes(episodesFileFor(root, ns));
-      if (episodes.some((episode) => String(episode.id) === episodeId)) {
-        foundNs = ns;
-        foundEpisodes = episodes;
-        break;
+    if (ids.length === 0 || wanted.length === 0) {
+      const message = "core_memory dream: pass 'episodeIds' AND 'memories', or neither (listing)";
+      appendDreamLog(root, `ERROR ${message}`);
+      throw new Error(message);
+    }
+    for (const memory of wanted) {
+      if (typeof memory?.text !== "string" || memory.text.trim() === "") {
+        throw new Error("core_memory dream: every memory needs a non-empty 'text'");
       }
     }
-    if (!foundNs || !foundEpisodes) {
-      throw new Error(
-        `core_memory promote: agent '${policy.name}' cannot promote episode '${episodeId}': ` +
-          `the episode is not readable by '${policy.name}' (private namespace or unknown id)`,
-      );
+
+    const selected: Episode[] = [];
+    for (const id of ids) {
+      const episode = episodes.find((candidate) => String(candidate.id) === id);
+      if (!episode) {
+        const message = `core_memory dream: unknown episode '${id}' in '${nsLabel(own)}'`;
+        appendDreamLog(root, `ERROR ${message}`);
+        throw new Error(message);
+      }
+      if (typeof episode.dreamedAt === "string") {
+        const message =
+          `core_memory dream: episode '${id}' was already dreamed at ${episode.dreamedAt} — ` +
+          "a dreamed episode is never proposed again";
+        appendDreamLog(root, `ERROR ${message}`);
+        throw new Error(message);
+      }
+      selected.push(episode);
     }
 
-    // A duplicate conclusion is refused: the original stays, the new one is not created.
-    const ownNamespace = authorizeWrite(policy, "self", lookup);
-    const wanted = normalizeMemoryText(request.text);
-    const duplicate = readRecords(recordsFileFor(root, ownNamespace)).find(
-      (record) => typeof record.retiredAt !== "string" && normalizeMemoryText(record.text) === wanted,
+    // A duplicate is not an error and not a second record: it REINFORCES the memory that already
+    // says it (USER, 2026-11-19) — the dream is added to its list, its counters go up, and the
+    // episode is still marked as dreamed. Only a retired memory is out of the way.
+    const perPass = readDreamEpisodesPerPass(existsSync(configPath) ? configPath : null);
+    if (perPass > 0 && ids.length > perPass) {
+      const message =
+        `core_memory dream: ${ids.length} episodes in one pass — the config allows ${perPass} ` +
+        "('dreamEpisodesPerPass'); split it";
+      appendDreamLog(root, `ERROR ${message}`);
+      throw new Error(message);
+    }
+
+    const allRecords = readRecords(recordsFileFor(root, own));
+    const activeRecords = allRecords.filter((record) => typeof record.retiredAt !== "string");
+
+    // Daily ceiling (USER, 2026-11-19): consolidation is not a treadmill.
+    const perDay = readDreamPerDay(existsSync(configPath) ? configPath : null);
+    const today = new Date().toISOString().slice(0, 10);
+    const dreamsSoFar = readDreams(dreamsFileFor(root, own)).filter((d) => String(d.at).slice(0, 10) === today);
+    if (request.force !== true && (perDay === 0 || dreamsSoFar.length >= perDay)) {
+      const message =
+        `core_memory dream: daily limit reached (${dreamsSoFar.length}/${perDay} today) — ` +
+        "pass force:true only for a deliberate manual run";
+      appendDreamLog(root, `ERROR ${message}`);
+      throw new Error(message);
+    }
+
+    const dream = dreamId();
+    const at = new Date().toISOString();
+    appendDreamLog(root, `START ${dream} episodes=${selected.length} memories=${wanted.length}`);
+    const created: string[] = [];
+    const reinforced: string[] = [];
+    for (const memory of wanted) {
+      const key = normalizeMemoryText(memory.text);
+      const clash = activeRecords.find((record) => normalizeMemoryText(record.text) === key);
+      if (clash) {
+        clash.retrievals = (clash.retrievals ?? 0) + 1;
+        const feedback = clash.feedback ?? { useful: 0, useless: 0 };
+        clash.feedback = { useful: (feedback.useful ?? 0) + 1, useless: feedback.useless ?? 0 };
+        const dreams = Array.isArray(clash.meta?.dreams) ? (clash.meta?.dreams as unknown[]) : [];
+        clash.meta = { ...(clash.meta ?? {}), dreams: [...dreams, { id: dream, at }] };
+        clash.updatedAt = at;
+        reinforced.push(clash.id);
+        continue;
+      }
+      const meta: Record<string, unknown> = {
+        ...(memory.meta ?? {}),
+        derivedFrom: selected[0].id,
+        dreams: [{ id: dream, at }],
+      };
+      const stored = await storeOp(policy, { op: "store", text: memory.text, target: "self", meta });
+      created.push(stored.id);
+    }
+    if (reinforced.length > 0) writeFileAtomic(recordsFileFor(root, own), allRecords);
+
+    for (const episode of selected) {
+      episode.dreamedAt = at;
+      const engramIds = Array.isArray(episode.engramIds) ? episode.engramIds : [];
+      episode.engramIds = [
+        ...engramIds,
+        ...[...created, ...reinforced].filter((id) => !engramIds.includes(id)),
+      ];
+    }
+    writeFileAtomic(episodesFile, episodes);
+
+    const dreamsFile = dreamsFileFor(root, own);
+    const dreams = readDreams(dreamsFile);
+    const record: DreamRecord = {
+      id: dream,
+      at,
+      episodes: selected.map((e) => e.id),
+      memories: created,
+      ...(reinforced.length > 0 ? { reinforced } : {}),
+    };
+    dreams.push(record);
+    writeFileAtomic(dreamsFile, dreams);
+
+    appendDreamLog(
+      root,
+      `END ${dream} memories=${created.join(",") || "-"} reinforced=${reinforced.join(",") || "-"}`,
     );
-    if (duplicate) {
-      throw new Error(
-        `core_memory promote: this conclusion is already memory '${duplicate.id}' in '${nsLabel(ownNamespace)}' — ` +
-          "the new one was not created (retire it with forget, or promote a different text)",
-      );
-    }
-
-    // The memory follows the write matrix (own space) and carries derivedFrom;
-    // `store` embeds before writing, so a failing embedder leaves no orphan.
-    const meta: Record<string, unknown> = { derivedFrom: episodeId };
-    if (Array.isArray(request.tags) && request.tags.length > 0) meta.tags = request.tags.slice();
-    const stored = await storeOp(policy, { op: "store", text: request.text, target: "self", meta });
-
-    // Append the memory id to the episode's engramIds; every other field stays
-    // exactly as stored (the episode is the record of truth, §10.4).
-    const episode = foundEpisodes.find((candidate) => String(candidate.id) === episodeId);
-    if (!episode) {
-      throw new Error(`core_memory promote: episode '${episodeId}' vanished mid-promote`);
-    }
-    const engramIds = Array.isArray(episode.engramIds) ? episode.engramIds : [];
-    episode.engramIds = engramIds.includes(stored.id) ? engramIds : [...engramIds, stored.id];
-    writeFileAtomic(episodesFileFor(root, foundNs), foundEpisodes);
-
-    return { ok: true, episodeId, memoryId: stored.id };
+    return { ok: true, dreamId: dream, memories: created };
   }
 
   /**
@@ -1812,7 +1973,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
     if (request.op === "feedback") return feedbackOp(policy, request);
     if (request.op === "episode") return episodeOp(policy, request);
     if (request.op === "timeline") return timelineOp(policy, request);
-    if (request.op === "promote") return promoteOp(policy, request);
+    if (request.op === "dream") return dreamOp(policy, request);
     if (request.op === "status") return statusOp(request);
     if (request.op === "receipt") return receiptOp(request);
     if (request.op === "doctor") return doctorOp(request);

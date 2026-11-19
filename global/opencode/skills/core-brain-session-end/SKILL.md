@@ -78,7 +78,7 @@ core_memory({ op: "episode", summary: "<one or two sentences: what this session 
 ```
 
 - Keep the summary factual — what happened, not how it felt.
-- Episodes are searchable by meaning later (`op: "timeline"`); a memory can be derived from an episode with `op: "promote"`.
+- Episodes are searchable by meaning later (`op: "timeline"`); a memory is derived from episodes with the `dream` op (the `sleep` skill runs it).
 
 ## Quality bar
 

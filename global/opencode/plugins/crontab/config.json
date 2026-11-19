@@ -1,0 +1,25 @@
+{
+  "enabled": false,
+  "tickSeconds": 30,
+  "schedulerPrefixes": [
+    "sleep-",
+    "session-",
+    "crontab:"
+  ],
+  "schedules": [
+    {
+      "id": "test-ok",
+      "everyMinutes": 1,
+      "enabled": false,
+      "title": "sleep-{timestamp}",
+      "prompt": "Answer with the single word OK. Do not use tools."
+    },
+    {
+      "id": "sleep",
+      "everyMinutes": 60,
+      "enabled": false,
+      "title": "sleep-{timestamp}",
+      "prompt": "Load the skill `sleep` with the skill tool and follow it. The machine has been idle for {idleHours} hours. If that is below 4, do nothing and end. Do not touch anything else."
+    }
+  ]
+}

@@ -76,8 +76,42 @@ export interface Episode {
   sessionId?: string;
   channel?: string;
   tags?: string[];
-  /** Set by `promote` — the memories that came out of this episode. */
+  /** Set by `dream` — the memories that came out of this episode. */
   engramIds?: string[];
+  /**
+   * Set by `dream` — logical removal (USER, 2026-11-19): the episode stays on disk, but no future
+   * dream proposes it again.
+   */
+  dreamedAt?: string;
+}
+
+/**
+ * One dream: the pass that turned episodes into memories (USER, 2026-11-19). It links both ways —
+ * the episodes it read and the memories it created — and carries the DREAM date, which is the date
+ * a memory reports when it says it was dreamed.
+ */
+export interface DreamRecord {
+  id: string;
+  at: string;
+  episodes: string[];
+  /** Memories created by this dream. */
+  memories: string[];
+  /** Memories that already existed and were REINFORCED instead of duplicated (USER, 2026-11-19). */
+  reinforced?: string[];
+}
+
+/** `core_memory({ op: "dream" })` result: the listing, or the dream that was written. */
+export interface DreamResult {
+  ok: true;
+  /** Present when the call listed the episodes to dream (no payload). */
+  episodes?: Episode[];
+  /** The idle threshold the scheduler must respect, read from the config (default 4 hours). */
+  idleHoursRequired?: number;
+  /** How many episodes one dream may read, read from the config (0 = no ceiling). */
+  episodesPerPass?: number;
+  /** Present when the call performed the dream. */
+  dreamId?: string;
+  memories?: string[];
 }
 
 /** `core_memory({ op: "episode" })` result (CONTRACT §10.2). */
@@ -93,13 +127,6 @@ export interface TimelineResult {
   results: Episode[];
   /** Exactly the namespaces consulted, in the `scanned` label format. */
   scanned: string[];
-}
-
-/** `core_memory({ op: "promote" })` result (CONTRACT §10.2). */
-export interface PromoteResult {
-  ok: true;
-  episodeId: string;
-  memoryId: string;
 }
 
 /** `vectors/<ns>/index.json` — real vectors, keyed by record id. */
@@ -136,6 +163,11 @@ export interface RecallHit {
    */
   legs?: { bm25: number | null; vector: number | null };
   retrievals: number;
+  /**
+   * The record's metadata, when it has any — this is where a dreamed memory says it was dreamed
+   * (`meta.dreams` with the dream id and DATE, USER 2026-11-19).
+   */
+  meta?: Record<string, unknown>;
 }
 
 /** `core_memory({ op: "who" })` result. */
@@ -245,7 +277,7 @@ export type CoreMemoryResult =
   | FeedbackResult
   | EpisodeResult
   | TimelineResult
-  | PromoteResult
+  | DreamResult
   | StatusResult
   | DoctorResult
   | ReceiptResult
@@ -256,7 +288,7 @@ export type CoreMemoryResult =
  * §7.1): identity is trusted infrastructure data injected by the tool layer.
  *
  * Tool-facing ops (`core_memory`): `who`, `store`, `recall`, `forget`, `feedback`,
- * `episode`, `timeline`, `promote` (Fatia 3, CONTRACT §10.2).
+ * `episode`, `timeline`, `dream` (Fatia 3, CONTRACT §10.2).
  * Engine-only ops (reached by the MCP through the same `engine.invoke` seam
  * with the admin identity — spec §6/M9): `status`, `doctor`, `receipt`, `admin`.
  */
@@ -284,7 +316,14 @@ export type CoreMemoryRequest =
       /** Identical to `recall`: `"self"` | `"global"` | `"agent:<X>"`; omitted = readable union. */
       from?: NamespaceTarget;
     }
-  | { op: "promote"; episodeId: string; text: string; tags?: string[] }
+  | {
+      op: "dream";
+      /** Omitted with `memories` too: the call only lists the episodes waiting to be dreamed. */
+      episodeIds?: string[];
+      memories?: Array<{ text: string; meta?: Record<string, unknown> }>;
+      /** Bypass the daily dream limit (a deliberate manual run). */
+      force?: boolean;
+    }
   | { op: "status"; ns?: string }
   | { op: "doctor" }
   | { op: "receipt"; ns?: string; days?: number }

@@ -5,6 +5,43 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-11-19 (duplicate in the dream = reinforcement)
+
+- **A duplicate is no longer a refusal — it became REINFORCEMENT** (USER: *«it is a bug, anything that
+  does not generate a reinforcement of the memory that already exists»* (translated)). In `dream`, when the sentence
+  already exists as an active memory, the store **does not create a second copy**: it adds this dream to that
+  memory's list, raises `retrievals` and `feedback.useful`, and marks the episode as dreamed. The dream record
+  now carries `reinforced[]` in addition to `memories[]`; the log closes with `reinforced=`.
+- Real refusals remain: unknown episode, already-dreamed episode and the daily limit.
+- Evidence: `test/dream.selftest.mjs` (23 assertions) — a duplicate reinforces, without a second copy, with the
+  episode marked; the daily limit still refuses and `force` still passes.
+
+### Added — 2026-11-19 (dreams: the step that reads episodes and writes memories)
+
+- **`dream` operation in the store.** USER's design: one **dream record** per pass, carrying `id`,
+  the **dream date**, the **episodes read** and the **memories created**; the memory carries
+  `meta.dreams` = list of `{id, at}` (it may have been dreamed several times, and the date stored is the
+  **dream**'s, not the episode's); the episode gains **`dreamedAt`** (soft deletion) and is no longer
+  proposed. Without a payload, `dream` **lists** the episodes still to dream; with `episodeIds` + `memories`,
+  it runs the pass. All-or-nothing: unknown episode, already-dreamed episode or duplicate memory
+  **refuse the pass before the first write**.
+- **Evidence:** `test/dream.selftest.mjs` — **17/17** (listing only episodes without `dreamedAt`,
+  linking in both directions, `meta.dreams` with a date, `dreamedAt` marked, re-dream refused,
+  duplicate writes no record and does not mark the episode), and suite H of `check.sh`.
+
+### Added — 2026-11-18 (crontab)
+
+- **`crontab` plugin — scheduled prompts, independent of memory.** USER's request: a plugin
+  of its own in the core-brain folder, with a configuration file where each schedule carries
+  **prompt + interval**, to test the mechanism without touching dreams or memory. A cycle
+  checks what is due, **creates the session** (`POST /api/session`) and **sends the prompt**
+  (`POST /api/session/{id}/prompt`); the instant of the last run stays in
+  `~/.local/state/opencode/crontab/state.json`. Guards: off by default, one run per
+  schedule at a time, interval counted from the last run, `tickSeconds` with a floor of 5.
+  - Evidence: `test/schedule.selftest.mjs` **6/6** (the `dueSchedules` rule is pure) and a real trigger
+    — session `ses_e10856432ffe…` created, the agent answered (assistant message, ORACLE, model
+    SGLang), state written with the instant, session deleted at the end.
+
 ### Removed — 2026-11-18 (backups do instalador)
 
 - **O instalador não cria cópias nenhumas.** Decisão do USER: *«eu controlo tudo por

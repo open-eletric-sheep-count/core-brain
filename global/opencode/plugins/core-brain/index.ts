@@ -118,7 +118,7 @@ type CoreMemoryOp =
   | "feedback"
   | "episode"
   | "timeline"
-  | "promote";
+  | "dream";
 const OPS: readonly CoreMemoryOp[] = [
   "who",
   "store",
@@ -127,7 +127,7 @@ const OPS: readonly CoreMemoryOp[] = [
   "feedback",
   "episode",
   "timeline",
-  "promote",
+  "dream",
 ];
 
 const DEBUG_ENV = "CORE_BRAIN_DEBUG";
@@ -260,11 +260,11 @@ const TOOL_DESCRIPTION =
   "when it has global access, with the owner taken from the session; timeline — " +
   "read the episodic diary over the same spaces recall may read, " +
   "most-recent-first when no `query` is given and ranked by meaning by the same " +
-  "hybrid search when one is; promote — write a new memory derived from a " +
-  "readable episode (carrying `derivedFrom`) and list it in the episode's " +
-  "`engramIds`; a conclusion that is already an ACTIVE memory of this agent is " +
-  "REFUSED — the original stays and the new one is not created (retire it with " +
-  "`forget` to reuse the text). The calling agent's identity is " +
+  "hybrid search when one is; dream — with no payload, list the episodes never dreamed " +
+  "(no `dreamedAt`); with `episodeIds` and `memories`, run the dream pass (episodes " +
+  "become memories); a conclusion that is already an ACTIVE memory of this agent is " +
+  "REINFORCED, never duplicated — the original stays and gains this dream. The calling " +
+  "agent's identity is " +
   "taken from the running session — it is NOT an input field and cannot " +
   "be supplied or impersonated.";
 
@@ -282,8 +282,7 @@ const TOOL_SCHEMA: Record<string, unknown> = {
         "recall — search the spaces this agent may read; forget — retire " +
         "a record without deleting it; feedback — record whether a " +
         "readable record was useful; episode — append one dated episodic " +
-        "record (`summary`); timeline — read the episodic diary; promote — " +
-        "write a memory derived from a readable episode.",
+        "record (`summary`); timeline — read the episodic diary.",
     },
     id: {
       type: "string",
@@ -298,8 +297,7 @@ const TOOL_SCHEMA: Record<string, unknown> = {
     text: {
       type: "string",
       description:
-        "store: the memory text to persist (non-empty). promote: the text of " +
-        "the memory derived from the episode (non-empty).",
+        "store: the memory text to persist (non-empty).",
     },
     target: {
       type: "string",
@@ -346,17 +344,38 @@ const TOOL_SCHEMA: Record<string, unknown> = {
       type: "string",
       description: "episode: optional session id to record with the episode.",
     },
-    episodeId: {
-      type: "string",
+    episodeIds: {
+      type: "array",
+      items: { type: "string" },
       description:
-        "promote: the id of a readable episode to derive a memory from (required).",
+        "dream: the episodes to dream. Omit it together with 'memories' to only list the episodes " +
+        "that were never dreamed.",
+    },
+    force: {
+      type: "boolean",
+      description:
+        "dream: bypass the daily limit (deliberate manual run only; the scheduled path never sets it).",
+    },
+    memories: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          text: { type: "string" },
+          meta: { type: "object" },
+        },
+        required: ["text"],
+      },
+      description:
+        "dream: the memories to write from those episodes. Each one is a sentence that must stay " +
+        "true tomorrow; a duplicate REINFORCES the memory that already says it.",
     },
     tags: {
       type: "array",
       items: { type: "string" },
       description:
-        "episode: optional tags stored with the episode; promote: optional tags " +
-        "stored in the memory's metadata; timeline: filter episodes by any of them.",
+        "episode: optional tags stored with the episode; timeline: filter episodes " +
+        "by any of them.",
     },
     since: {
       type: "string",
@@ -529,26 +548,28 @@ function buildRequest(input: unknown): RequestParse {
     };
   }
 
-  if (op === "promote") {
-    const episodeId =
-      typeof record.episodeId === "string" && record.episodeId.trim()
-        ? record.episodeId.trim()
-        : undefined;
-    if (!episodeId) {
-      return { ok: false, error: "promote requires a non-empty string 'episodeId'." };
+  if (op === "dream") {
+    const episodeIds = asStringArray(record.episodeIds);
+    const raw = Array.isArray(record.memories) ? record.memories : undefined;
+    const memories = raw?.map((entry) => {
+      const row = entry as { text?: unknown; meta?: unknown };
+      return {
+        text: typeof row.text === "string" ? row.text : "",
+        ...(row.meta && typeof row.meta === "object"
+          ? { meta: row.meta as Record<string, unknown> }
+          : {}),
+      };
+    });
+    if (memories !== undefined && memories.some((memory) => memory.text.trim() === "")) {
+      return { ok: false, error: "dream: every entry in 'memories' needs a non-empty 'text'." };
     }
-    const text = record.text;
-    if (typeof text !== "string" || text.trim() === "") {
-      return { ok: false, error: "promote requires a non-empty string 'text'." };
-    }
-    const tags = asStringArray(record.tags);
     return {
       ok: true,
       request: {
-        op: "promote",
-        episodeId,
-        text,
-        ...(tags !== undefined ? { tags } : {}),
+        op: "dream",
+        ...(episodeIds !== undefined && episodeIds.length > 0 ? { episodeIds } : {}),
+        ...(memories !== undefined && memories.length > 0 ? { memories } : {}),
+        ...(record.force === true ? { force: true } : {}),
       },
     };
   }

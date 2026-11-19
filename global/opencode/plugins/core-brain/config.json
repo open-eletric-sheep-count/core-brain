@@ -1,4 +1,7 @@
 {
+  "dreamEpisodesPerPass": 5,
+  "dreamIdleHours": 4,
+  "dreamPerDay": 1,
   "embedModel": "multilingual-minilm",
   "agents": [
     {

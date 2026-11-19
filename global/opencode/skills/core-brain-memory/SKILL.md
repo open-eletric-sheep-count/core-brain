@@ -22,7 +22,7 @@ Always. Memory is not a feature you toggle — it is a layer that runs continuou
 - **`store`** — `core_memory({ op: "store", text: "...", target: "self", meta: { type, domain, scope, tags } })`. Use `target: "global"` only for knowledge that belongs to every agent; everything else stays in your namespace (`"self"`, the default). Common `meta` slots: `type` (correction | preference | convention | decision | gotcha | fact), `domain`, `scope`, `tags`.
 - **`feedback`** — `core_memory({ op: "feedback", id: "<id>", useful: true })` (or `false`). Records whether a read record was useful; it feeds the ranking tie-break. Give it on records you actually used or that misled you.
 - **`forget`** — `core_memory({ op: "forget", id: "<id>" })` retires a record without deleting it: it leaves recall, its text stays on disk. Also accepts `query` to retire everything at/above the match threshold.
-- **`episode` / `timeline` / `promote`** — the dated diary: `episode` appends one dated record of *what happened*; `timeline` reads the diary (searchable by meaning); `promote` derives a memory from an episode. Episodes are history; memories are what is known.
+- **`episode` / `timeline` / `dream`** — the dated diary: `episode` appends one dated record of *what happened*; `timeline` reads the diary (searchable by meaning); `dream` turns episodes into memories (the `sleep` skill runs it). Episodes are history; memories are what is known.
 - **`who`** — `core_memory({ op: "who" })` reports your policy when you need to know your access.
 
 ## The Learning Protocol

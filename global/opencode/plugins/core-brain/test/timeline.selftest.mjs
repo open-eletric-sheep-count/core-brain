@@ -241,13 +241,13 @@ await scenario("TL2.c", "isolation: a direct read into a private space is empty 
 });
 
 // ===========================================================================
-// TL5 — promote: memory with derivedFrom, episode gains engramIds (§10.2, AC-TL5)
+// TL5 — dream: memory with derivedFrom, episode gains engramIds and dreamedAt (§10.2, AC-TL5)
 // ===========================================================================
 
-const EP5 = mark("promoted-episode");
-const M5 = mark("promoted-memory");
+const EP5 = mark("dreamed-episode");
+const M5 = mark("dreamed-memory");
 
-await scenario("TL5", "promote writes a memory with derivedFrom and the episode gains engramIds", async () => {
+await scenario("TL5", "dream writes a memory with derivedFrom and the episode gains engramIds", async () => {
   const w = await call("CB_ALPHA", { op: "episode", summary: EP5 });
   log("tl5.episode.append", w);
   assert(w && w.ok === true, `episode must return {ok:true}; got ${JSON.stringify(w)}`);
@@ -257,21 +257,26 @@ await scenario("TL5", "promote writes a memory with derivedFrom and the episode 
   const snapshot = JSON.parse(JSON.stringify(before));
   log("tl5.episode.before", snapshot);
 
-  const p = await call("CB_ALPHA", { op: "promote", episodeId: w.id, text: M5, tags: ["tl5"] });
-  log("tl5.promote.result", p);
-  assert(p && p.ok === true, `promote must return {ok:true}; got ${JSON.stringify(p)}`);
-  assert(p.episodeId === w.id, `promote must echo the episodeId; got ${JSON.stringify(p.episodeId)}`);
-  assert(typeof p.memoryId === "string" && p.memoryId.length > 0, `promote must return a memoryId; got ${JSON.stringify(p.memoryId)}`);
+  const d = await call("CB_ALPHA", { op: "dream", episodeIds: [w.id], memories: [{ text: M5, meta: { tags: ["tl5"] } }] });
+  log("tl5.dream.result", d);
+  assert(d && d.ok === true, `dream must return {ok:true}; got ${JSON.stringify(d)}`);
+  assert(typeof d.dreamId === "string" && d.dreamId.length > 0, `dream must return a dreamId; got ${JSON.stringify(d.dreamId)}`);
+  const memoryId = (d.memories ?? [])[0];
+  assert(typeof memoryId === "string" && memoryId.length > 0, `dream must return a memory id; got ${JSON.stringify(d.memories)}`);
 
   const memoriesFile = join(ROOT, "agents", "CB_ALPHA", "memories.json");
-  assert(existsSync(memoriesFile), `the promoted memory file must exist: ${memoriesFile}`);
-  const mem = JSON.parse(readFileSync(memoriesFile, "utf8")).find((m) => m && m.id === p.memoryId);
+  assert(existsSync(memoriesFile), `the memory file must exist: ${memoriesFile}`);
+  const mem = JSON.parse(readFileSync(memoriesFile, "utf8")).find((m) => m && m.id === memoryId);
   log("tl5.memory.record", mem);
-  assert(mem, `the promoted memory ${p.memoryId} must be stored`);
-  assert(mem.text === M5, `the memory must carry the promoted text ${JSON.stringify(M5)}; got ${JSON.stringify(mem.text)}`);
+  assert(mem, `the dreamed memory ${memoryId} must be stored`);
+  assert(mem.text === M5, `the memory must carry the dreamed text ${JSON.stringify(M5)}; got ${JSON.stringify(mem.text)}`);
   assert(
     mem.meta && mem.meta.derivedFrom === w.id,
     `the memory must carry meta.derivedFrom=${JSON.stringify(w.id)}; got ${JSON.stringify(mem.meta)}`,
+  );
+  assert(
+    Array.isArray(mem.meta?.dreams) && mem.meta.dreams[0]?.id === d.dreamId,
+    `the memory must carry meta.dreams with the dream id; got ${JSON.stringify(mem.meta?.dreams)}`,
   );
 
   const stored = readEpisodes("CB_ALPHA");
@@ -279,16 +284,19 @@ await scenario("TL5", "promote writes a memory with derivedFrom and the episode 
   log("tl5.episode.after", ep);
   assert(ep, `the episode ${w.id} must still be stored`);
   assert(
-    Array.isArray(ep.engramIds) && ep.engramIds.includes(p.memoryId),
-    `the episode must list ${p.memoryId} in engramIds; got ${JSON.stringify(ep.engramIds)}`,
+    Array.isArray(ep.engramIds) && ep.engramIds.includes(memoryId),
+    `the episode must list ${memoryId} in engramIds; got ${JSON.stringify(ep.engramIds)}`,
   );
+  assert(typeof ep.dreamedAt === "string", `the episode must carry dreamedAt; got ${JSON.stringify(ep.dreamedAt)}`);
 
   const after = JSON.parse(JSON.stringify(ep));
   delete after.engramIds;
+  delete after.dreamedAt;
   delete snapshot.engramIds;
+  delete snapshot.dreamedAt;
   assert(
     JSON.stringify(after) === JSON.stringify(snapshot),
-    `promote must not change any other episode field; before=${JSON.stringify(snapshot)} after=${JSON.stringify(after)}`,
+    `the dream must not change any other episode field; before=${JSON.stringify(snapshot)} after=${JSON.stringify(after)}`,
   );
 });
 

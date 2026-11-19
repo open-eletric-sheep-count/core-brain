@@ -550,7 +550,7 @@ interface Episode {
   sessionId?: string;
   channel?: string;
   tags?: string[];
-  engramIds?: string[];  // set by `promote` — the memories that came out of this episode
+  engramIds?: string[];  // set by `dream` — the memories that came out of this episode
 }
 ```
 
@@ -564,7 +564,7 @@ no owner keeps no `agent` key — the importer invents nothing (plan §4).
 ```
 episode  { op:"episode", summary:string, tags?:string[], sessionId?:string, target?:"self"|"global" }          -> { ok:true, id:string, ns:string }
 timeline { op:"timeline", query?:string, since?:string, until?:string, tags?:string[], limit?:number, from?:NamespaceTarget } -> { results:Episode[], scanned:string[] }
-promote  { op:"promote", episodeId:string, text:string, tags?:string[] }                                      -> { ok:true, episodeId:string, memoryId:string }
+dream    { op:"dream", episodeIds?:string[], memories?:Array<{text:string, meta?:object}>, force?:boolean } -> { ok:true, episodes?:Episode[] , dreamId?:string, memories?:string[] }
 ```
 
 Exactly one tool is registered — no second tool, no second identity path
@@ -588,131 +588,13 @@ the ORACLE may rule):
   field (imported episodes carry it from the document, §10.5).
 - A query-less `timeline` returns episodes **most-recent-first** (`at` desc). The
   default `limit` is an implementation choice and is **not** pinned here.
-- `promote` writes the memory into the caller's **own** namespace (`self`; the
-  plan gives no `target`), carrying `meta.derivedFrom = <episodeId>`. Nothing is
-  copied from the episode: the caller supplies `text`.
-- `promote` **refuses a duplicate** (USER, 2026-11-18 — *"the original stays, the
-  new one may not be created"*). Duplicate = an **ACTIVE** record of the caller's
-  own namespace whose **normalised text** (trimmed, whitespace collapsed, case
-  folded) equals the requested `text`. The call **throws** and writes nothing: no
-  record, no vector, no `engramIds` entry — so a repeat is never a silent second
-  memory. A **retired** record is not a duplicate: `forget` frees the text again.
-  The error names the existing memory id and the namespace.
+- `dream` is the only way an episode becomes a memory (USER, 2026-11-19: `promote` was removed as
+  obsolete). With no payload it LISTS the episodes without `dreamedAt`; with `episodeIds` and
+  `memories` it performs the pass: each memory is stored in the caller's **own** namespace with
+  `meta.derivedFrom` (the first episode) and `meta.dreams` = `[{id, at}]` (the dream and its DATE),
+  each episode is marked `dreamedAt` and gains the ids in `engramIds`, and one dream record links
+  both sides (`dreams.json`).
+- A **duplicate** memory is REINFORCED, never duplicated: the existing record gains this dream, its
+  `retrievals` and `feedback.useful` go up, and the episode is still marked. Real refusals: unknown
+  episode, already-dreamed episode, daily limit (`force:true` bypasses it for a manual run).
 
-### 10.3 Identity is the session (spec §12.1 / AC-TL1)
-
-- The episode's `agent` is ALWAYS the caller's session identity (the `agentName`
-  the tool layer resolved from the session — `resolveSessionAgent`). A request
-  field named `agent` is **not an input**: it is ignored, and an `episode` op
-  carrying `agent:"<forged>"` still stores the session agent.
-- The tool schema keeps `additionalProperties:false` and carries **no identity
-  field** (§7.1); the ops are added to the same one tool.
-- The same rule holds for the memory written by `promote`: `agent`/`scope` come
-  from the caller's session, and `meta.derivedFrom` is set by the engine.
-
-### 10.4 Storage (spec §12.1 / plan §3)
-
-- Episodes live beside memories under the **same namespace model**:
-  `agents/<A>/episodes.json` and `global/episodes.json`, written with the same
-  atomic policy as `memories.json` (mirror of `recordsFileFor` +
-  `writeFileAtomic`, §4: mkdir, `.tmp`, `JSON.stringify(…,2)`, rename).
-- No vectors index for episodes is claimed here; however the engine indexes them
-  to implement §10.2's search, the **record of truth** is `episodes.json`.
-- The write is authorized by `authorizeWrite` (§6.2) exactly like a memory:
-  `self` always; `global` only with `hasGlobalAccess` (else a plain `Error`
-  naming the agent and `"no global access"`); `agent:<X>` never.
-
-### 10.5 The episodes section of the import document — FIXED HERE (plan §7.1)
-
-The admin `import` (the `core_admin` engine op, now run through
-`mcp/admin-cli.js import --file …`) keeps its document (`namespaces[]` for
-memories) and gains ONE optional top-level key, `episodes`:
-
-```json
-{
-  "namespaces": [],
-  "episodes": [
-    { "id": "EP-1700000000001-aaa1", "at": "2026-01-01T00:00:00.000Z",
-      "summary": "ownerless episode", "tags": ["alpha"], "sessionId": "ses_x", "channel": "test" },
-    { "id": "EP-1700000000002-bbb2", "at": "2026-01-02T00:00:00.000Z",
-      "agent": "CB_BETA", "summary": "episode owned by CB_BETA", "tags": ["beta"] }
-  ]
-}
-```
-
-Binding rules:
-
-1. `episodes` is **optional**. Absent ⇒ nothing to import; a memories-only
-   document behaves **exactly** as before (no regression). `namespaces` keeps
-   its current contract (it must be an array); an episodes-only document carries
-   `"namespaces": []`.
-2. Each entry is an `Episode`-shaped object. `id` is **required** and is the
-   dedupe key **within its target namespace**.
-3. **Namespace mapping** (spec §4): `agent` present and non-empty → the
-   namespace `agent:<agent>` (used **verbatim** — no case normalisation, nothing
-   invented); no `agent` → `global`.
-4. **Preserve verbatim:** `id`, `at`, `summary`, `agent`, `tags`, `sessionId`,
-   `channel`, `engramIds` are copied as-is. The importer does **not** read the raw
-   PLUR field names (`timestamp`, `session_id`): the producer that turns
-   `~/.plur/episodes.yaml` into this document renames `timestamp`→`at` and
-   `session_id`→`sessionId` (plan §4), so the importer has one format, not two.
-5. **Idempotent:** an existing `id` is never overwritten; a second import of the
-   same document leaves every file **byte-identical**.
-6. Writes are atomic (same policy as memories); the result shape stays
-   `{ ok:true, action:"import", detail }` and `detail` also reports the episode
-   counts.
-
-### 10.6 The isolation matrix applies to the diary (no exception, plan §6/T5)
-
-- `episode` obeys `authorizeWrite` (§6.2): a private agent's diary stays in its
-  own namespace and is invisible to others; `global` requires `hasGlobalAccess`.
-- `timeline` obeys `authorizeRead` (§6.1) — the **same** union as a query-less
-  `recall`: own space always; `global` iff `hasGlobalAccess`; another agent's
-  space only while that agent is `private:false`. The `scanned` array lists
-  exactly the namespaces consulted, in the same label format as `recall`.
-- A private agent's episodes never appear in another agent's `timeline`, and its
-  namespace never appears in `scanned` — the same rule as matrix lines 7/8/19.
-
-### 10.7 The ledgers — `test/timeline.selftest.mjs` (AC-TL1..AC-TL6)
-
-Every ledger prints its **literal** value (ids, counts, arrays, stored objects),
-never a bare boolean. `check.sh` exits `0` only when every ledger PASSes.
-
-| Ledger | Setup | Literal expectation |
-|---|---|---|
-| **TL1.a** | `CB_ALPHA` `episode {summary,tags,sessionId}` → `timeline {limit:50}` | append returns `{ok:true, ns:"agent:CB_ALPHA"}` and an `id` matching `/^EP-\d+-[A-Za-z0-9]{4}$/`; the read returns that episode with the same `summary`, `tags`, `sessionId`, `agent:"CB_ALPHA"`, and an ISO `at` |
-| **TL1.b** | `CB_ALPHA` `episode {summary, agent:"FORGED_AGENT"}` | the stored episode's `agent` is `"CB_ALPHA"` (the forged field is ignored); no returned episode carries `agent:"FORGED_AGENT"` |
-| **TL2.a** | `CB_GAMMA` (private, no global) `episode G` → `CB_ALPHA` `timeline {limit:50}` | no result carries summary `G`; `scanned` does **not** contain `"CB_GAMMA"` |
-| **TL2.b** | `CB_ALPHA` (public) `episode P` → `CB_GAMMA` `timeline {limit:50}` | a result carries summary `P`; `scanned` contains `"CB_ALPHA"` |
-| **TL2.c** | `CB_ALPHA` `timeline {from:"agent:CB_GAMMA"}` | `results` empty; `scanned` does **not** contain `"CB_GAMMA"` |
-| **TL3** | import a 3-episode fixture document twice (2 ownerless + 1 `agent:"CB_BETA"`) | ownerless entries land in `global/episodes.json`, the `"CB_BETA"` entry in `agents/CB_BETA/episodes.json`; `at`/`tags`/`sessionId`/`channel`/`agent` preserved; the 2nd run leaves both files byte-identical (sha256) |
-| **TL4** | episodes = `PROBE_TEXTS.semanticParaphrase` and `PROBE_TEXTS.semanticDecoy`; `timeline {query: PROBE_TEXTS.semanticQuery}` | both episodes returned; the paraphrase ranks **strictly above** the decoy (search by meaning; the paraphrase shares no content word with the query) |
-| **TL5** | `episode E` → `promote {episodeId:E.id, text:M, tags}` | result `{ok:true, episodeId:E.id, memoryId}`; `agents/CB_ALPHA/memories.json` holds a record `{id:memoryId, text:M, meta.derivedFrom:E.id}`; `agents/CB_ALPHA/episodes.json` shows `E.engramIds` includes `memoryId`; every other field of `E` is unchanged (snapshot compare) |
-| **TL6** | — | **SKIP**: the 13/13 matrix is enforced by `check.sh` Suite A (`matrix.selftest.mjs`, unchanged); the backup mirror is **UNKNOWN** (another repo, plan §7.2) and is **not** tested here |
-| **TL7** (`test/promote-dedup.selftest.mjs`) | promote the same conclusion 2× (same episode; then another episode; with stray spaces/case) | the 2nd/3rd calls **throw**; `agents/CB_ALPHA/memories.json` keeps exactly **1** active record; `E.engramIds` stays length 1; a **different** text is accepted; after `forget` of the original the same text is accepted again |
-
-### 10.8 RED-then-GREEN, and the declared UNKNOWNs
-
-- **RED today, for the right reason:** `store.ts` has no `episode`/`timeline`/
-  `promote` op (§10.2), so `invoke` throws `core_memory: unknown op '…'`. Every
-  TL ledger except TL3 fails on that throw; TL3 fails because the current
-  importer ignores the `episodes` key. They go GREEN when the DEVELOPER lands
-  T1/T2/T4/T5.
-- **TL4 fixture path (declared):** offline, "search by meaning" is the fixture's
-  seeded construction (`PROBE_TEXTS`, §8.7): the query and the paraphrase are
-  ~0.99 of the same base direction while the decoy is independent (cos ≈ 0).
-  The literal *SGLang / `timeout 9999`* pair (spec §12.3) is the **real-model**
-  probe and inherits the AC1 bound already declared for the engine's `semantic`
-  probe (§8 + README "Known bound"): with `bge-small` + RRF a lexical hard
-  negative can outrank a paraphrase. The offline fixture relation is the proof
-  committed here; the real-model SGLang run is the ORACLE's, and its bound is
-  **declared, not asserted**.
-- **UNKNOWN — declared, not tested (plan §7.2):** the backup mirror
-  (`bkps/.core-brain/`, `project-generator/src/install-global.sh`) lives
-  **outside this repo**; AC-TL6's backup half cannot be demonstrated here. It is
-  a SKIP ledger, never a pass.
-- **UNKNOWN — declaration only (plan §7.3):** the MCP `core_timeline` surface is
-  a bonus, marked DEFERRED; this suite pins only the plugin-host ops.
-- **Not asserted here (declared):** the exact `at` value (engine clock), the
-  default `limit`, and `since`/`until` boundary semantics beyond a simple
-  inclusive check.
