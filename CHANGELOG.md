@@ -42,67 +42,67 @@ Newest on top.
     — session `ses_e10856432ffe…` created, the agent answered (assistant message, ORACLE, model
     SGLang), state written with the instant, session deleted at the end.
 
-### Removed — 2026-11-18 (backups do instalador)
+### Removed — 2026-11-18 (installer backups)
 
-- **O instalador não cria cópias nenhumas.** Decisão do USER: *«eu controlo tudo por
-  git — primeiro altero no diretório do git, comito e faço a cópia; os anteriores estão todos no meu
-  git, não preciso de backup»*. O bloco que escrevia a versão anterior (no estado do core-brain e, em
-  fallback, ao lado do ficheiro) foi removido de `scripts/install_global.py`; `before` fica **apenas**
-  para o rollback em memória quando uma escrita falha a meio.
-- **Limpeza executada:** **605** ficheiros `*.oesc-backup-*` em `~/.config` removidos, verificação
-  posterior = **0**. As 19 cópias em `~/.local/state/core-brain/backups/` **não** foram tocadas
-  (ficam fora da pasta de configuração; decisão pendente).
-- **Testes ajustados:** `test_install.py` passou a afirmar a **ausência** de cópias (antes afirmava a
-  presença) e a lista de skills do codex foi actualizada (`clean-code-mode`). As cópias do motor em
-  `global/codex/adapters/core-brain/` foram sincronizadas com `global/opencode/plugins/core-brain/`
-  (`index.ts`, `store.ts`, `types.ts`, `engine/*.ts`) — estavam atrasadas pelas alterações de hoje.
-- Provas: `python3 -m unittest discover -s tests -p "test_install.py"` → **20 testes, OK** (1 skip).
+- **The installer creates no copies at all.** USER's decision: *«I control everything through
+  git — first I change it in the git directory, commit and make the copy; the previous ones are all in my
+  git, I do not need a backup»* (translated). The block that wrote the previous version (into the core-brain state and, as a
+  fallback, beside the file) was removed from `scripts/install_global.py`; `before` remains **only**
+  for the in-memory rollback when a write fails halfway.
+- **Cleanup executed:** **605** `*.oesc-backup-*` files under `~/.config` removed, later
+  verification = **0**. The 19 copies under `~/.local/state/core-brain/backups/` were **not** touched
+  (they sit outside the configuration folder; pending decision).
+- **Tests adjusted:** `test_install.py` now asserts the **absence** of copies (it used to assert their
+  presence) and the codex skill list was updated (`clean-code-mode`). The engine copies under
+  `global/codex/adapters/core-brain/` were synchronised with `global/opencode/plugins/core-brain/`
+  (`index.ts`, `store.ts`, `types.ts`, `engine/*.ts`) — they were behind today's changes.
+- Evidence: `python3 -m unittest discover -s tests -p "test_install.py"` → **20 tests, OK** (1 skip).
 
-### Changed — 2026-11-18 (nomes das skills)
+### Changed — 2026-11-18 (skill names)
 
-- **`batman-e-robin` → `batman-and-robin` em todas as referências vivas.** O repositório instalava a
-  skill com o nome inglês mas mandava carregá-la com o português: `agents/DEVELOPER.md` (3 sítios,
-  incluindo o `SKILL LOADED:`), o helper da metodologia e `agents/ORACLE.md` apontavam para
-  `batman-e-robin` / `METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`. Resultado: a cópia antiga em português
-  **sobrevivia na home** e era a única que os agentes encontravam. Corrigido: helper renomeado para
-  `METHODOLOGY_BATMAN_AND_ROBIN_HELPERS.md`, referências de `ORACLE.md`, `DEVELOPER.md` e do próprio
-  helper actualizadas, e a especificação do `todo-list` que citava o caminho antigo. Verificação:
-  `grep -rn "BATMAN_E_ROBIN|batman-e-robin" agents helpers plugins skills` → **0 resultados** (o
-  CHANGELOG é histórico e não se reescreve).
-- **Nota operacional:** o instalador copia mas **não remove** o que já está na home. Ficam dois
-  resíduos a apagar pelo USER: `~/.config/opencode/skills/batman-e-robin/` e
+- **`batman-e-robin` → `batman-and-robin` in every live reference.** The repository installed the
+  skill under the English name but told agents to load it under the Portuguese one: `agents/DEVELOPER.md` (3 places,
+  including the `SKILL LOADED:`), the methodology helper and `agents/ORACLE.md` pointed at
+  `batman-e-robin` / `METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`. Result: the old Portuguese copy
+  **survived in the home** and was the only one the agents found. Fixed: helper renamed to
+  `METHODOLOGY_BATMAN_AND_ROBIN_HELPERS.md`, the references in `ORACLE.md`, `DEVELOPER.md` and the
+  helper itself updated, and the `todo-list` specification that quoted the old path. Verification:
+  `grep -rn "BATMAN_E_ROBIN|batman-e-robin" agents helpers plugins skills` → **0 results** (the
+  CHANGELOG is historical and is not rewritten).
+- **Operational note:** the installer copies but **does not remove** what is already in the home. Two
+  leftovers remain for the USER to delete: `~/.config/opencode/skills/batman-e-robin/` and
   `~/.config/opencode/helpers/METHODOLOGY_BATMAN_E_ROBIN_HELPERS.md`.
 
-### Added — 2026-11-18 (modelo)
+### Added — 2026-11-18 (model)
 
-- **`core-brain` — escolha do modelo de embeddings por perfil.** Pedido do USER: *«baixa outro modelo
-  sem remover o atual e vamos corrigir o índice»*. `config.json` aceita `"embedModel"` (dado, lido no
-  arranque) e `CORE_BRAIN_EMBED_MODEL` sobrepõe-se; a omissão continua `bge-small-en`, portanto quem
-  não diz nada não muda de comportamento. Perfis: `bge-small-en` (384, cls) e `multilingual-minilm`
-  (`Xenova/paraphrase-multilingual-MiniLM-L12-v2`, 384, mean). Nome desconhecido é **recusado** — um
-  erro de escrita nunca cai noutro espaço. Os dois modelos convivem na cache; nada é removido.
-- **Correcção do fingerprint do artefacto (`findOnnxFile`).** O código só conhecia a árvore HF
-  (`models--org--name/snapshots/…`), mas o `transformers.js` escreve a árvore plana
-  (`<org>/<name>/onnx/model.onnx`) — todas as revisões saíam `@unavailable`. Agora aceita as duas; a
-  revisão real lida foi `…@fp32@185ae63f47e17a7e`.
-- **Índice reconstruído** com o modelo novo: 18 espaços, **2074 vectores**. O modelo novo carrega em
-  1,2 s a partir da cache. Aviso operacional: enquanto o processo que serve a memória não reiniciar,
-  `recall` responde `STALE_INDEX` (fail-closed) — é o comportamento desenhado, não avaria.
-- Provas: `test/embedder-profile.selftest.mjs` (7 asserções, suite G) e a suite completa
+- **`core-brain` — per-profile choice of the embeddings model.** USER's request: *«download another model
+  without removing the current one and let us fix the index»* (translated). `config.json` accepts `"embedModel"` (data, read at
+  startup) and `CORE_BRAIN_EMBED_MODEL` overrides it; the default stays `bge-small-en`, so whoever
+  says nothing does not change behaviour. Profiles: `bge-small-en` (384, cls) and `multilingual-minilm`
+  (`Xenova/paraphrase-multilingual-MiniLM-L12-v2`, 384, mean). An unknown name is **refused** — a
+  typo never falls into another space. Both models coexist in the cache; nothing is removed.
+- **Fix of the artifact fingerprint (`findOnnxFile`).** The code only knew the HF tree
+  (`models--org--name/snapshots/…`), but `transformers.js` writes the flat tree
+  (`<org>/<name>/onnx/model.onnx`) — every revision came out `@unavailable`. It now accepts both; the
+  real revision read was `…@fp32@185ae63f47e17a7e`.
+- **Index rebuilt** with the new model: 18 spaces, **2074 vectors**. The new model loads in
+  1.2 s from the cache. Operational warning: until the process serving the memory restarts,
+  `recall` answers `STALE_INDEX` (fail-closed) — this is the designed behaviour, not a fault.
+- Evidence: `test/embedder-profile.selftest.mjs` (7 assertions, suite G) and the full suite
   `matrix 13/13 + probes + hooks + timeline + dedup + dedupe + profile`.
 
 ### Added — 2026-11-18
 
-- **`core-brain` — ação `dedupe` no `admin-cli`.** Pedido do USER: *«varre a memória procurando
-  memórias iguais e, se achar, remove uma e reforça a outra»*. Dentro de cada espaço, os registos
-  **activos** com o mesmo **texto normalizado** (trim, espaços colapsados, minúsculas) formam um
-  grupo: sobrevive o mais recuperado (depois o mais recente), que **soma** os `retrievals` e os
-  contadores de `feedback` dos outros; as cópias ficam **reformadas** com `meta.absorbedInto` — o
-  texto não é apagado. **Dry-run por omissão**: só escreve com `--apply`. Idempotente por construção
-  (um reformado nunca é candidato), pelo que uma segunda passagem não muda nada. `--ns` limita a um
-  espaço. Provas: `test/dedupe.selftest.mjs` (12 asserções, suite F do `check.sh`) — vermelho antes
-  (`unknown action 'dedupe'`), verde depois; `matrix 13/13`, `hooks`, `timeline` e `promote dedup`
-  continuam a passar.
+- **`core-brain` — `dedupe` action in `admin-cli`.** USER's request: *«scan the memory looking for
+  identical memories and, if it finds any, remove one and reinforce the other»* (translated). Inside each space, the
+  **active** records with the same **normalized text** (trim, collapsed spaces, lower case) form a
+  group: the most retrieved survives (then the most recent), which **adds up** the others' `retrievals`
+  and `feedback` counters; the copies become **retired** with `meta.absorbedInto` — the
+  text is not deleted. **Dry-run by default**: it only writes with `--apply`. Idempotent by construction
+  (a retired record is never a candidate), so a second pass changes nothing. `--ns` limits it to one
+  space. Evidence: `test/dedupe.selftest.mjs` (12 assertions, suite F of `check.sh`) — red before
+  (`unknown action 'dedupe'`), green after; `matrix 13/13`, `hooks`, `timeline` and `promote dedup`
+  keep passing.
 
 ### Fixed — 2026-11-18
 
