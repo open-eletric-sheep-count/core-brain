@@ -46,6 +46,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { InvalidConfigurationError, createEngine } from "./store.ts";
+import { appendMemoryCase, memoryCasePath } from "./memory-cases.ts";
 import type { CoreMemoryRequest, Engine, NamespaceTarget } from "./types.ts";
 
 // ---------------------------------------------------------------------------
@@ -613,6 +614,14 @@ function buildRequest(input: unknown): RequestParse {
 const INJECT_MARKER = "core-brain:auto:v1";
 
 /**
+ * The last USER text seen in each session (USER, 2026-11-19): what the automatic block is
+ * searched by, and the context a memory is filed with in the training set. Module scope
+ * because both the tool hook and the prompt hook read it. Empty at session start — no prompt,
+ * no history, no speech — which is why the first block is chosen by strength.
+ */
+const LAST_PROMPTS = new Map<string, string>();
+
+/**
  * Cues that mark a statement as durable (plan §3.2 / D3: no junk memory).
  *
  * One list, two languages: the English cues came first, and the Portuguese ones
@@ -788,7 +797,25 @@ export default {
         };
       }
       try {
-        return { content: JSON.stringify(await engine.invoke(agentName, parsed.request)) };
+        const result = await engine.invoke(agentName, parsed.request);
+        // Every memory written is a TRAINING CASE (USER, 2026-11-19): one line beside the virgin
+        // Laya model, with the context that produced it and an EMPTY vote. No `memoryTestSet` in
+        // config = no dataset, which is the community default.
+        if (false && parsed.request.op === "store") {   // DESLIGADO: banco de testes
+          const modelDir = engine.memoryTestSet();
+          if (modelDir) {
+            const stored = result as { id?: unknown };
+            const request = parsed.request as { text?: string };
+            appendMemoryCase(memoryCasePath(modelDir), {
+              id: String(stored?.id ?? ""),
+              agent: agentName,
+              session: sessionID,
+              prompt: LAST_PROMPTS.get(sessionID) ?? null,
+              memory: String(request.text ?? ""),
+            });
+          }
+        }
+        return { content: JSON.stringify(result) };
       } catch (error) {
         const message =
           error instanceof InvalidConfigurationError
@@ -837,13 +864,6 @@ export default {
       }
     };
 
-    /**
-     * The last USER text seen in this session (USER, 2026-11-19): the only thing the
-     * automatic layer may search BY. Empty at session start — no prompt, no history,
-     * no speech — which is exactly why the first block is chosen by strength, and why
-     * a subject-based choice can only happen once the conversation exists.
-     */
-    const lastPrompts = new Map<string, string>();
 
     /**
      * Recalls texts, or `null` when the read itself failed.
@@ -891,6 +911,7 @@ export default {
       query?: string,
     ): Promise<string[] | null> => {
       if (!engine) return null;
+      const startedAt = Date.now();
       try {
         // A query turns the block from «the strongest records» into «the records this
         // session is about»; without one (session start) the store's strength order is
@@ -912,7 +933,13 @@ export default {
             ...extra,
           }),
         ]);
-        return [...recalledTexts(globalResult), ...recalledTexts(ownResult)];
+        const texts = [...recalledTexts(globalResult), ...recalledTexts(ownResult)];
+        console.log(
+          `[core-brain][timing] collectBlock agent=${agentName} perHalf=${perHalf} ` +
+            `query=${query && query.trim() !== "" ? "yes" : "no"} ms=${Date.now() - startedAt} ` +
+            `memories=${texts.length}`,
+        );
+        return texts;
       } catch (error) {
         debugLog(`block recall failed for agent=${agentName}: ${describeError(error)}`);
         return null;
@@ -977,12 +1004,17 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return; // gate BEFORE the recall
-        // How many memories the block carries is ONE global setting (USER, 2026-11-19):
-        // `memoriesPerContext` in config.json, default 5 — PER HALF, so the block holds
-        // up to 5 global + 5 of the agent's own. `0` = no block at all.
-        const perHalf = engine ? engine.memoriesPerContext() : 5;
-        if (perHalf <= 0) return;
-        const texts = await collectBlock(agentName, perHalf, lastPrompts.get(sessionID));
+        // DESLIGADO (USER, 2026-11-19): o bloco novo do contexto — duas metades e pergunta —
+        // fica comentado até o USER decidir. Volta-se a ligar descomentando estas quatro linhas.
+        const hookStartedAt = Date.now();
+        const texts = await recallTexts(agentName, 5);
+        console.log(
+          `[core-brain][timing] contextHook agent=${agentName} ms=${Date.now() - hookStartedAt} ` +
+            `memories=${texts === null ? "fail" : texts.length}`,
+        );
+        // const perHalf = engine ? engine.memoriesPerContext() : 5;
+        // if (perHalf <= 0) return;
+        // const texts = await collectBlock(agentName, perHalf, LAST_PROMPTS.get(sessionID));
         if (texts === null) return;
         const block = composeContextBlock(texts, agentName);
         if (injectBlock(event, block)) {
@@ -1007,7 +1039,7 @@ export default {
         // The subject the next block is searched by. This hook is the ONLY place USER
         // text is read, so it is the only honest source — and it runs before the next
         // `context`. A session with no prompt yet keeps the strength-ordered block.
-        if (text !== null && text.trim() !== "") lastPrompts.set(sessionID, text);
+        if (text !== null && text.trim() !== "") LAST_PROMPTS.set(sessionID, text);
         if (!engine) return;
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName || !isOptedIn(agentName)) return;

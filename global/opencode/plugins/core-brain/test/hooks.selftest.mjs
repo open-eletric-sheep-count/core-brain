@@ -28,7 +28,7 @@
 // Run:  node --experimental-strip-types test/hooks.selftest.mjs
 // (check.sh runs it with the same feature-detected flag as the other suites.)
 
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -67,7 +67,10 @@ const CONFIG_ROWS = [
   { name: "CBA_OFF1", hasGlobalAccess: true, private: false },
   { name: "CBA_OFF2", hasGlobalAccess: true, private: false },
 ];
-writeFileSync(CONFIG, `${JSON.stringify({ agents: CONFIG_ROWS }, null, 2)}\n`);
+writeFileSync(
+  CONFIG,
+  `${JSON.stringify({ agents: CONFIG_ROWS, memoryTestSet: join(ROOT, "model-of-tests") }, null, 2)}\n`,
+);
 process.env.CORE_BRAIN_DEBUG = "1";
 
 let cleaned = false;
@@ -631,6 +634,28 @@ await scenario(
       typeof short.id === "string" && short.id.length > 0,
       "600 characters exactly must be accepted",
     );
+  },
+);
+
+
+// ===========================================================================
+// S2 — every memory written is a training case, with an EMPTY vote (USER, 2026-11-19).
+// ===========================================================================
+
+await scenario(
+  "S2",
+  "a stored memory lands in the training set with vote null",
+  async () => {
+    const s = session("CBA_INJ1");
+    const text = mark("training-case");
+    await callTool(s, { op: "store", text });
+    const file = join(ROOT, "model-of-tests", "cases.jsonl");
+    const rows = readFileSync(file, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+    const last = rows[rows.length - 1];
+    assert(last.memory === text, `the last case must be the memory just written; got ${last.memory}`);
+    assert(last.vote === null, `the vote must be empty for the USER to fill; got ${JSON.stringify(last.vote)}`);
+    assert(last.agent === "CBA_INJ1", `the agent must be recorded; got ${last.agent}`);
+    assert(typeof last.id === "string" && last.id.length > 0, "the memory id must be recorded");
   },
 );
 

@@ -570,6 +570,23 @@ function readMemoriesPerContext(configPath: string | null): number {
   }
 }
 
+/**
+ * `memoryTestSet` from `config.json` (USER, 2026-11-19): the folder that collects every memory the
+ * agents write, as training cases with an empty vote. Absent = the vault keeps no training set, which
+ * is the community default — a personal path must never be baked into the plugin.
+ */
+function readMemoryTestSet(configPath: string | null): string | null {
+  if (configPath === null || !existsSync(configPath)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { memoryTestSet?: unknown };
+    const value = parsed.memoryTestSet;
+    if (typeof value !== "string" || value.trim() === "") return null;
+    return value.trim();
+  } catch {
+    return null;
+  }
+}
+
 function loadPolicies(configPath: string | null): AgentPolicy[] {
   if (!configPath) return [];
 
@@ -2050,5 +2067,6 @@ export function createEngine(options: EngineOptions = {}): Engine {
     invoke,
     resolvePolicy: requirePolicy,
     memoriesPerContext: () => readMemoriesPerContext(existsSync(configPath) ? configPath : null),
+    memoryTestSet: () => readMemoryTestSet(existsSync(configPath) ? configPath : null),
   };
 }

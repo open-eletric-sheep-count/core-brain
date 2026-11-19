@@ -378,4 +378,10 @@ export interface Engine {
    * 2026-11-19: «deixa só uma configuração global»). `0` means no block.
    */
   memoriesPerContext(): number;
+  /**
+   * Where the memory-quality training set lives (`memoryTestSet` in `config.json`), or `null` when
+   * the vault does not keep one. Every memory written is appended there as a case with an empty vote
+   * (USER, 2026-11-19).
+   */
+  memoryTestSet(): string | null;
 }
