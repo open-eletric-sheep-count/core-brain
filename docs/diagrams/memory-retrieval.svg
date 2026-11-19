@@ -1,0 +1,92 @@
+<svg viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How the memory is queried: two retrievers, RRF fusion, reranker, block">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="620" fill="#ffffff"/>
+
+  <!-- Query -->
+  <g>
+    <rect x="24" y="222" width="184" height="112" rx="12" fill="#f3f4f6" stroke="#9ca3af"/>
+    <text x="116" y="252" text-anchor="middle" font-size="15" font-weight="600" fill="#111827">Query</text>
+    <text x="116" y="274" text-anchor="middle" font-size="11.5" fill="#4b5563">last USER message</text>
+    <text x="116" y="294" text-anchor="middle" font-size="11.5" fill="#b45309">cut at 512 tokens</text>
+    <text x="116" y="312" text-anchor="middle" font-size="11" fill="#b45309">≈ 2 000 characters</text>
+  </g>
+
+  <!-- Store -->
+  <g>
+    <rect x="24" y="424" width="240" height="124" rx="12" fill="#fff" stroke="#d1d5db" stroke-dasharray="5 4"/>
+    <text x="144" y="450" text-anchor="middle" font-size="13" font-weight="600" fill="#111827">Store</text>
+    <text x="144" y="468" text-anchor="middle" font-size="10" fill="#6b7280">feeds A and B</text>
+    <text x="144" y="488" text-anchor="middle" font-size="10.5" fill="#4b5563">memories.json — texts and counters</text>
+    <text x="144" y="505" text-anchor="middle" font-size="10.5" fill="#4b5563">vectors/ — one vector per memory</text>
+    <text x="144" y="530" text-anchor="middle" font-size="10" fill="#9ca3af">no generative model reads it</text>
+  </g>
+
+  <!-- A: meaning -->
+  <g>
+    <rect x="280" y="120" width="240" height="120" rx="12" fill="#eff6ff" stroke="#3b82f6"/>
+    <text x="400" y="150" text-anchor="middle" font-size="14" font-weight="600" fill="#1e3a8a">A · search by meaning</text>
+    <text x="400" y="174" text-anchor="middle" font-size="11.5" fill="#1f2937">local multilingual encoder</text>
+    <text x="400" y="194" text-anchor="middle" font-size="11.5" fill="#1f2937">query → 384 numbers</text>
+    <text x="400" y="214" text-anchor="middle" font-size="11.5" fill="#1f2937">compared with every memory</text>
+  </g>
+
+  <!-- B: terms -->
+  <g>
+    <rect x="280" y="330" width="240" height="120" rx="12" fill="#ecfdf5" stroke="#10b981"/>
+    <text x="400" y="360" text-anchor="middle" font-size="14" font-weight="600" fill="#065f46">B · search by terms</text>
+    <text x="400" y="384" text-anchor="middle" font-size="11.5" fill="#1f2937">BM25 — word counting</text>
+    <text x="400" y="404" text-anchor="middle" font-size="11.5" fill="#1f2937">rare words weigh more</text>
+    <text x="400" y="424" text-anchor="middle" font-size="11.5" fill="#1f2937">uses the whole query, uncapped</text>
+  </g>
+
+  <!-- RRF -->
+  <g>
+    <rect x="586" y="205" width="150" height="120" rx="12" fill="#f5f3ff" stroke="#8b5cf6"/>
+    <text x="661" y="236" text-anchor="middle" font-size="14" font-weight="600" fill="#4c1d95">RRF</text>
+    <text x="661" y="258" text-anchor="middle" font-size="11.5" fill="#1f2937">rank fusion</text>
+    <text x="661" y="278" text-anchor="middle" font-size="11.5" fill="#1f2937">high in both lists</text>
+    <text x="661" y="294" text-anchor="middle" font-size="11.5" fill="#1f2937">rises</text>
+  </g>
+
+  <!-- Reranker -->
+  <g>
+    <rect x="792" y="205" width="180" height="120" rx="12" fill="#fff7ed" stroke="#f59e0b"/>
+    <text x="882" y="236" text-anchor="middle" font-size="14" font-weight="600" fill="#92400e">Reranker</text>
+    <text x="882" y="258" text-anchor="middle" font-size="11.5" fill="#1f2937">ms-marco (local)</text>
+    <text x="882" y="278" text-anchor="middle" font-size="11.5" fill="#1f2937">reorders the</text>
+    <text x="882" y="294" text-anchor="middle" font-size="11.5" fill="#1f2937">leading results</text>
+  </g>
+
+  <!-- Block -->
+  <g>
+    <rect x="792" y="400" width="180" height="120" rx="12" fill="#fef2f2" stroke="#ef4444"/>
+    <text x="882" y="430" text-anchor="middle" font-size="14" font-weight="600" fill="#991b1b">Block in context</text>
+    <text x="882" y="452" text-anchor="middle" font-size="11.5" fill="#1f2937">up to 5 global</text>
+    <text x="882" y="470" text-anchor="middle" font-size="11.5" fill="#1f2937">+ up to 5 of the agent</text>
+    <text x="882" y="492" text-anchor="middle" font-size="11.5" fill="#b45309">maximum 10</text>
+  </g>
+
+  <!-- Arrows -->
+  <path d="M 208 262 C 236 262 244 200 280 180" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M 208 296 C 236 296 244 370 280 390" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M 520 180 C 556 180 560 230 586 245" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M 520 390 C 556 390 560 300 586 285" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M 736 265 L 792 265" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <path d="M 882 325 L 882 400" fill="none" stroke="#6b7280" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- No query -->
+  <g>
+    <rect x="586" y="430" width="150" height="96" rx="12" fill="#f3f4f6" stroke="#9ca3af" stroke-dasharray="5 4"/>
+    <text x="661" y="456" text-anchor="middle" font-size="12.5" font-weight="600" fill="#111827">No query</text>
+    <text x="661" y="476" text-anchor="middle" font-size="11" fill="#4b5563">session start</text>
+    <text x="661" y="494" text-anchor="middle" font-size="11" fill="#4b5563">none of this runs:</text>
+    <text x="661" y="512" text-anchor="middle" font-size="11" fill="#4b5563">strength order</text>
+  </g>
+
+  <text x="24" y="588" font-size="11" fill="#6b7280">Strength order = usefulness votes, then retrievals, then date. Both models are small local encoders: no network, no key, no API.</text>
+</svg>

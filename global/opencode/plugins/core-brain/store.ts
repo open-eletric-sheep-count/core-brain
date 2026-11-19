@@ -176,6 +176,31 @@ export function cosine(a: number[], b: number[]): number {
 }
 
 // ---------------------------------------------------------------------------
+// Limits
+// ---------------------------------------------------------------------------
+
+/**
+ * The most one memory may carry (USER, 2026-11-19). Not a storage cap — a rule about
+ * SHAPE: a memory long enough to need a minute of reading is an episode, not a rule.
+ * `store` refuses past it and names the number, so the agent summarises and resends.
+ */
+const MEMORY_MAX_CHARS = 600;
+
+/**
+ * PLACEHOLDER — the memory-quality gate (USER, 2026-11-19).
+ *
+ * <p>Today it accepts everything: `true`, always. The question it will answer is «does this
+ * memory deserve to exist?» — useful, or redundant, or noise — and that judgement belongs to
+ * Laya, decided after the fact from the insertion record (initialization + finalization).
+ *
+ * <p>Laya plugs in HERE and returns `true` / `false`; a `false` must refuse the store with a
+ * reason, never truncate and never store a maybe.
+ */
+export function memoryIsAcceptable(_text: string): boolean {
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Namespaces
 // ---------------------------------------------------------------------------
 
@@ -528,6 +553,23 @@ function readDreamPerDay(configPath: string | null): number {
   }
 }
 
+/**
+ * `memoriesPerContext` from `config.json` (USER, 2026-11-19): how many memories the
+ * automatic block carries when the agent does not say otherwise. Default 5 — the
+ * number that used to be hard-coded in the hook. `0` = the block carries none.
+ */
+function readMemoriesPerContext(configPath: string | null): number {
+  if (configPath === null || !existsSync(configPath)) return 5;
+  try {
+    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { memoriesPerContext?: unknown };
+    const value = parsed.memoriesPerContext;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
+    return Math.floor(value);
+  } catch {
+    return 5;
+  }
+}
+
 function loadPolicies(configPath: string | null): AgentPolicy[] {
   if (!configPath) return [];
 
@@ -792,6 +834,22 @@ export function createEngine(options: EngineOptions = {}): Engine {
   async function storeOp(policy: AgentPolicy, request: StoreRequest): Promise<StoreResult> {
     if (typeof request.text !== "string" || request.text.trim() === "") {
       throw new Error("core_memory store: 'text' must be a non-empty string");
+    }
+    // A memory is a rule, not a page (USER, 2026-11-19). Refusing is the point: the
+    // agent gets the number back, summarises, and sends again — truncating here would
+    // keep the first half of a thought and lose the half that mattered.
+    const length = [...request.text].length;
+    if (length > MEMORY_MAX_CHARS) {
+      throw new Error(
+        `core_memory store: 'text' has ${length} characters, the limit is ${MEMORY_MAX_CHARS} — ` +
+          `summarise it and send again (cut at least ${length - MEMORY_MAX_CHARS})`,
+      );
+    }
+    // The quality gate: a stub today (always true), Laya's verdict tomorrow — same door.
+    if (!memoryIsAcceptable(request.text)) {
+      throw new Error(
+        "core_memory store: the memory was refused by the quality evaluator — rewrite it or drop it",
+      );
     }
     const target: string = typeof request.target === "string" ? request.target : "self";
     const ns = authorizeWrite(policy, target, lookup);
@@ -1988,5 +2046,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
     throw new Error(`core_memory: unknown op '${unknownOp}'`);
   }
 
-  return { invoke, resolvePolicy: requirePolicy };
+  return {
+    invoke,
+    resolvePolicy: requirePolicy,
+    memoriesPerContext: () => readMemoriesPerContext(existsSync(configPath) ? configPath : null),
+  };
 }

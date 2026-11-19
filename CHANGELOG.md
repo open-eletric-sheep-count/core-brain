@@ -5,6 +5,78 @@ Newest on top.
 
 ## [Unreleased]
 
+### Added — 2026-11-19 (the insertion record: two lines per case, JSONL)
+
+- **`memory-insertions.ts` and `logs/insertions.jsonl`**: every future interruption is **one case made of two lines** in
+  the same append-only file, joined by the same `id` — `kind: "initialization"` (session, agent,
+  `prompt` ≤ 600 or null, `tools` as `[{type, times}]` with repetitions not counted) and
+  `kind: "finalization"` (the memories the agent wrote, with text). Two lines, not one: a single line
+  written at the end could only describe the cases that produced a memory, and **the case that
+  produced nothing is the one worth studying**. The names are `initialization`/`finalization` (USER,
+  2026-11-19) — they say when the line happens, not what the feature is called.
+- JSONL on purpose: appended with `O_APPEND`, never rewritten — several copies write, a truncated
+  file loses a line and not the history, and each line is a portable test case.
+- **Nothing writes it yet**: the counter and the gate land with the interruption itself (1.3.3.2). What is
+  proven today is the FORMAT.
+- Evidence: `test/memory-insertions.selftest.mjs` (11/11) — three lines for two cases, joined by id, the complete
+  case carrying the memories, and a case with no answer still readable with a null prompt. Suite:
+  `matrix 13/13 + probes + hooks (18/18) + timeline + dedupe + profile + dream + insertions (11/11)`.
+
+### Added — 2026-11-19 (the quality gate exists, and says yes to everything for now)
+
+- **`store.memoryIsAcceptable(text)`**: the door a memory-quality verdict will come through. It is a
+  **placeholder that always returns `true`** (USER, 2026-11-19), placed after the 600-character rule
+  and before anything is written: a `false` refuses the store with a reason — never truncates, never
+  stores a maybe. Laya plugs in there later, deciding from the insertion record (`prompt` + `tools` +
+  `written`).
+- Evidence: the whole suite stays green with the gate in place —
+  `matrix 13/13 + probes + hooks (18/18) + timeline + dedupe + profile + dream`.
+
+### Added — 2026-11-19 (a memory is a rule, not a page: 600 characters)
+
+- **`store` refuses a memory longer than 600 characters**, and the refusal names the limit and how
+  much has to go: «'text' has 700 characters, the limit is 600 — summarise it and send again (cut at
+  least 100)». Refusal, never truncation: cutting silently keeps the first half of a thought and
+  loses the half that mattered. `600` exactly is accepted (USER, 2026-11-19).
+- Evidence: `test/hooks.selftest.mjs` **S1** — 700 refused with both numbers in the message, 600
+  accepted. Full suite: `matrix 13/13 + probes + hooks (18/18) + timeline + dedupe + profile + dream`.
+- Known gap, named not hidden: memories written by `dream` go through another path and are **not**
+  covered by the cap yet.
+
+### Changed — 2026-11-19 (the block follows the conversation)
+
+- **The marker stopped meaning «skip» and started meaning «replace».** A1 injected the block once
+  per session and never again: the subject could change for hours and the same five memories stayed in
+  the system context. Now `injectBlock` replaces the marked part in place (identical content is still
+  a no-op), and `collectBlock` receives the last USER prompt as the `query` of both halves — so the
+  block is searched by what the conversation is about. The first block of a session is still chosen by
+  strength, because at that moment there is no prompt, no history and no speech to search by.
+- Evidence: `test/hooks.selftest.mjs` **A1.i** — six records, a first block chosen by strength, a
+  prompt about one of them, and the same `system` array now carries a **different** block in the same
+  single part (no duplicate). Full suite:
+  `matrix 13/13 + probes + hooks (17/17) + timeline + dedupe + profile + dream`.
+
+### Added — 2026-11-19 (how many memories the block carries is ONE global setting)
+
+- **`memoriesPerContext`: the block size became configuration, not a literal, and it is global.**
+  The A1 `context` hook and the A3 `compaction` carry hard-coded `5`; now `config.json` accepts
+  `memoriesPerContext` — one value for every agent (USER: «deixa só uma configuração global de quantas
+  memórias do agente vai ser colocado na sessão»). Default `5`; `0` means «no block»; an invalid value
+  falls back to `5`. Per-agent override was considered and **rejected**: an agent without a
+  configuration needs no second place to look.
+- **The value is PER HALF (USER, 2026-11-19).** The block is two lists: up to
+  `memoriesPerContext` **global** records (the most voted) **plus** up to the same number from the
+  **agent's own** space — so the default block holds up to 5 + 5 = 10. Cross-agent spaces are no
+  longer read for the automatic block. There is no query at session start (no prompt, no history, no
+  speech), so the halves are ordered by strength — votes, then retrievals, then recency — and the
+  subject-based choice belongs to the in-session refresh.
+- Evidence: `test/hooks.selftest.mjs` **A1.g** (an engine built with `memoriesPerContext: 2` reports
+  `2`; absent reports `5`) and **A1.h** (one global record + one own record → a block of exactly two,
+  carrying both). Full suite:
+  `matrix 13/13 + probes + hooks (16/16) + timeline + dedupe + profile + dream`.
+- Both config models carry the key (`core-brain` template and the taulukko merge), so an install no
+  longer drops it.
+
 ### Fixed — 2026-11-19 (the automatic injection no longer counts itself)
 
 - **The context injection incremented the ranking it is ranked by.** A query-less `recall` orders by

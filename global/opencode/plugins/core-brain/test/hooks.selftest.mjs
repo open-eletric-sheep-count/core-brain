@@ -62,6 +62,8 @@ const CONFIG_ROWS = [
   { name: "CBA_INJ1", hasGlobalAccess: true, private: false, inject: true },
   { name: "CBA_INJ2", hasGlobalAccess: true, private: false, inject: true },
   { name: "CBA_INJ3", hasGlobalAccess: true, private: false, inject: true },
+  { name: "CBA_INJ4", hasGlobalAccess: true, private: false, inject: true },
+  { name: "CBA_REFRESH", hasGlobalAccess: true, private: false, inject: true },
   { name: "CBA_OFF1", hasGlobalAccess: true, private: false },
   { name: "CBA_OFF2", hasGlobalAccess: true, private: false },
 ];
@@ -502,6 +504,132 @@ await scenario(
     assert(
       hit.retrievals === 1,
       `the hook read must not count: one observation recall must yield retrievals=1, got ${hit.retrievals}`,
+    );
+  },
+);
+
+// ===========================================================================
+// A1.g — the block size is ONE global setting (USER, 2026-11-19): the engine
+// reads `memoriesPerContext` from config.json and defaults to 5.
+// ===========================================================================
+
+await scenario(
+  "A1.g",
+  "the block size comes from the global memoriesPerContext",
+  async () => {
+    const { createEngine } = await import("../store.ts");
+    const custom = join(ROOT, "config-limit.json");
+    writeFileSync(
+      custom,
+      `${JSON.stringify({ memoriesPerContext: 2, agents: CONFIG_ROWS }, null, 2)}\n`,
+    );
+    const sized = createEngine({ home: ROOT, configPath: custom });
+    assert(
+      sized.memoriesPerContext() === 2,
+      `expected the configured 2, got ${sized.memoriesPerContext()}`,
+    );
+    const plain = createEngine({ home: ROOT, configPath: CONFIG });
+    assert(
+      plain.memoriesPerContext() === 5,
+      `an absent setting must default to 5, got ${plain.memoriesPerContext()}`,
+    );
+  },
+);
+
+// ===========================================================================
+// A1.h — the block is TWO halves (USER, 2026-11-19): up to `memoriesPerContext`
+// global records + the same number from the agent's own space. Placed last:
+// it seeds the global space, which no context above expects.
+// ===========================================================================
+
+await scenario(
+  "A1.h",
+  "the block carries the global half and the agent's own half",
+  async () => {
+    const s = session("CBA_INJ4");
+    const own = mark("block-own");
+    const shared = mark("block-global");
+    await callTool(s, { op: "store", text: own });
+    await callTool(s, { op: "store", target: "global", text: shared });
+    const event = await runContext(s);
+    assert(
+      event.system.length === 1,
+      `expected exactly 1 pushed part, got ${event.system.length}`,
+    );
+    const block = String(event.system[0]?.text ?? "");
+    const bullets = block.split("\n").filter((line) => line.startsWith("- ")).length;
+    assert(bullets === 2, `expected 2 memories (1 global + 1 own), got ${bullets}: ${block}`);
+    assert(block.includes(shared), `the global half is missing: ${block}`);
+    assert(block.includes(own), `the agent's own half is missing: ${block}`);
+  },
+);
+
+// ===========================================================================
+// A1.i — the block FOLLOWS the conversation (USER, 2026-11-19). At start there is
+// no prompt, so it is chosen by strength; once a prompt exists the block is
+// searched by it and REPLACED in place (before, the marker meant «skip»).
+// ===========================================================================
+
+await scenario(
+  "A1.i",
+  "a new prompt replaces the block instead of being skipped",
+  async () => {
+    const s = session("CBA_REFRESH");
+    const topics = ["sglang", "voice", "dreams", "contas", "orchestrator", "foundry"];
+    for (const topic of topics) {
+      await callTool(s, { op: "store", text: `regra fixa sobre ${topic}` });
+    }
+    const event = await runContext(s);
+    assert(event.system.length === 1, `expected the block, got ${event.system.length}`);
+    const first = String(event.system[0]?.text ?? "");
+    assert(first.includes("automatic memory context"), `not the memory block: ${first}`);
+
+    await requireHook("prompt")({ sessionID: s, prompt: { text: "como está a regra do sglang?" } });
+    await requireHook("context")(event);
+    assert(
+      event.system.length === 1,
+      `the block must be replaced in place, not duplicated (got ${event.system.length} parts)`,
+    );
+    const second = String(event.system[0]?.text ?? "");
+    assert(
+      second !== first,
+      `the block must change with the subject; it stayed the same: ${second}`,
+    );
+  },
+);
+
+// ===========================================================================
+// S1 — a memory has a shape: 600 characters, and going over is REFUSED with the
+// number, never truncated (USER, 2026-11-19). Driven here because this suite
+// already calls the plugin's own tool. The quality gate behind it is a stub that
+// accepts everything (`store.memoryIsAcceptable`) — Laya's verdict plugs there.
+// ===========================================================================
+
+await scenario(
+  "S1",
+  "store refuses a memory longer than 600 characters and names the cut",
+  async () => {
+    const s = session("CBA_INJ1");
+    const long = `x`.repeat(700);
+    let refusal = "";
+    try {
+      await callTool(s, { op: "store", text: long });
+    } catch (error) {
+      refusal = String(error?.message ?? error);
+    }
+    assert(refusal !== "", "a 700-character memory must be refused");
+    assert(
+      refusal.includes("limit is 600"),
+      `the refusal must name the limit: ${refusal}`,
+    );
+    assert(
+      refusal.includes("cut at least 100"),
+      `the refusal must say how much to cut: ${refusal}`,
+    );
+    const short = await callTool(s, { op: "store", text: `x`.repeat(600) });
+    assert(
+      typeof short.id === "string" && short.id.length > 0,
+      "600 characters exactly must be accepted",
     );
   },
 );

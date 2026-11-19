@@ -171,4 +171,17 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
-echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + profile + dream (CORE_BRAIN_HOME cleaned up)"
+# --- 13. Suite I: the insertion record (insertions.jsonl, two lines per case) --
+# USER design 2026-11-19: kind = initialization | finalization, joined by id; a case with no answer survives.
+INSERTION_LOG="$CORE_BRAIN_HOME/insertions.log"
+if ! run_script "$DIR/test/memory-insertions.selftest.mjs" "$INSERTION_LOG"; then
+  status=1
+fi
+cat "$INSERTION_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: insertions FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + profile + dream + insertions (CORE_BRAIN_HOME cleaned up)"

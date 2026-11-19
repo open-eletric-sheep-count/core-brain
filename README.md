@@ -141,6 +141,17 @@ integrations shipped in this repository.
 
 > Status: **Draft — spec not yet written.** See [TASKS.md](TASKS.md).
 
+#### How a query is answered
+
+![How the memory is queried: two retrievers, RRF fusion, reranker, block](docs/diagrams/memory-retrieval.svg)
+
+The query goes through two independent retrievers — a **local multilingual encoder** (meaning) and
+**BM25** (terms) — whose rankings are fused by **RRF**, reordered by the local **ms-marco reranker**,
+and only then shaped into the block that enters the model's context (up to 5 global memories plus up
+to 5 from the agent's own space). With **no query** — session start, when there is no prompt, no
+history and no speech — none of them runs: the block is ordered by strength (usefulness votes, then
+retrievals, then date).
+
 ### 4. Agents — the OESC team
 
 The suite also ships the **agent definitions** (`global/opencode/agent/`) — the

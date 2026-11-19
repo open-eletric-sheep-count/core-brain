@@ -707,15 +707,6 @@ function composeContextBlock(texts: string[], agentName: string): string {
   return `${header}\n${texts.map((text) => `- ${text}`).join("\n")}`;
 }
 
-/** true when a system part list already carries the injected block marker. */
-function systemHasMarker(system: unknown): boolean {
-  if (!Array.isArray(system)) return false;
-  return system.some((part) => {
-    const text = (part as { text?: unknown } | null)?.text;
-    return typeof text === "string" && text.includes(INJECT_MARKER);
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Plugin definition.
 // ---------------------------------------------------------------------------
@@ -847,6 +838,14 @@ export default {
     };
 
     /**
+     * The last USER text seen in this session (USER, 2026-11-19): the only thing the
+     * automatic layer may search BY. Empty at session start — no prompt, no history,
+     * no speech — which is exactly why the first block is chosen by strength, and why
+     * a subject-based choice can only happen once the conversation exists.
+     */
+    const lastPrompts = new Map<string, string>();
+
+    /**
      * Recalls texts, or `null` when the read itself failed.
      *
      * Every caller of this helper is a HOOK, and a hook reads on the model's
@@ -879,14 +878,69 @@ export default {
     };
 
     /**
-     * Pushes the block into the context event's `system[]` — the ONLY injection
-     * channel. No-op when `system` is absent, not an array, or already carries
-     * the block (marker dedupe). `prompt.text` is never involved.
+     * Builds the block's contents: TWO halves, each up to `perHalf` memories
+     * (USER, 2026-11-19) — the most voted GLOBAL records, then the agent's own.
+     * Cross-agent spaces are deliberately left out: the automatic block is the
+     * shared knowledge plus this agent's knowledge, not a rumour mill.
+     * Returns `null` when the read failed, so the caller can skip instead of
+     * injecting half a block.
+     */
+    const collectBlock = async (
+      agentName: string,
+      perHalf: number,
+      query?: string,
+    ): Promise<string[] | null> => {
+      if (!engine) return null;
+      try {
+        // A query turns the block from «the strongest records» into «the records this
+        // session is about»; without one (session start) the store's strength order is
+        // the only honest choice.
+        const extra = query && query.trim() !== "" ? { query } : {};
+        const [globalResult, ownResult] = await Promise.all([
+          engine.invoke(agentName, {
+            op: "recall",
+            limit: perHalf,
+            from: "global",
+            countRetrievals: false,
+            ...extra,
+          }),
+          engine.invoke(agentName, {
+            op: "recall",
+            limit: perHalf,
+            from: "self",
+            countRetrievals: false,
+            ...extra,
+          }),
+        ]);
+        return [...recalledTexts(globalResult), ...recalledTexts(ownResult)];
+      } catch (error) {
+        debugLog(`block recall failed for agent=${agentName}: ${describeError(error)}`);
+        return null;
+      }
+    };
+
+    /**
+     * Places the block in the context event's `system[]` — the ONLY injection channel.
+     *
+     * <p>Before 2026-11-19 a present marker meant «skip»: the block entered once per
+     * session and never followed the conversation. Now the marker means «this is the
+     * part to REPLACE», so the block tracks the subject; identical content is still a
+     * no-op, so nothing churns. A missing or non-array `system` is a no-op.
      */
     const injectBlock = (event: SessionHookEvent, block: string): boolean => {
       const system = event?.system;
-      if (!Array.isArray(system) || systemHasMarker(system)) return false;
-      system.push({ type: "text", text: block });
+      if (!Array.isArray(system)) return false;
+      const at = system.findIndex((part) => {
+        const text = (part as { text?: unknown } | null)?.text;
+        return typeof text === "string" && text.includes(INJECT_MARKER);
+      });
+      if (at === -1) {
+        system.push({ type: "text", text: block });
+        return true;
+      }
+      const current = system[at] as { text?: unknown };
+      if (current.text === block) return false;
+      system[at] = { ...(system[at] as object), text: block } as (typeof system)[number];
       return true;
     };
 
@@ -923,7 +977,12 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return; // gate BEFORE the recall
-        const texts = await recallTexts(agentName, 5);
+        // How many memories the block carries is ONE global setting (USER, 2026-11-19):
+        // `memoriesPerContext` in config.json, default 5 — PER HALF, so the block holds
+        // up to 5 global + 5 of the agent's own. `0` = no block at all.
+        const perHalf = engine ? engine.memoriesPerContext() : 5;
+        if (perHalf <= 0) return;
+        const texts = await collectBlock(agentName, perHalf, lastPrompts.get(sessionID));
         if (texts === null) return;
         const block = composeContextBlock(texts, agentName);
         if (injectBlock(event, block)) {
@@ -945,6 +1004,10 @@ export default {
         activeSessionID = sessionID;
         const prompt = asRecord(event?.prompt);
         const text = typeof prompt?.text === "string" ? prompt.text : null;
+        // The subject the next block is searched by. This hook is the ONLY place USER
+        // text is read, so it is the only honest source — and it runs before the next
+        // `context`. A session with no prompt yet keeps the strength-ordered block.
+        if (text !== null && text.trim() !== "") lastPrompts.set(sessionID, text);
         if (!engine) return;
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName || !isOptedIn(agentName)) return;
@@ -966,7 +1029,9 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return;
-        const texts = await recallTexts(agentName, 5);
+        const carryPerHalf = engine ? engine.memoriesPerContext() : 5;
+        if (carryPerHalf <= 0) return;
+        const texts = await collectBlock(agentName, carryPerHalf);
         if (texts !== null) {
           const block = composeContextBlock(texts, agentName);
           if (injectBlock(event, block)) {

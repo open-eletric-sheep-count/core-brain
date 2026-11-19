@@ -372,4 +372,10 @@ export interface Engine {
    * (never throws), exactly like `who`.
    */
   resolvePolicy(agentName: string): AgentPolicy;
+  /**
+   * How many memories the automatic block carries, read from `config.json`
+   * (`memoriesPerContext`, default 5) — ONE setting for every agent (USER,
+   * 2026-11-19: «deixa só uma configuração global»). `0` means no block.
+   */
+  memoriesPerContext(): number;
 }

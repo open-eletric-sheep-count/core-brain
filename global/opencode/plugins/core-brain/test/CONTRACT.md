@@ -86,6 +86,20 @@ implementation exposes (`createEngine` and `InvalidConfigurationError` from
 update this file and `matrix.selftest.mjs` together — the test is the contract,
 so it changes first or not at all.
 
+### Memory shape — 600 characters, refused above it (USER, 2026-11-19)
+
+`store` refuses a `text` longer than **600 characters** and the message names both the limit and
+how much has to go:
+
+```
+core_memory store: 'text' has 700 characters, the limit is 600 — summarise it and send again (cut at least 100)
+```
+
+It is a **refusal, not a truncation**: cutting silently would keep the first half of a thought and
+lose the half that mattered. `600` exactly is accepted. Ledger: `hooks.selftest.mjs` **S1**.
+The cap lives in `storeOp`; memories created by `dream` are written elsewhere and are **not**
+covered by it yet.
+
 ### Namespace labels
 `scanned` entries are matched by **substring** (`"CB_BETA"`), so the exact label
 format (`agent:CB_BETA` vs `CB_BETA`) is not over-pinned. A namespace that the
@@ -424,6 +438,27 @@ The test-facing row shape the selftest writes (proof it is a **separate** key):
 ```json
 { "name": "CBA_INJ1", "hasGlobalAccess": true, "private": false, "inject": true }
 ```
+
+**Block size is ONE global setting (USER, 2026-11-19).** The count of memories the
+block carries is no longer the literal `5` in the hook, and it is **not** per agent:
+
+- `config.json` accepts an optional file-wide `memoriesPerContext` (default `5`);
+- an invalid value (negative, non-finite) falls back to the default `5`;
+- `0` is honoured and means «no block at all»;
+- **the value is PER HALF (USER, 2026-11-19):** the block carries up to
+  `memoriesPerContext` records from the **global** space (the most voted) **plus**
+  up to the same number from the **agent's own** space, so the default block holds
+  up to 5 + 5 = 10 memories. Cross-agent spaces are NOT read for the block;
+- both hooks (A1 `context` and A3 `compaction`) build the same two halves through
+  `collectBlock`, and read the size through `engine.memoriesPerContext()`.
+
+**The block follows the conversation (USER, 2026-11-19).** There is no query at
+session start — no prompt, no history, no speech — so the first block is chosen by
+strength. From the moment a USER prompt exists, `collectBlock` receives it as the
+`query` of both halves, and the marker stops meaning «skip»: A1 **replaces** the
+marked part in place with the new block (identical content is still a no-op), so a
+session that changes subject changes its block instead of keeping the first five
+forever.
 
 ### 9.2 Hook registration
 

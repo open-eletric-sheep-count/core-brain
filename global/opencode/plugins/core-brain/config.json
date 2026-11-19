@@ -19,5 +19,6 @@
       "hasGlobalAccess": false,
       "private": true
     }
-  ]
+  ],
+  "memoriesPerContext": 5
 }
