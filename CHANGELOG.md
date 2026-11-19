@@ -106,38 +106,38 @@ Newest on top.
 
 ### Fixed — 2026-11-18
 
-- **`core-brain` — `promote` recusa uma conclusão duplicada.** Pedido do USER: *«a original fica, a
-  nova não pode ser criada»*. Antes, promover duas vezes o mesmo episódio com o mesmo texto gravava
-  **dois** registos com ids diferentes (o `store` faz sempre `randomUUID()` + `push`, sem comparar);
-  o `recall` passava a devolver a mesma frase duas vezes. Agora, se já existir no espaço do chamador um
-  registo **activo** com o **texto normalizado** igual (trim, espaços colapsados, minúsculas), o
-  `promote` **lança erro** e não escreve nada — nem registo, nem vector, nem `engramIds`. Um registo
-  **reformado** não conta: depois de `forget`, o mesmo texto pode ser promovido outra vez. O erro nomeia
-  o id existente e o espaço. Provas: `test/promote-dedup.selftest.mjs` (TL7, 11 asserções, suite E do
-  `check.sh`) — vermelho antes (7 falhas, 2 registos criados), verde depois; `matrix 13/13`, `hooks` e
-  `timeline` continuam a passar.
+- **`core-brain` — `promote` refuses a duplicate finding.** USER's request: *«the original stays, the
+  new one cannot be created»* (translated). Before, promoting the same episode with the same text twice wrote
+  **two** records with different ids (`store` always does `randomUUID()` + `push`, without comparing);
+  `recall` then returned the same sentence twice. Now, if the caller's space already holds an
+  **active** record with the same **normalized text** (trim, collapsed spaces, lower case),
+  `promote` **throws** and writes nothing — no record, no vector, no `engramIds`. A **retired** record
+  does not count: after `forget`, the same text can be promoted again. The error names the existing
+  id and the space. Evidence: `test/promote-dedup.selftest.mjs` (TL7, 11 assertions, suite E of
+  `check.sh`) — red before (7 failures, 2 records created), green after; `matrix 13/13`, `hooks` and
+  `timeline` keep passing.
 
 ### Removed — 2026-11-16
 
-- **`@oesc/todo-list` — op `add` removido (v0.4.0).** Pedido do USER: os agentes **não sabiam usar
-  `add`** — falhavam o `after`, não sabiam onde o item tinha caído, e só acertavam quando reescreviam
-  a lista inteira. Agora **adicionar é `write` com a lista completa** (ler, inserir no sítio, devolver
-  tudo). `op: "add"` responde com um `ERROR` que nomeia essa saída, e nada é escrito. Saiu também do
-  contrato (`types.ts`), da lista de ops mutantes (`changed.ts`) e do `TODO_TOOL_HOWTO.md`, que é o
-  texto injetado nas sessões. Nota medida: `write` atribui ids novos a todos os itens, por isso o
-  agente tem de reler (`read`) antes de `update`/`remove`.
-- **`read` já existia** e continua a ser o modo de consulta: devolve a lista com id, glifo, número
-  gerado, profundidade e as notas `issues:` — é o que permite ao agente confirmar o que escreveu.
+- **`@oesc/todo-list` — `add` op removed (v0.4.0).** USER's request: the agents **did not know how to
+  use `add`** — they got the `after` wrong, did not know where the item had landed, and only got it right
+  when they rewrote the whole list. Now **adding is `write` with the complete list** (read, insert in place,
+  return everything). `op: "add"` answers with an `ERROR` that names that way out, and nothing is written.
+  It also left the contract (`types.ts`), the list of mutating ops (`changed.ts`) and `TODO_TOOL_HOWTO.md`,
+  which is the text injected into the sessions. Measured note: `write` assigns new ids to every item, so
+  the agent must re-read (`read`) before `update`/`remove`.
+- **`read` already existed** and remains the query mode: it returns the list with id, glyph, generated
+  number, depth and the `issues:` notes — this is what lets the agent confirm what it wrote.
 
 ### Added — 2026-11-07
 
-- **`@oesc/todo-list` — evento `todo.changed` (RPC).** `rpc.ts` define o contrato (`id: todo`, evento
-  `changed` com `sessionID`) e `registerTodoRpc` regista-o; `index.ts` emite depois de cada mutação
-  bem-sucedida. Sem listener nada muda; sem runtime RPC o plugin continua a funcionar (degradação
-  testada). **Motivo:** um consumidor (hoje, o painel do Orca) precisa de saber *que* mudou, sem
-  varrer ficheiros nem adivinhar sessões.
-- **Skills de fluxo vindas do taulukko:** `a-new-brain-storm` e `batman-and-robin` (esta renomeada de
-  `batman-e-robin`, para o nome coincidir com o fluxo que o ORACLE anuncia).
+- **`@oesc/todo-list` — `todo.changed` event (RPC).** `rpc.ts` defines the contract (`id: todo`, event
+  `changed` with `sessionID`) and `registerTodoRpc` registers it; `index.ts` emits after every successful
+  mutation. With no listener nothing changes; with no RPC runtime the plugin keeps working (degradation
+  tested). **Reason:** a consumer (today, the Orca panel) needs to know *that* something changed, without
+  scanning files or guessing sessions.
+- **Flow skills brought over from taulukko:** `a-new-brain-storm` and `batman-and-robin` (the latter renamed
+  from `batman-e-robin`, so the name matches the flow the ORACLE announces).
 
 ### Added — 2026-10-30
 
