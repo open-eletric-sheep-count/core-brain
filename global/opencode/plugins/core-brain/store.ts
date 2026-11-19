@@ -942,13 +942,19 @@ export function createEngine(options: EngineOptions = {}): Engine {
       reranked = result.reranked;
     }
 
+    // A read that counts as a use. The automatic context injection reads with
+    // `countRetrievals: false`: it was inflating the very ranking it is ranked
+    // by, so the same five memories won every session forever (2026-11-19).
+    const countRetrievals = request.countRetrievals !== false;
     const dirty = new Set<string>();
     const results: RecallHit[] = [];
     for (const hit of ranked) {
       const found = byId.get(hit.id);
       if (!found) continue;
-      found.record.retrievals = (Number(found.record.retrievals) || 0) + 1;
-      dirty.add(found.label);
+      if (countRetrievals) {
+        found.record.retrievals = (Number(found.record.retrievals) || 0) + 1;
+        dirty.add(found.label);
+      }
       results.push({
         id: found.record.id,
         text: found.record.text,
@@ -957,7 +963,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
         score: Number(hit.score.toFixed(6)),
         rrf: Number(hit.rrf.toFixed(6)),
         legs: hit.legs,
-        retrievals: found.record.retrievals,
+        retrievals: Number(found.record.retrievals) || 0,
         ...(found.record.meta && Object.keys(found.record.meta).length > 0
           ? { meta: found.record.meta }
           : {}),

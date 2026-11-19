@@ -348,6 +348,44 @@ await scenario(
   },
 );
 
+// A Portuguese rule is a rule too (USER, 2026-11-19): the cue list used to be
+// English-only, so every rule the USER states in Portuguese was silently
+// dropped by the gate. The English cues must keep working (A2.a/A2.b above).
+const DURABLE_PT_A2 = "Nunca usar tabs neste repositório — regra do Gand";
+
+await scenario(
+  "A2.d",
+  "prompt learns a durable statement written in Portuguese",
+  async () => {
+    const s = session("CBA_INJ2");
+    await requireHook("prompt")({ sessionID: s, prompt: { text: DURABLE_PT_A2 } });
+    const recalled = await callTool(s, { op: "recall", from: "self" });
+    const count = learnedCount(recalled.results, "tabs neste repositório");
+    assert(
+      count === 1,
+      `expected exactly 1 learned Portuguese record, got ${count}: ${textsOf(recalled.results)}`,
+    );
+  },
+);
+
+await scenario(
+  "A2.e",
+  "a Portuguese sentence without a durable cue is not learned",
+  async () => {
+    const s = session("CBA_INJ3");
+    await requireHook("prompt")({
+      sessionID: s,
+      prompt: { text: "Hoje o café estava bom e vi o jogo à noite" },
+    });
+    const recalled = await callTool(s, { op: "recall", from: "self" });
+    const count = learnedCount(recalled.results, "café estava bom");
+    assert(
+      count === 0,
+      `ordinary Portuguese chatter must learn nothing, got ${count}: ${textsOf(recalled.results)}`,
+    );
+  },
+);
+
 // ===========================================================================
 // A3 — compaction: carry + learn from the discarded (§9.5)
 // ===========================================================================
@@ -426,6 +464,44 @@ await scenario(
     assert(
       count === 0,
       `non-opted-in compaction must learn nothing, got ${count}: ${textsOf(recalled.results)}`,
+    );
+  },
+);
+
+// ===========================================================================
+// A1.f — the injection must not count as a retrieval (placed last: it seeds
+// one extra record, and the contexts above rank a fixed number of them).
+// The read happens on the model's behalf, not for the model; counting it made
+// the same five memories win every session forever (measured 2026-11-19: the
+// injected records gained +5 retrievals across a handful of reads).
+// ===========================================================================
+
+await scenario(
+  "A1.f",
+  "the injection reads without counting a retrieval",
+  async () => {
+    const s = session("CBA_INJ1");
+    const M = mark("a1-nocount");
+    const stored = await callTool(s, { op: "store", text: M });
+    // Two usefulness marks take it above every seeded record, so it is inside
+    // the injected five whatever order the others are in.
+    await callTool(s, { op: "feedback", id: stored.id, useful: true });
+    await callTool(s, { op: "feedback", id: stored.id, useful: true });
+    const event = await runContext(s);
+    assert(
+      event.system.length === 1,
+      `expected exactly 1 pushed part, got ${event.system.length}`,
+    );
+    assert(
+      typeof event.system[0]?.text === "string" && event.system[0].text.includes(M),
+      `the block must carry the seeded record; block=${JSON.stringify(event.system[0]?.text)}`,
+    );
+    const recalled = await callTool(s, { op: "recall", from: "self" });
+    const hit = recalled.results.find((result) => result.text === M);
+    assert(hit !== undefined, "the seeded record must still be returned");
+    assert(
+      hit.retrievals === 1,
+      `the hook read must not count: one observation recall must yield retrievals=1, got ${hit.retrievals}`,
     );
   },
 );

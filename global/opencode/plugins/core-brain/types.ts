@@ -295,7 +295,20 @@ export type CoreMemoryResult =
 export type CoreMemoryRequest =
   | { op: "who" }
   | { op: "store"; text: string; target?: NamespaceTarget; meta?: Record<string, unknown> }
-  | { op: "recall"; query?: string; limit?: number; from?: NamespaceTarget }
+  | {
+      op: "recall";
+      query?: string;
+      limit?: number;
+      from?: NamespaceTarget;
+      /**
+       * INTERNAL, never offered to an agent: `false` reads without counting a
+       * retrieval. The automatic context injection uses it, because counting a
+       * read nobody asked for made the same five memories win forever
+       * (2026-11-19: the injection itself incremented the ranking it was
+       * ranked by).
+       */
+      countRetrievals?: boolean;
+    }
   | { op: "forget"; id?: string; query?: string; target?: "self" | "global" }
   | { op: "feedback"; id: string; useful: boolean }
   | {

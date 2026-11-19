@@ -454,10 +454,19 @@ Observables asserted by `hooks.selftest.mjs`:
 | Ledger | Setup | Literal expectation |
 |--------|-------|---------------------|
 | **A1.a** | opted-in agent, one seeded record `M` | `event.system.length === 1`; the part is `type:"text"` with a non-empty `text` **containing `M`** |
-| **A1.b** | non-opted-in agent, one seeded record `M` | `event.system.length === 0`; one observation `recall` returns the record with `retrievals === 1` (**the hook did not call recall** — a hook call would make it `2`) |
+| **A1.b** | non-opted-in agent, one seeded record `M` | `event.system.length === 0`; one observation `recall` returns the record with `retrievals === 1` (a single observation counts once) |
 | **A1.c** | opted-in agent, `event.system` **absent** | the hook returns without throwing |
 | **A1.d** | opted-in agent, `event.system` **non-array** | the hook returns without throwing |
 | **A1.e** | agent **absent** from `config.json`, one seeded record | `event.system.length === 0` (unlisted ⇒ nothing by default) |
+| **A1.f** | opted-in agent, one seeded record `M` marked useful twice, then the context hook | the block carries `M`; the observation `recall` afterwards returns `retrievals === 1` — **the hook's own read counted nothing** |
+
+**A hook read never counts a retrieval (2026-11-19).** The hook reads on the
+model's behalf, so `recallTexts` passes `countRetrievals: false` (an INTERNAL
+field, never offered in the tool schema). Before this, the injection incremented
+the very ranking it is ranked by: the injected records gained +5 retrievals
+across a handful of reads, and with 70 3xx retrievals at the top nothing new
+could ever enter the block. `A1.b`'s `retrievals === 1` therefore no longer
+proves "the hook did not call recall" — `A1.f` does.
 
 ### 9.4 A2 — `prompt`: learning, read-only
 
@@ -468,12 +477,21 @@ Observables asserted by `hooks.selftest.mjs`:
 - A non-opted-in agent stores nothing.
 - Dedupe key = `text + origin` (`origin = prompt`): the same statement twice ⇒
   exactly one record.
+- **The cue gate is bilingual (2026-11-19, USER).** A statement is durable when it
+  carries at least one cue — English (`always`, `never`, `prefer`, `remember`,
+  `convention`, `standard`, `rule`, `decided`) **or** Portuguese (`nunca`,
+  `jamais`, `sempre`, `prefiro`, `prefere`, `lembra`, `lembre`, `regra`,
+  `regras`, `convenção`/`convencao`, `padrão`/`padrao`, `decidi`, `decidimos`,
+  `proibido`, `obrigatório`/`obrigatorio`, `a partir de agora`). The English cues
+  are unchanged: the Portuguese ones were **added**, never substituted.
 
 | Ledger | Setup | Literal expectation |
 |--------|-------|---------------------|
 | **A2.a** | opted-in, `prompt.text = "convention: always use pnpm"` | `prompt.text` and the whole `prompt` object byte-identical; a self `recall` finds **exactly 1** record containing `"pnpm"` |
 | **A2.b** | the identical statement invoked twice | **still 1** record (dedupe holds) |
 | **A2.c** | non-opted-in agent | self `recall` finds **0** records containing the distinctive token |
+| **A2.d** | opted-in, `prompt.text = "Nunca usar tabs neste repositório — regra do Gand"` | self `recall` finds **exactly 1** record containing the Portuguese sentence (the gate accepts a Portuguese cue) |
+| **A2.e** | opted-in, `prompt.text = "Hoje o café estava bom e vi o jogo à noite"` | self `recall` finds **0** records: ordinary Portuguese chatter carries no cue |
 
 ### 9.5 A3 — `compaction`: carry + learn from the discarded
 

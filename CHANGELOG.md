@@ -5,6 +5,44 @@ Newest on top.
 
 ## [Unreleased]
 
+### Fixed — 2026-11-19 (the automatic injection no longer counts itself)
+
+- **The context injection incremented the ranking it is ranked by.** A query-less `recall` orders by
+  `feedback.useful` desc, `retrievals` desc, `updatedAt` desc, and the A1 hook read the top five with
+  that same call — so every session added one retrieval to the five it had just injected. Measured on
+  the live store: the injected records gained **+5** across a handful of reads, and with ~70 300 at
+  the top nothing new could ever enter the block. `recallTexts` now passes
+  `countRetrievals: false` (INTERNAL, never offered in the tool schema), so a hook read is a read and
+  not a use.
+- Evidence: `test/hooks.selftest.mjs` **A1.f** (block carries the seeded record; the following
+  observation recall returns `retrievals === 1`), plus the whole suite:
+  `matrix 13/13 + probes + hooks (14/14) + timeline + dedupe + profile + dream`.
+- **Not fixed by this change:** the five records that already hold ~70 300 retrievals still win every
+  session. Stopping the inflation does not unfreeze the ranking — that needs a decision on what the
+  block should be ordered by (relevance to the current work, recency, or a one-off counter reset).
+- **Counter reset applied to the live store (USER, 2026-11-19).** Seven records carried counters
+  inflated by the old bug (`~70 368`, `70 367`, `67 087`, `54 801`, `37 906`, `18 464`, `150`); all
+  seven were set to `retrievals = 1` with `scripts/reset-retrievals.mjs` (dry-run first, then
+  `--apply`), which re-reads the file and proves the invariants: 635 records, same ids, no clones,
+  only `retrievals` changed. After the reset the highest counter in the store is **77** and the
+  distribution is 2 records ≥ 1 000 → **0**, 14 at 10–99, 602 below 10.
+
+### Fixed — 2026-11-19 (the durable-cue gate also speaks Portuguese)
+
+- **A rule stated in Portuguese stopped being dropped.** The automatic layer's learning gate
+  (`prompt` hook A2 and `compaction` hook A3) accepted only English cues (`always`, `never`,
+  `prefer`, `remember`, `convention`, `standard`, `rule`, `decided`), so every rule the USER wrote in
+  Portuguese was discarded before it reached the store. The Portuguese cues were **added to** the
+  English list — never substituted: `nunca`, `jamais`, `sempre`, `prefiro`, `prefere`, `lembra`,
+  `lembre`, `regra`, `regras`, `convenção`/`convencao`, `padrão`/`padrao`, `decidi`, `decidimos`,
+  `proibido`, `obrigatório`/`obrigatorio`, `a partir de agora`.
+- The cue list is now one named array (`DURABLE_CUES`) feeding one regex: adding a cue is one
+  entry, nothing else.
+- Evidence: `test/hooks.selftest.mjs` **A2.d** (a Portuguese durable statement is learned — it failed
+  before the fix with `got 0`) and **A2.e** (ordinary Portuguese chatter learns nothing); A2.a–A2.c
+  keep the English behaviour green. Full suite: `matrix 13/13 + probes + hooks + timeline + dedupe +
+  profile + dream`.
+
 ### Changed — 2026-11-19 (duplicate in the dream = reinforcement)
 
 - **A duplicate is no longer a refusal — it became REINFORCEMENT** (USER: *«it is a bug, anything that

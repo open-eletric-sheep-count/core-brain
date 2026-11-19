@@ -612,9 +612,48 @@ function buildRequest(input: unknown): RequestParse {
  */
 const INJECT_MARKER = "core-brain:auto:v1";
 
-/** Cues that mark a statement as durable (plan §3.2 / D3: no junk memory). */
-const DURABLE_CUE =
-  /\b(always|never|prefer|remember|convention|standard|rule|decided)\b/i;
+/**
+ * Cues that mark a statement as durable (plan §3.2 / D3: no junk memory).
+ *
+ * One list, two languages: the English cues came first, and the Portuguese ones
+ * were added because the USER states his rules in Portuguese and the gate was
+ * dropping every one of them silently (2026-11-19). Adding a cue is adding an
+ * entry here — no other edit.
+ */
+const DURABLE_CUES = [
+  // English
+  "always",
+  "never",
+  "prefer",
+  "remember",
+  "convention",
+  "standard",
+  "rule",
+  "decided",
+  // Portuguese (accents and their ASCII spellings, since the USER types both)
+  "nunca",
+  "jamais",
+  "sempre",
+  "prefiro",
+  "prefere",
+  "lembra",
+  "lembre",
+  "regra",
+  "regras",
+  "convenção",
+  "convencao",
+  "padrão",
+  "padrao",
+  "decidi",
+  "decidimos",
+  "proibido",
+  "obrigatório",
+  "obrigatorio",
+  "a partir de agora",
+];
+
+const DURABLE_CUE = new RegExp(`\\b(?:${DURABLE_CUES.join("|")})\\b`, "i");
+
 
 /**
  * Extracts the durable statements from a USER prompt / a discarded message.
@@ -807,7 +846,15 @@ export default {
       }
     };
 
-    /** Recalls texts, or `null` when the read itself failed. */
+    /**
+     * Recalls texts, or `null` when the read itself failed.
+     *
+     * Every caller of this helper is a HOOK, and a hook reads on the model's
+     * behalf, not for the model: it passes `countRetrievals: false` so the
+     * automatic layer never inflates the ranking it is ranked by. Counting
+     * those reads kept the same five memories at the top of every session
+     * forever (2026-11-19).
+     */
     const recallTexts = async (
       agentName: string,
       limit: number,
@@ -817,8 +864,13 @@ export default {
       try {
         const result =
           from === "self"
-            ? await engine.invoke(agentName, { op: "recall", limit, from })
-            : await engine.invoke(agentName, { op: "recall", limit });
+            ? await engine.invoke(agentName, {
+                op: "recall",
+                limit,
+                from,
+                countRetrievals: false,
+              })
+            : await engine.invoke(agentName, { op: "recall", limit, countRetrievals: false });
         return recalledTexts(result);
       } catch (error) {
         debugLog(`recall failed for agent=${agentName}: ${describeError(error)}`);
