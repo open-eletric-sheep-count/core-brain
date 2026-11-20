@@ -1,4 +1,5 @@
-// engine/embedder.ts — real (bge-small) + deterministic (hash-ngram) embedders.
+// engine/embedder.ts — real (transformers: multilingual by default, bge-small still selectable)
+// plus the deterministic (hash-ngram) embedder.
 // core-brain Slice 1, plan §7 file 1.3 (D1/D2/C2/D4/D5, E1/E4).
 //
 // Portions ported from plur-ai/plur packages/core@0.21.0 (Apache-2.0); modified
@@ -13,7 +14,8 @@
 //     - lines 66-76  : `makeBgeSmallAdapter` — `modelId:"Xenova/bge-small-en-v1.5"`,
 //                      `dim:384`, `pooling:"cls"`, `normalize:true`, `dtype:"fp32"`.
 //     - lines 292-346: the embedder registry and `DEFAULT_EMBEDDER = "bge-small"`
-//                      (line 300).
+//                      (line 300). core-brain keeps `bge-small-en` as a PROFILE and
+//                      now defaults to `multilingual-minilm` (USER, 2026-11-20).
 //   NOT ported (declared parity gaps, plan §3 / §124): the minilm / bge-base /
 //     embedding-gemma / openai adapters, `getEmbedder`, `resolveEmbedderName`
 //     (PLUR_EMBEDDER), `_resetEmbedderCache`, embedBatch.
@@ -329,8 +331,15 @@ export function createBgeSmallEmbedder(options: BgeSmallEmbedderOptions = {}): E
 // Model profiles — one store, one model at a time (`CORE_BRAIN_EMBED_MODEL`)
 // ---------------------------------------------------------------------------
 
-/** Which profile the store uses. Absent = the original bge-small, so silence changes nothing. */
+/** Which profile the store uses. Absent = `DEFAULT_EMBED_PROFILE` (multilingual since 2026-11-20). */
 export const EMBED_MODEL_ENV = "CORE_BRAIN_EMBED_MODEL";
+
+/**
+ * The profile an installation gets when nothing says otherwise (USER, 2026-11-20): the corpus is
+ * Portuguese, and the English-trained model read it as foreign text — a silent default nobody chose.
+ * The old model stays installed and selectable as `bge-small-en`.
+ */
+export const DEFAULT_EMBED_PROFILE = "multilingual-minilm";
 
 export interface EmbedProfile {
   modelId: string;
@@ -359,7 +368,7 @@ export const EMBED_PROFILES: Record<string, EmbedProfile> = {
 export function activeProfileName(explicit?: string): string {
   if (typeof explicit === "string" && explicit.trim() !== "") return explicit.trim();
   const raw = process.env[EMBED_MODEL_ENV];
-  return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : "bge-small-en";
+  return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : DEFAULT_EMBED_PROFILE;
 }
 
 /** `createConfiguredEmbedder` options: the bge options plus the profile choice. */
@@ -370,8 +379,8 @@ export interface ConfiguredEmbedderOptions extends BgeSmallEmbedderOptions {
 
 /**
  * The embedder the store uses: the profile named by the explicit choice (config.json), else by
- * `CORE_BRAIN_EMBED_MODEL`, else bge-small. An unknown name is REFUSED — a typo must not fall back
- * to another space.
+ * `CORE_BRAIN_EMBED_MODEL`, else `DEFAULT_EMBED_PROFILE` (multilingual). An unknown name is
+ * REFUSED — a typo must not fall back to another space.
  */
 export function createConfiguredEmbedder(options: ConfiguredEmbedderOptions = {}): Embedder {
   const { profile: explicit, ...rest } = options;

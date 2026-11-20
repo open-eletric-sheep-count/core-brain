@@ -11,6 +11,7 @@
 // fully erased.
 
 import type { Embedder } from "./engine/embedder.ts";
+import type { DreamMemoryRow, DreamRunRow } from "./engine/persistence.ts";
 import type { Reranker } from "./engine/reranker.ts";
 
 export type { Embedder, Reranker };
@@ -111,7 +112,14 @@ export interface DreamResult {
   episodesPerPass?: number;
   /** Present when the call performed the dream. */
   dreamId?: string;
+  /** Ids of the memories the dream CREATED. */
   memories?: string[];
+  /**
+   * Ids of the memories the dream REINFORCED instead of creating a second record: the exact twin,
+   * and — since 2026-11-20 — the memory that said the same thing in other words, which absorbed the
+   * new text and the new score.
+   */
+  reinforced?: string[];
 }
 
 /** `core_memory({ op: "episode" })` result (CONTRACT §10.2). */
@@ -265,8 +273,28 @@ export interface AdminResult {
   ok: true;
   action: string;
   detail?: string;
-  /** `dedupe` only: one entry per group of records that say the same thing. */
-  groups?: Array<{ ns: string; kept: string; retired: string[] }>;
+  /**
+   * `dedupe` only: one entry per group of records that say the same thing.
+   * `kind` says which pass found it — `text` (equal normalised text) or `semantic` (vectors at or
+   * above `minCosine`, i.e. the same meaning in different words); the semantic fields carry the
+   * evidence of the merge.
+   */
+  groups?: Array<{
+    ns: string;
+    kept: string;
+    retired: string[];
+    kind?: "text" | "semantic";
+    /** `semantic` only: the weakest cosine inside the group — the evidence for the merge. */
+    cosine?: number;
+    /** `semantic` only: how many absorbed texts were joined into the survivor's text. */
+    merged?: number;
+    /** `semantic` only: how many did not fit inside the 600-character ceiling. */
+    skipped?: number;
+  }>;
+  /** `dream-memories` only: the pairs waiting for an agent's verdict (or every row of a status). */
+  dreamMemories?: DreamMemoryRow[];
+  /** `dreams` only: the passes, newest first. */
+  dreams?: DreamRunRow[];
 }
 
 export type CoreMemoryResult =

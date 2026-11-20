@@ -67,6 +67,8 @@ EOF
 Accepted commands
   sleep.sh now            dream what is waiting, up to the configured episodes per dream
   sleep.sh now --dry-run  show the prompt, send nothing
+  sleep.sh inspect        wake an agent to review the pairs the last dream joined
+  sleep.sh inspect --dry-run  show the prompt, send nothing
   sleep.sh status         the current state
   sleep.sh setup          change the settings
   sleep.sh help           this text
@@ -77,11 +79,41 @@ Where it is configured
 
 Where to look
   ~/.config/core-brain/logs/dream.log — START / END / ERROR.
+  dream_memories — the pairs a dream joined, waiting for an agent's verdict.
 
 When it is refused
   Unknown episode · already dreamed · more episodes than the config allows · not enough rest
   (a pause, not an error). A refusal writes nothing.
 EOF
+}
+
+# Wakes one agent with `prompt`: opens a session on the local service and sends it.
+# ONE home for that call — `now` (the dream) and `inspect` (the review after it) both use it.
+wake_agent() { # <title-prefix> <prompt> <dry 0|1>
+  local prefix="$1" prompt="$2" dry="$3"
+
+  [ -f "$SERVICE_FILE" ] || { echo "ERROR: service file not found: $SERVICE_FILE" >&2; return 1; }
+  local url password auth title session
+  url="$(python3 -c "import json;print(json.load(open('$SERVICE_FILE')).get('url',''))")"
+  password="$(python3 -c "import json;print(json.load(open('$SERVICE_FILE')).get('password',''))")"
+  [ -n "$url" ] && [ -n "$password" ] || { echo "ERROR: service file without url/password" >&2; return 1; }
+  auth="$(python3 -c "import base64;print(base64.b64encode(('opencode:$password').encode()).decode())")"
+
+  title="$prefix-$(date +%Y%m%d-%H%M)"
+  echo "session: $title"
+  echo "prompt:  $prompt"
+  if [ "$dry" -eq 1 ]; then echo "(dry-run: nothing was sent)"; return 0; fi
+
+  session="$(curl -sS -X POST "$url/api/session" \
+    -H "Authorization: Basic $auth" -H "Content-Type: application/json" \
+    -d "{\"title\":\"$title\"}" \
+    | python3 -c "import json,sys;print((json.load(sys.stdin).get('data') or {}).get('id',''))")"
+  [ -n "$session" ] || { echo "ERROR: the session could not be created" >&2; return 1; }
+
+  curl -sS -o /dev/null -w "%{http_code}\n" -X POST "$url/api/session/$session/prompt" \
+    -H "Authorization: Basic $auth" -H "Content-Type: application/json" \
+    -d "$(python3 -c "import json,sys;print(json.dumps({'text': sys.argv[1]}))" "$prompt")"
+  echo "requested in session $session"
 }
 
 now() {
@@ -93,30 +125,26 @@ now() {
     esac
   done
 
-  [ -f "$SERVICE_FILE" ] || { echo "ERROR: service file not found: $SERVICE_FILE" >&2; exit 1; }
-  local url password auth title limit prompt session
-  url="$(python3 -c "import json;print(json.load(open('$SERVICE_FILE')).get('url',''))")"
-  password="$(python3 -c "import json;print(json.load(open('$SERVICE_FILE')).get('password',''))")"
-  [ -n "$url" ] && [ -n "$password" ] || { echo "ERROR: service file without url/password" >&2; exit 1; }
-  auth="$(python3 -c "import base64;print(base64.b64encode(('opencode:$password').encode()).decode())")"
+  local prompt
+  prompt="Load the skill \`sleep\` with the skill tool and execute it now. MANUAL dream: the idle threshold does not apply — the USER asked for it. Follow the skill exactly: list the episodes waiting, respect dreamEpisodesPerPass from the config, decide what is worth keeping, write the memories in one call (with force:true, a manual run), and close with the numbers. Then run the inspection the skill describes: wake the reviewer with scripts/sleep.sh inspect."
+  wake_agent "sleep" "$prompt" "$dry"
+}
 
-  title="sleep-$(date +%Y%m%d-%H%M)"
-  prompt="Load the skill \`sleep\` with the skill tool and execute it now. MANUAL dream: the idle threshold does not apply — the USER asked for it. Follow the skill exactly: list the episodes waiting, respect dreamEpisodesPerPass from the config, decide what is worth keeping, write the memories in one call (with force:true, a manual run), and close with the numbers."
+# The review the dream hands over (USER, 2026-11-20): the pairs the pass joined are NOT settled by
+# the machine — an agent wakes, reads them, writes the single memory (or skips with a reason) and
+# settles each row of `dream_memories`.
+inspect() {
+  local dry=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry=1; shift ;;
+      *) echo "unknown argument: $1" >&2; exit 2 ;;
+    esac
+  done
 
-  echo "session: $title"
-  echo "prompt:  $prompt"
-  if [ "$dry" -eq 1 ]; then echo "(dry-run: nothing was sent)"; return 0; fi
-
-  session="$(curl -sS -X POST "$url/api/session" \
-    -H "Authorization: Basic $auth" -H "Content-Type: application/json" \
-    -d "{\"title\":\"$title\"}" \
-    | python3 -c "import json,sys;print((json.load(sys.stdin).get('data') or {}).get('id',''))")"
-  [ -n "$session" ] || { echo "ERROR: the session could not be created" >&2; exit 1; }
-
-  curl -sS -o /dev/null -w "%{http_code}\n" -X POST "$url/api/session/$session/prompt" \
-    -H "Authorization: Basic $auth" -H "Content-Type: application/json" \
-    -d "$(python3 -c "import json,sys;print(json.dumps({'text': sys.argv[1]}))" "$prompt")"
-  echo "dream requested in session $session"
+  local prompt
+  prompt="Load the skill \`sleep\` with the skill tool and run ONLY the inspection step. The dream has just joined memories that say the same thing. Ask core_memory with op admin, action dream-memories for the pending rows. For each row read BOTH texts, decide whether they really say the same thing, and then: write ONE memory (core_memory store, at most 600 characters, in the namespace the row belongs to) with the merged content and settle the row with admin dream-memory (mergedText plus mergedMemoryId), or settle it with { skipped: true } naming why in your report. Never merge across namespaces: a global and an agent memory are not duplicates. Close with the counts."
+  wake_agent "dream-memories" "$prompt" "$dry"
 }
 
 setup() {
@@ -315,6 +343,7 @@ PY
 case "${1:-help}" in
   help|-h|--help) help ;;
   now) shift; now "$@" ;;
+  inspect) shift; inspect "$@" ;;
   setup) shift; setup "$@" ;;
   status) shift; status "$@" ;;
   *) echo "unknown command: $1 (try: ./sleep.sh help)" >&2; exit 2 ;;

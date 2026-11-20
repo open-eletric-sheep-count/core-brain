@@ -716,6 +716,24 @@ function composeContextBlock(texts: string[], agentName: string): string {
   return `${header}\n${texts.map((text) => `- ${text}`).join("\n")}`;
 }
 
+
+/**
+ * Timing that SURVIVES the host (USER, 2026-11-20): `console.log` from a plugin is not always
+ * visible in the OpenCode log, so the same line goes to `<data root>/logs/timing.log` — proof the
+ * block cost can be read after a compaction without a debugger.
+ */
+function logTiming(line: string): void {
+  const root = process.env.CORE_BRAIN_HOME ?? `${os.homedir()}/.config/core-brain`;
+  const text = `${new Date().toISOString()} ${line}`;
+  console.log(`[core-brain][timing] ${line}`);
+  try {
+    fs.mkdirSync(`${root}/logs`, { recursive: true });
+    fs.appendFileSync(`${root}/logs/timing.log`, `${text}\n`);
+  } catch {
+    /* the log is a convenience, never a reason to fail a hook */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Plugin definition.
 // ---------------------------------------------------------------------------
@@ -801,7 +819,7 @@ export default {
         // Every memory written is a TRAINING CASE (USER, 2026-11-19): one line beside the virgin
         // Laya model, with the context that produced it and an EMPTY vote. No `memoryTestSet` in
         // config = no dataset, which is the community default.
-        if (false && parsed.request.op === "store") {   // DESLIGADO: banco de testes
+        if (parsed.request.op === "store") {
           const modelDir = engine.memoryTestSet();
           if (modelDir) {
             const stored = result as { id?: unknown };
@@ -934,8 +952,8 @@ export default {
           }),
         ]);
         const texts = [...recalledTexts(globalResult), ...recalledTexts(ownResult)];
-        console.log(
-          `[core-brain][timing] collectBlock agent=${agentName} perHalf=${perHalf} ` +
+        logTiming(
+          `collectBlock agent=${agentName} perHalf=${perHalf} ` +
             `query=${query && query.trim() !== "" ? "yes" : "no"} ms=${Date.now() - startedAt} ` +
             `memories=${texts.length}`,
         );
@@ -1004,17 +1022,16 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return; // gate BEFORE the recall
-        // DESLIGADO (USER, 2026-11-19): o bloco novo do contexto — duas metades e pergunta —
-        // fica comentado até o USER decidir. Volta-se a ligar descomentando estas quatro linhas.
+        // Duas metades + pergunta (USER, 2026-11-20: religado — com a base SQLite o bloco custa
+        // 70 ms, não os 17,5 s que tinham motivado o desligamento).
         const hookStartedAt = Date.now();
-        const texts = await recallTexts(agentName, 5);
-        console.log(
-          `[core-brain][timing] contextHook agent=${agentName} ms=${Date.now() - hookStartedAt} ` +
+        const perHalf = engine ? engine.memoriesPerContext() : 5;
+        if (perHalf <= 0) return;
+        const texts = await collectBlock(agentName, perHalf, LAST_PROMPTS.get(sessionID));
+        logTiming(
+          `contextHook agent=${agentName} ms=${Date.now() - hookStartedAt} ` +
             `memories=${texts === null ? "fail" : texts.length}`,
         );
-        // const perHalf = engine ? engine.memoriesPerContext() : 5;
-        // if (perHalf <= 0) return;
-        // const texts = await collectBlock(agentName, perHalf, LAST_PROMPTS.get(sessionID));
         if (texts === null) return;
         const block = composeContextBlock(texts, agentName);
         if (injectBlock(event, block)) {
@@ -1061,9 +1078,17 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return;
+        // O MESMO que na abertura da sessão (USER, 2026-11-20): as mesmas duas metades, o mesmo
+        // `memoriesPerContext`, e a MESMA pergunta — a última mensagem do USER — para o bloco
+        // transportado descrever o assunto em curso, não um retrato antigo.
         const carryPerHalf = engine ? engine.memoriesPerContext() : 5;
         if (carryPerHalf <= 0) return;
-        const texts = await collectBlock(agentName, carryPerHalf);
+        const carryStartedAt = Date.now();
+        const texts = await collectBlock(agentName, carryPerHalf, LAST_PROMPTS.get(sessionID));
+        logTiming(
+          `compactionHook agent=${agentName} ms=${Date.now() - carryStartedAt} ` +
+            `memories=${texts === null ? "fail" : texts.length}`,
+        );
         if (texts !== null) {
           const block = composeContextBlock(texts, agentName);
           if (injectBlock(event, block)) {

@@ -5,6 +5,50 @@ Newest on top.
 
 ## [Unreleased]
 
+### Added — 2026-11-20 (the dream's review queue: `dreams` + `dream_memories`)
+
+- **`dream_memories`** (SQLite table, JSON fallback `dream-memories.json`): every pair the dream
+  joined is a **row** — both original texts, the cosine, the namespace and `status: "pending"`. The
+  machine keeps the richest text and sums the score; it never rewrites a memory on its own judgement.
+- **`dreams`** (SQLite table): one row per pass — `started_at`, `finished_at`, `status`
+  (`running`/`done`; a row left `running` IS the crash report), episodes, created, reinforced,
+  merged, pending — so the USER can analyse the dreams.
+- **`admin` actions `dreams`, `dream-memories`, `dream-memory`**: list the passes, list the pairs
+  waiting for a verdict, and settle one (the merged text ≤ 600 characters, or `{ skipped: true }`).
+- **`scripts/sleep.sh inspect`** (inside the skill): at the end of a dream the reviewer wakes in its
+  own session and works the queue; `now` now asks for that step. One `wake_agent` call serves both.
+- **The rule that no merge crosses a namespace** (USER, 2026-11-20) is pinned by
+  `test/dedupe-namespaces.selftest.mjs`: one agent's pair → that agent's memory; two globals → one
+  global; a global beside an agent copy → **not** duplication, both stay (identical text included).
+
+### Fixed — 2026-11-20 (the sleep script ships INSIDE the skill)
+
+- **`global/opencode/skills/sleep/scripts/sleep.sh`**: the dream script moved into the skill's own
+  folder. The `SKILL.md` ships as `scripts/sleep.sh help` — a path relative to the skill — and the
+  installer only carries the skill folder into `~/.config/opencode/skills/sleep/`, so a copy under
+  the repo's `scripts/` never reached the home and the help could not be resolved there (USER,
+  2026-11-20). The script has no path dependency of its own: it derives nothing from its location and
+  reads only `$HOME`-based paths, so moving it changes nothing but reachability.
+- **No pointer is left behind** (USER, 2026-11-20): `scripts/sleep.sh` and `scripts/sleep-now.sh`
+  are GONE. A caller names the script where it lives —
+  `global/opencode/skills/sleep/scripts/sleep.sh` — instead of a forwarding file nobody knows to
+  maintain.
+
+### Added — 2026-11-20 (memories that say the same thing, and the multilingual default)
+
+- **Semantic twin in the dream**: while it writes a memory, the pass looks among the memories that
+  already exist and, above `SEMANTIC_DEDUPE_MIN_COSINE` (0.92), JOINS the two into ONE — the
+  richest text kept, the score summed, the new record retired with `meta.absorbedInto` (USER,
+  2026-11-20). Below the threshold they are merely related and both stay.
+- **`admin dedupe` gained the same rule** (`mode: text|semantic|both`, default both; `minCosine`
+  per call; dry-run unchanged), with `kind` and `cosine` on every group as evidence.
+- **Fixed a latent loss in `dream`**: `allRecords` was read before the `store` calls and written
+  after them, so an exact-twin reinforcement in the same pass **overwrote the memories just
+  created**. The order is now reinforce → write → create → join.
+- **`DEFAULT_EMBED_PROFILE = "multilingual-minilm"`** (USER, 2026-11-20): the corpus is Portuguese
+  and the English default was reading it as foreign text; `bge-small-en` stays selectable, and the
+  profile suite now pins the multilingual default instead of the old one.
+
 ### Added — 2026-11-19 (the insertion record: two lines per case, JSONL)
 
 - **`memory-insertions.ts` and `logs/insertions.jsonl`**: every future interruption is **one case made of two lines** in

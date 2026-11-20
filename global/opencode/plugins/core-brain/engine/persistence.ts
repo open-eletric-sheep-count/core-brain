@@ -14,6 +14,8 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
+import { writeJsonFileAtomic } from "./atomic-json.ts";
+
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS memories (
     id TEXT PRIMARY KEY, namespace TEXT NOT NULL, agent TEXT, scope TEXT, text TEXT NOT NULL,
@@ -26,6 +28,20 @@ const SCHEMA = `
     memory_id TEXT PRIMARY KEY, namespace TEXT NOT NULL, dim INTEGER NOT NULL, vec BLOB NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_vectors_ns ON vectors(namespace);
+  CREATE TABLE IF NOT EXISTS dream_memories (
+    id TEXT PRIMARY KEY, namespace TEXT NOT NULL, dream_id TEXT,
+    survivor_id TEXT NOT NULL, absorbed_id TEXT NOT NULL,
+    survivor_text TEXT NOT NULL, absorbed_text TEXT NOT NULL,
+    cosine REAL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL,
+    processed_at TEXT, merged_text TEXT, merged_memory_id TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_dream_memories_status ON dream_memories(status);
+  CREATE TABLE IF NOT EXISTS dreams (
+    id TEXT PRIMARY KEY, namespace TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT,
+    status TEXT NOT NULL DEFAULT 'running', episodes INTEGER DEFAULT 0, created INTEGER DEFAULT 0,
+    reinforced INTEGER DEFAULT 0, merged INTEGER DEFAULT 0, pending INTEGER DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_dreams_started ON dreams(started_at);
 `;
 
 type Db = DatabaseSync;
@@ -281,4 +297,296 @@ export function databasePathFor(file: string): string {
 
 export function databaseName(file: string): string {
   return basename(databasePathFor(file));
+}
+
+// ---------------------------------------------------------------------------
+// Dream bookkeeping (USER, 2026-11-20)
+// ---------------------------------------------------------------------------
+//
+// Two tables for analysis:
+//   * `dreams`          — one row per pass: when it started, how it ended, and the counts;
+//   * `dream_memories`  — one row per pair the pass had to judge: the two texts, the cosine, and
+//                         the verdict an agent writes after waking.
+//
+// The dream itself is still `dreams.json` (the domain record the skill relies on); the tables are the
+// queryable copy. `dream_memories` has a JSON fallback (`dream-memories.json`) so the JSON backend —
+// the one the suite runs on — keeps the same queue.
+
+/** The queue's lifecycle: a row is born `pending`; an agent settles it. */
+export const DREAM_MEMORY_STATUS = {
+  pending: "pending",
+  processed: "processed",
+  skipped: "skipped",
+} as const;
+export type DreamMemoryStatus = (typeof DREAM_MEMORY_STATUS)[keyof typeof DREAM_MEMORY_STATUS];
+
+/** A pass is `running` until it closes — a row left `running` IS the crash report. */
+export const DREAM_RUN_STATUS = {
+  running: "running",
+  done: "done",
+  failed: "failed",
+} as const;
+export type DreamRunStatus = (typeof DREAM_RUN_STATUS)[keyof typeof DREAM_RUN_STATUS];
+
+/** One dream pass. */
+export interface DreamRunRow {
+  id: string;
+  namespace: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: DreamRunStatus;
+  episodes: number;
+  created: number;
+  reinforced: number;
+  merged: number;
+  pending: number;
+}
+
+/** One pair the dream judged: the survivor, the memory it absorbed, and the verdict. */
+export interface DreamMemoryRow {
+  id: string;
+  namespace: string;
+  dreamId: string | null;
+  survivorId: string;
+  absorbedId: string;
+  survivorText: string;
+  absorbedText: string;
+  cosine: number | null;
+  status: DreamMemoryStatus;
+  createdAt: string;
+  processedAt: string | null;
+  mergedText: string | null;
+  mergedMemoryId: string | null;
+}
+
+/** What a verdict may change: the status and its evidence, never the pair itself. */
+export interface DreamMemoryVerdict {
+  status: DreamMemoryStatus;
+  mergedText: string | null;
+  mergedMemoryId: string | null;
+  processedAt: string;
+}
+
+const DREAM_MEMORIES_FILE = "dream-memories.json";
+
+function readDreamMemoriesFile(root: string): DreamMemoryRow[] {
+  const file = join(root, DREAM_MEMORIES_FILE);
+  if (!existsSync(file)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    return Array.isArray(parsed) ? (parsed as DreamMemoryRow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDreamMemoriesFile(root: string, rows: DreamMemoryRow[]): void {
+  writeJsonFileAtomic(join(root, DREAM_MEMORIES_FILE), rows);
+}
+
+/** Snake-case row as the rest of the module speaks: camelCase, typed, no `any`. */
+function toDreamMemoryRow(raw: Record<string, unknown>): DreamMemoryRow {
+  return {
+    id: String(raw.id),
+    namespace: String(raw.namespace),
+    dreamId: asText(raw.dream_id),
+    survivorId: String(raw.survivor_id),
+    absorbedId: String(raw.absorbed_id),
+    survivorText: String(raw.survivor_text),
+    absorbedText: String(raw.absorbed_text),
+    cosine: raw.cosine === null || raw.cosine === undefined ? null : Number(raw.cosine),
+    status: String(raw.status) as DreamMemoryStatus,
+    createdAt: String(raw.created_at),
+    processedAt: asText(raw.processed_at),
+    mergedText: asText(raw.merged_text),
+    mergedMemoryId: asText(raw.merged_memory_id),
+  };
+}
+
+/** A nullable column: absent and null both mean "no value". */
+function asText(value: unknown): string | null {
+  return value === null || value === undefined ? null : String(value);
+}
+
+/** Opens the queue for one pair. Idempotent by `id`: the same row is never written twice. */
+export function insertDreamMemory(root: string, row: DreamMemoryRow): void {
+  if (sqliteEnabled()) {
+    const db = databaseFor(root);
+    db.prepare(
+      "INSERT OR IGNORE INTO dream_memories (id, namespace, dream_id, survivor_id, absorbed_id, " +
+        "survivor_text, absorbed_text, cosine, status, created_at, processed_at, merged_text, " +
+        "merged_memory_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)",
+    ).run(
+      row.id,
+      row.namespace,
+      row.dreamId,
+      row.survivorId,
+      row.absorbedId,
+      row.survivorText,
+      row.absorbedText,
+      row.cosine,
+      row.status,
+      row.createdAt,
+    );
+    return;
+  }
+  const rows = readDreamMemoriesFile(root);
+  if (rows.some((candidate) => candidate.id === row.id)) return;
+  rows.push(row);
+  writeDreamMemoriesFile(root, rows);
+}
+
+/** The rows an agent must still look at (`pending`), or every row of a status when asked. */
+export function listDreamMemories(
+  root: string,
+  status: DreamMemoryStatus | null,
+  limit: number,
+): DreamMemoryRow[] {
+  if (sqliteEnabled()) {
+    const db = databaseFor(root);
+    const rows = status
+      ? db
+          .prepare("SELECT * FROM dream_memories WHERE status = ? ORDER BY created_at LIMIT ?")
+          .all(status, limit)
+      : db.prepare("SELECT * FROM dream_memories ORDER BY created_at DESC LIMIT ?").all(limit);
+    return rows.map((raw: Record<string, unknown>) => toDreamMemoryRow(raw));
+  }
+  const rows = readDreamMemoriesFile(root)
+    .filter((row) => (status ? row.status === status : true))
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  return rows.slice(0, limit);
+}
+
+/**
+ * Writes the verdict on one pair. `false` when the id is unknown — a mistyped id must not look done.
+ * A row already settled keeps its first verdict: the queue is worked once.
+ */
+export function resolveDreamMemory(root: string, id: string, verdict: DreamMemoryVerdict): boolean {
+  if (sqliteEnabled()) {
+    const db = databaseFor(root);
+    const found = db.prepare("SELECT status FROM dream_memories WHERE id = ?").get(id);
+    if (!found) return false;
+    if (String(found.status) !== DREAM_MEMORY_STATUS.pending) return true;
+    db.prepare(
+      "UPDATE dream_memories SET status = ?, processed_at = ?, merged_text = ?, merged_memory_id = ? " +
+        "WHERE id = ?",
+    ).run(verdict.status, verdict.processedAt, verdict.mergedText, verdict.mergedMemoryId, id);
+    return true;
+  }
+  const rows = readDreamMemoriesFile(root);
+  const row = rows.find((candidate) => candidate.id === id);
+  if (!row) return false;
+  if (row.status === DREAM_MEMORY_STATUS.pending) {
+    Object.assign(row, verdict);
+    writeDreamMemoriesFile(root, rows);
+  }
+  return true;
+}
+
+/** Opens a pass. Called once, before anything is written to the memories. */
+export function startDreamRun(root: string, pass: { id: string; namespace: string; startedAt: string }): void {
+  if (!sqliteEnabled()) return; // the JSON backend keeps the pass in dreams.json alone
+  const db = databaseFor(root);
+  db.prepare(
+    "INSERT OR IGNORE INTO dreams (id, namespace, started_at, finished_at, status, episodes, created, " +
+      "reinforced, merged, pending) VALUES (?, ?, ?, NULL, ?, 0, 0, 0, 0, 0)",
+  ).run(pass.id, pass.namespace, pass.startedAt, DREAM_RUN_STATUS.running);
+}
+
+/** What a closed pass reports. `status: failed` uses the same door as `done`. */
+export interface DreamRunSummary {
+  status: DreamRunStatus;
+  finishedAt: string;
+  episodes: number;
+  created: number;
+  reinforced: number;
+  merged: number;
+  pending: number;
+}
+
+export function finishDreamRun(root: string, id: string, summary: DreamRunSummary): void {
+  if (!sqliteEnabled()) return;
+  const db = databaseFor(root);
+  db.prepare(
+    "UPDATE dreams SET status = ?, finished_at = ?, episodes = ?, created = ?, reinforced = ?, " +
+      "merged = ?, pending = ? WHERE id = ?",
+  ).run(
+    summary.status,
+    summary.finishedAt,
+    summary.episodes,
+    summary.created,
+    summary.reinforced,
+    summary.merged,
+    summary.pending,
+    id,
+  );
+}
+
+/** `global` + one entry per agent directory — the spaces a dream record may live in. */
+function dreamSpaces(root: string): Array<{ dir: string; namespace: string }> {
+  const spaces: Array<{ dir: string; namespace: string }> = [
+    { dir: join(root, "global"), namespace: "global" },
+  ];
+  const agentsDir = join(root, "agents");
+  if (!existsSync(agentsDir)) return spaces;
+  for (const entry of readdirSync(agentsDir, { withFileTypes: true })) {
+    if (entry.isDirectory()) spaces.push({ dir: join(agentsDir, entry.name), namespace: `agent:${entry.name}` });
+  }
+  return spaces;
+}
+
+/** A `dreams.json` array, or nothing when the file is missing or unreadable. */
+function readDreamsFile(file: string): Array<Record<string, unknown>> {
+  if (!existsSync(file)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The JSON backend has no table: a pass exists only once dreams.json carries it, so it is `done`. */
+function dreamRunsFromJson(root: string): DreamRunRow[] {
+  const rows: DreamRunRow[] = [];
+  for (const space of dreamSpaces(root)) {
+    for (const raw of readDreamsFile(join(space.dir, "dreams.json"))) {
+      rows.push({
+        id: String(raw.id),
+        namespace: space.namespace,
+        startedAt: String(raw.at),
+        finishedAt: String(raw.at),
+        status: DREAM_RUN_STATUS.done,
+        episodes: Array.isArray(raw.episodes) ? raw.episodes.length : 0,
+        created: Array.isArray(raw.memories) ? raw.memories.length : 0,
+        reinforced: Array.isArray(raw.reinforced) ? raw.reinforced.length : 0,
+        merged: 0,
+        pending: 0,
+      });
+    }
+  }
+  return rows;
+}
+
+/** The passes, newest first — what the USER reads to analyse the dreams. */
+export function listDreamRuns(root: string, limit: number): DreamRunRow[] {
+  const rows = sqliteEnabled()
+    ? databaseFor(root)
+        .prepare("SELECT * FROM dreams ORDER BY started_at DESC LIMIT ?")
+        .all(limit)
+        .map((raw: Record<string, unknown>) => ({
+          id: String(raw.id),
+          namespace: String(raw.namespace),
+          startedAt: String(raw.started_at),
+          finishedAt: asText(raw.finished_at),
+          status: String(raw.status) as DreamRunStatus,
+          episodes: Number(raw.episodes ?? 0),
+          created: Number(raw.created ?? 0),
+          reinforced: Number(raw.reinforced ?? 0),
+          merged: Number(raw.merged ?? 0),
+          pending: Number(raw.pending ?? 0),
+        }))
+    : dreamRunsFromJson(root);
+  rows.sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+  return rows.slice(0, limit);
 }

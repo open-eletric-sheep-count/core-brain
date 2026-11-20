@@ -5,7 +5,7 @@
 // Zero runtime npm dependencies: Node builtins only (spec Q2).
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,10 +37,18 @@ import type {
 } from "./types.ts";
 
 import { createConfiguredEmbedder, type Embedder } from "./engine/embedder.ts";
+import { writeJsonFileAtomic } from "./engine/atomic-json.ts";
 import {
+  DREAM_MEMORY_STATUS,
+  finishDreamRun,
+  insertDreamMemory,
+  listDreamMemories,
+  listDreamRuns,
   readRecordsFromDb,
   readVectorsFromDb,
+  resolveDreamMemory,
   sqliteEnabled,
+  startDreamRun,
   writeRecordsToDb,
   writeVectorsToDb,
 } from "./engine/persistence.ts";
@@ -207,6 +215,48 @@ export function memoryIsAcceptable(_text: string): boolean {
   return true;
 }
 
+/**
+ * Cosine at which two ACTIVE memories are read as saying the same thing (USER, 2026-11-20).
+ *
+ * <p>Model-dependent on purpose: it is the default of `admin dedupe`, and `minCosine` overrides it
+ * per call, so a stricter or a smaller embedder can tighten or loosen the same pass without a code
+ * change. Below it two records may still be RELATED — a merge there would destroy a distinction.
+ */
+const SEMANTIC_DEDUPE_MIN_COSINE = 0.92;
+
+/** The text a duplicate check compares: trimmed, whitespace collapsed, case folded. */
+export function normalizeMemoryTextKey(text: string): string {
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Characters of `text` — the same unit `store` counts against `MEMORY_MAX_CHARS`. */
+function charCount(text: string): number {
+  return [...text].length;
+}
+
+/**
+ * The text two memories that say the SAME thing keep once they become one (USER, 2026-11-20:
+ * "juntava as duas memórias em um, somando o score").
+ *
+ * <p>Joining the sentences would spend the 600-character budget repeating the same statement in
+ * other words, so what survives is the RICHEST text of the group — the longest one, since a longer
+ * statement of the same fact carries the most detail (a text that already contains another wins by
+ * being longer). Ties keep the first, which is the record that survives. An imported text longer
+ * than the ceiling is cut to it: the memory rule holds whatever the background. Pure: same input,
+ * same output, no I/O.
+ */
+export function richestMemoryText(texts: string[]): string {
+  const usable = texts.filter((text) => typeof text === "string" && text.trim() !== "");
+  if (usable.length === 0) return "";
+  let winner = usable[0].trim();
+  for (const text of usable.slice(1)) {
+    const candidate = text.trim();
+    if (charCount(candidate) > charCount(winner)) winner = candidate;
+  }
+  if (charCount(winner) > MEMORY_MAX_CHARS) return [...winner].slice(0, MEMORY_MAX_CHARS).join("");
+  return winner;
+}
+
 // ---------------------------------------------------------------------------
 // Namespaces
 // ---------------------------------------------------------------------------
@@ -343,10 +393,7 @@ function writeFileAtomic(file: string, data: unknown): void {
       return;
     }
   }
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-  renameSync(tmp, file);
+  writeJsonFileAtomic(file, data);
 }
 
 /**
@@ -1290,9 +1337,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
   /**
    * The text a duplicate check compares: trimmed, whitespace collapsed, case folded. Two promotions
    * of the same conclusion differ in spacing or case, never in meaning, so the key ignores both.
+   * One home for the policy: `normalizeMemoryTextKey`.
    */
-  const normalizeMemoryText = (text: string): string =>
-    text.trim().replace(/\s+/g, " ").toLowerCase();
+  const normalizeMemoryText = normalizeMemoryTextKey;
 
   /** `DR-<epoch ms>-<4 chars>` — the same readable shape the episodes use. */
   function dreamId(): string {
@@ -1389,21 +1436,36 @@ export function createEngine(options: EngineOptions = {}): Engine {
     const dream = dreamId();
     const at = new Date().toISOString();
     appendDreamLog(root, `START ${dream} episodes=${selected.length} memories=${wanted.length}`);
+    startDreamRun(root, { id: dream, namespace: nsLabel(own), startedAt: at });
     const created: string[] = [];
     const reinforced: string[] = [];
+    let joined = 0;
+    const pending: Array<(typeof wanted)[number]> = [];
+
+    // Pass 1 — the EXACT twin. A duplicate is not an error and not a second record: it REINFORCES
+    // the memory that already says it (USER, 2026-11-19) — the dream is added to its list, its
+    // counters go up, and the episode is still marked as dreamed. Only a retired memory is out of
+    // the way. This runs BEFORE the stores below on purpose: writing `allRecords` afterwards would
+    // clobber every record those stores had just appended.
     for (const memory of wanted) {
       const key = normalizeMemoryText(memory.text);
       const clash = activeRecords.find((record) => normalizeMemoryText(record.text) === key);
-      if (clash) {
-        clash.retrievals = (clash.retrievals ?? 0) + 1;
-        const feedback = clash.feedback ?? { useful: 0, useless: 0 };
-        clash.feedback = { useful: (feedback.useful ?? 0) + 1, useless: feedback.useless ?? 0 };
-        const dreams = Array.isArray(clash.meta?.dreams) ? (clash.meta?.dreams as unknown[]) : [];
-        clash.meta = { ...(clash.meta ?? {}), dreams: [...dreams, { id: dream, at }] };
-        clash.updatedAt = at;
-        reinforced.push(clash.id);
+      if (!clash) {
+        pending.push(memory);
         continue;
       }
+      clash.retrievals = (clash.retrievals ?? 0) + 1;
+      const feedback = clash.feedback ?? { useful: 0, useless: 0 };
+      clash.feedback = { useful: (feedback.useful ?? 0) + 1, useless: feedback.useless ?? 0 };
+      const dreams = Array.isArray(clash.meta?.dreams) ? (clash.meta?.dreams as unknown[]) : [];
+      clash.meta = { ...(clash.meta ?? {}), dreams: [...dreams, { id: dream, at }] };
+      clash.updatedAt = at;
+      reinforced.push(clash.id);
+    }
+    if (reinforced.length > 0) writeFileAtomic(recordsFileFor(root, own), allRecords);
+
+    // Pass 2 — store what has no twin at all.
+    for (const memory of pending) {
       const meta: Record<string, unknown> = {
         ...(memory.meta ?? {}),
         derivedFrom: selected[0].id,
@@ -1412,7 +1474,80 @@ export function createEngine(options: EngineOptions = {}): Engine {
       const stored = await storeOp(policy, { op: "store", text: memory.text, target: "self", meta });
       created.push(stored.id);
     }
-    if (reinforced.length > 0) writeFileAtomic(recordsFileFor(root, own), allRecords);
+
+    // Pass 3 — the MEANING twin (USER, 2026-11-20). A memory that says the same thing in other
+    // words is not a second memory: the two become ONE — the richer text kept, the scores summed —
+    // and the new record retires with `meta.absorbedInto`, pointing at the one that stayed. Below
+    // the threshold the two are merely RELATED and both stay: merging there would destroy a
+    // distinction. The twin keeps its vector: the group is one meaning by construction.
+    if (created.length > 0) {
+      const fresh = readRecords(recordsFileFor(root, own));
+      const vectors = readVectors(vectorsFileFor(root, own), active);
+      const liveNow = fresh.filter((record) => typeof record.retiredAt !== "string");
+      for (const id of [...created]) {
+        const record = liveNow.find((candidate) => String(candidate.id) === id);
+        if (!record || typeof record.retiredAt === "string") continue;
+        const vector = vectors[id];
+        if (!Array.isArray(vector)) continue;
+
+        let twin: MemoryRecord | null = null;
+        let best = 0;
+        for (const other of liveNow) {
+          if (String(other.id) === id) continue;
+          const otherVector = vectors[String(other.id)];
+          if (!Array.isArray(otherVector)) continue;
+          const similarity = cosine(vector, otherVector);
+          if (similarity > best) {
+            best = similarity;
+            twin = other;
+          }
+        }
+        if (!twin || best < SEMANTIC_DEDUPE_MIN_COSINE) continue;
+
+        const merged = richestMemoryText([twin.text, record.text]);
+        // The pair goes to the queue the USER reads after the dream (2026-11-20): the two texts as
+        // they were, the cosine that allowed the join, and an agent's verdict — the machine never
+        // rewrites a memory on its own judgement alone.
+        insertDreamMemory(root, {
+          id: randomUUID(),
+          namespace: nsLabel(own),
+          dreamId: dream,
+          survivorId: String(twin.id),
+          absorbedId: String(record.id),
+          survivorText: twin.text,
+          absorbedText: record.text,
+          cosine: Number(best.toFixed(4)),
+          status: "pending",
+          createdAt: at,
+          processedAt: null,
+          mergedText: null,
+          mergedMemoryId: null,
+        });
+        joined += 1;
+        twin.text = merged;
+        twin.retrievals = (twin.retrievals ?? 0) + (record.retrievals ?? 0) + 1;
+        const twinFeedback = twin.feedback ?? { useful: 0, useless: 0 };
+        const newFeedback = record.feedback ?? { useful: 0, useless: 0 };
+        twin.feedback = {
+          useful: (twinFeedback.useful ?? 0) + (newFeedback.useful ?? 0) + 1,
+          useless: (twinFeedback.useless ?? 0) + (newFeedback.useless ?? 0),
+        };
+        const dreams = Array.isArray(twin.meta?.dreams) ? (twin.meta?.dreams as unknown[]) : [];
+        const absorbed = Array.isArray(twin.meta?.absorbed) ? (twin.meta?.absorbed as unknown[]) : [];
+        twin.meta = {
+          ...(twin.meta ?? {}),
+          dreams: [...dreams, { id: dream, at }],
+          absorbed: [...absorbed, id],
+        };
+        twin.updatedAt = at;
+
+        record.retiredAt = at;
+        record.meta = { ...(record.meta ?? {}), absorbedInto: twin.id };
+        created.splice(created.indexOf(id), 1);
+        if (!reinforced.includes(twin.id)) reinforced.push(twin.id);
+      }
+      writeFileAtomic(recordsFileFor(root, own), fresh);
+    }
 
     for (const episode of selected) {
       episode.dreamedAt = at;
@@ -1440,7 +1575,21 @@ export function createEngine(options: EngineOptions = {}): Engine {
       root,
       `END ${dream} memories=${created.join(",") || "-"} reinforced=${reinforced.join(",") || "-"}`,
     );
-    return { ok: true, dreamId: dream, memories: created };
+    finishDreamRun(root, dream, {
+      status: "done",
+      finishedAt: new Date().toISOString(),
+      episodes: selected.length,
+      created: created.length,
+      reinforced: reinforced.length,
+      merged: joined,
+      pending: joined,
+    });
+    return {
+      ok: true,
+      dreamId: dream,
+      memories: created,
+      ...(reinforced.length > 0 ? { reinforced } : {}),
+    };
   }
 
   /**
@@ -1748,6 +1897,81 @@ export function createEngine(options: EngineOptions = {}): Engine {
     return { ok: checks.every((check) => check.ok), checks };
   }
 
+  // ---------------------------------------------------------------------------
+  // Dream bookkeeping surfaced by `admin` (USER, 2026-11-20): the analysis tables.
+  // ---------------------------------------------------------------------------
+
+  /** The numbers the admin surface accepts, in one place. */
+  const DREAM_LIST_DEFAULT = 20;
+  const DREAM_MEMORY_LIST_MAX = 100;
+  const DREAM_RUN_LIST_MAX = 200;
+
+  /** A caller's limit: a positive integer, never above `max`; otherwise the default. */
+  function readLimit(raw: unknown, fallback: number, max: number): number {
+    return typeof raw === "number" && Number.isInteger(raw) && raw > 0 ? Math.min(raw, max) : fallback;
+  }
+
+  /** `dream-memories`: the pairs waiting for a verdict (or every row of one status). */
+  function dreamMemoriesReport(args: Record<string, unknown> | undefined): AdminResult {
+    const requested = args?.status;
+    const status =
+      requested === "all"
+        ? null
+        : requested === DREAM_MEMORY_STATUS.processed || requested === DREAM_MEMORY_STATUS.skipped
+          ? requested
+          : DREAM_MEMORY_STATUS.pending;
+    const rows = listDreamMemories(
+      root,
+      status,
+      readLimit(args?.limit, DREAM_LIST_DEFAULT, DREAM_MEMORY_LIST_MAX),
+    );
+    return {
+      ok: true,
+      action: "dream-memories",
+      detail: `${rows.length} row(s) ${status ?? "any status"}`,
+      dreamMemories: rows,
+    };
+  }
+
+  /** `dream-memory`: the agent's verdict on one pair — the single memory, or a deliberate skip. */
+  function dreamMemoryVerdict(args: Record<string, unknown> | undefined): AdminResult {
+    const id = typeof args?.id === "string" ? args.id : "";
+    if (id === "") throw new Error("core-brain admin dream-memory: 'id' is required");
+    const skipped = args?.skipped === true;
+    const mergedText = typeof args?.mergedText === "string" ? args.mergedText.trim() : "";
+    if (!skipped && mergedText === "") {
+      throw new Error(
+        "core-brain admin dream-memory: send 'mergedText' (the single memory) or { skipped: true }",
+      );
+    }
+    if (charCount(mergedText) > MEMORY_MAX_CHARS) {
+      throw new Error(
+        `core-brain admin dream-memory: 'mergedText' has ${charCount(mergedText)} characters, ` +
+          `the limit is ${MEMORY_MAX_CHARS}`,
+      );
+    }
+    const mergedMemoryId =
+      typeof args?.mergedMemoryId === "string" && args.mergedMemoryId !== "" ? args.mergedMemoryId : null;
+    const known = resolveDreamMemory(root, id, {
+      status: skipped ? DREAM_MEMORY_STATUS.skipped : DREAM_MEMORY_STATUS.processed,
+      mergedText: skipped ? null : mergedText,
+      mergedMemoryId,
+      processedAt: new Date().toISOString(),
+    });
+    if (!known) throw new Error(`core-brain admin dream-memory: unknown row '${id}'`);
+    return {
+      ok: true,
+      action: "dream-memory",
+      detail: `${id} ${skipped ? "skipped" : "processed"}`,
+    };
+  }
+
+  /** `dreams`: the passes, newest first — the table the USER analyses. */
+  function dreamsReport(args: Record<string, unknown> | undefined): AdminResult {
+    const runs = listDreamRuns(root, readLimit(args?.limit, DREAM_LIST_DEFAULT, DREAM_RUN_LIST_MAX));
+    return { ok: true, action: "dreams", detail: `${runs.length} dream(s)`, dreams: runs };
+  }
+
   /**
    * `admin` (§7.2): maintenance ops that bypass per-agent authorization.
    * ONE validation path, ONE error shape — any invalid input (unknown action,
@@ -2012,69 +2236,173 @@ export function createEngine(options: EngineOptions = {}): Engine {
     }
 
     // --- dedupe: collapse records that say the same thing (USER, 2026-11-18) -----------
-    // Dry-run by default (`apply: true` writes). Within each namespace, records whose
-    // NORMALISED text is equal form one group: the most-retrieved (then the newest) survives and
-    // absorbs the others' counters; the rest are RETIRED with `meta.absorbedInto` — the text stays
-    // on disk, so nothing is lost. Idempotent by construction: a retired record is not a candidate.
+    // Dry-run by default (`apply: true` writes). Two passes share the same bookkeeping:
+    //   * TEXT — records whose NORMALISED text is equal form one group;
+    //   * SEMANTIC (USER, 2026-11-20) — records whose vectors sit at/above `minCosine` form one
+    //     group: the same meaning said in different words.
+    // In both, the most-retrieved (then the newest) survives and absorbs the others' counters; the
+    // rest are RETIRED with `meta.absorbedInto` — the text stays on disk, so nothing is lost. In the
+    // SEMANTIC pass the survivor's text becomes the union of the group within `MEMORY_MAX_CHARS`
+    // (`mergeMemoryText`), so a fact only the absorbed copy carried stays recallable. The vector is
+    // kept: the group is one meaning by construction, so the old vector still points at the new text.
+    // Idempotent by construction: a retired record is not a candidate.
     if (action === "dedupe") {
       const apply = args?.apply === true;
-      const groups: Array<{ ns: string; kept: string; retired: string[] }> = [];
+      const requestedMode = args?.mode;
+      const mode: "text" | "semantic" | "both" =
+        requestedMode === "text" || requestedMode === "semantic" ? requestedMode : "both";
+      const requestedMin = args?.minCosine;
+      const minCosine =
+        typeof requestedMin === "number" &&
+        Number.isFinite(requestedMin) &&
+        requestedMin >= 0 &&
+        requestedMin <= 1
+          ? requestedMin
+          : SEMANTIC_DEDUPE_MIN_COSINE;
+      const groups: Array<{
+        ns: string;
+        kept: string;
+        retired: string[];
+        kind: "text" | "semantic";
+        cosine?: number;
+        merged?: number;
+        skipped?: number;
+      }> = [];
       let retiredTotal = 0;
+      // A record already collapsed by the text pass is not offered to the semantic pass again:
+      // one record, one collapse, and a dry run reports each group once.
+      const claimed = new Set<string>();
 
-      for (const ns of activeNamespaces()) {
-        const label = nsLabel(ns);
-        if (nsFilter !== null && label !== nsFilter) continue;
+      /** The survivor: most retrievals, then the newest, then the lowest id. */
+      const survivorFirst = (a: MemoryRecord, b: MemoryRecord): number => {
+        const byRetrievals = (b.retrievals ?? 0) - (a.retrievals ?? 0);
+        if (byRetrievals !== 0) return byRetrievals;
+        const byDate = String(b.updatedAt).localeCompare(String(a.updatedAt));
+        if (byDate !== 0) return byDate;
+        return String(a.id).localeCompare(String(b.id));
+      };
 
-        const records = readRecords(recordsFileFor(root, ns));
-        const bucketsByText = new Map<string, MemoryRecord[]>();
-        for (const record of records) {
-          if (typeof record.retiredAt === "string") continue;
-          const key = normalizeMemoryText(record.text);
-          const bucket = bucketsByText.get(key);
-          if (bucket) bucket.push(record);
-          else bucketsByText.set(key, [record]);
+      /** Sums the group's counters into `survivor`, retires the rest, returns how many retired. */
+      const absorb = (survivor: MemoryRecord, bucket: MemoryRecord[], now: string): number => {
+        survivor.retrievals = bucket.reduce((sum, record) => sum + (record.retrievals ?? 0), 0);
+        const useful = bucket.reduce((sum, record) => sum + (record.feedback?.useful ?? 0), 0);
+        const useless = bucket.reduce((sum, record) => sum + (record.feedback?.useless ?? 0), 0);
+        if (useful > 0 || useless > 0) survivor.feedback = { useful, useless };
+        survivor.updatedAt = now;
+        let retired = 0;
+        for (const record of bucket) {
+          if (record === survivor) continue;
+          record.retiredAt = now;
+          record.meta = { ...(record.meta ?? {}), absorbedInto: survivor.id };
+          retired += 1;
         }
+        return retired;
+      };
 
-        let namespaceChanged = false;
-        for (const [key, bucket] of bucketsByText) {
-          void key;
-          if (bucket.length < 2) continue;
-          const ordered = [...bucket].sort((a, b) => {
-            const byRetrievals = (b.retrievals ?? 0) - (a.retrievals ?? 0);
-            if (byRetrievals !== 0) return byRetrievals;
-            const byDate = String(b.updatedAt).localeCompare(String(a.updatedAt));
-            if (byDate !== 0) return byDate;
-            return String(a.id).localeCompare(String(b.id));
-          });
-          const [survivor, ...absorbed] = ordered;
-          groups.push({ ns: label, kept: survivor.id, retired: absorbed.map((record) => record.id) });
-          if (!apply) continue;
+      if (mode !== "semantic") {
+        for (const ns of activeNamespaces()) {
+          const label = nsLabel(ns);
+          if (nsFilter !== null && label !== nsFilter) continue;
 
-          const now = new Date().toISOString();
-          survivor.retrievals = bucket.reduce((sum, record) => sum + (record.retrievals ?? 0), 0);
-          const useful = bucket.reduce((sum, record) => sum + (record.feedback?.useful ?? 0), 0);
-          const useless = bucket.reduce((sum, record) => sum + (record.feedback?.useless ?? 0), 0);
-          if (useful > 0 || useless > 0) survivor.feedback = { useful, useless };
-          survivor.updatedAt = now;
-          for (const record of absorbed) {
-            record.retiredAt = now;
-            record.meta = { ...(record.meta ?? {}), absorbedInto: survivor.id };
-            retiredTotal += 1;
+          const records = readRecords(recordsFileFor(root, ns));
+          const bucketsByText = new Map<string, MemoryRecord[]>();
+          for (const record of records) {
+            if (typeof record.retiredAt === "string") continue;
+            const key = normalizeMemoryText(record.text);
+            const bucket = bucketsByText.get(key);
+            if (bucket) bucket.push(record);
+            else bucketsByText.set(key, [record]);
           }
-          namespaceChanged = true;
+
+          let namespaceChanged = false;
+          for (const bucket of bucketsByText.values()) {
+            if (bucket.length < 2) continue;
+            const ordered = [...bucket].sort(survivorFirst);
+            const [survivor, ...absorbed] = ordered;
+            groups.push({
+              ns: label,
+              kept: survivor.id,
+              retired: absorbed.map((record) => record.id),
+              kind: "text",
+            });
+            for (const record of ordered) claimed.add(String(record.id));
+            if (!apply) continue;
+            retiredTotal += absorb(survivor, ordered, new Date().toISOString());
+            namespaceChanged = true;
+          }
+          if (namespaceChanged) writeFileAtomic(recordsFileFor(root, ns), records);
         }
-        if (namespaceChanged) writeFileAtomic(recordsFileFor(root, ns), records);
       }
 
+      if (mode !== "text") {
+        for (const ns of activeNamespaces()) {
+          const label = nsLabel(ns);
+          if (nsFilter !== null && label !== nsFilter) continue;
+
+          // Re-read: the text pass may have retired records a moment ago in this same call.
+          const records = readRecords(recordsFileFor(root, ns));
+          const vectors = readVectors(vectorsFileFor(root, ns), active);
+          const candidates = records.filter(
+            (record) =>
+              typeof record.retiredAt !== "string" &&
+              !claimed.has(String(record.id)) &&
+              Array.isArray(vectors[String(record.id)]),
+          );
+          if (candidates.length < 2) continue;
+
+          const ordered = [...candidates].sort(survivorFirst);
+          const assigned = new Set<string>();
+          let namespaceChanged = false;
+          for (const seed of ordered) {
+            const seedId = String(seed.id);
+            if (assigned.has(seedId)) continue;
+            const bucket = [seed];
+            let weakest = 1;
+            for (const other of ordered) {
+              const otherId = String(other.id);
+              if (otherId === seedId || assigned.has(otherId)) continue;
+              const similarity = cosine(vectors[seedId], vectors[otherId]);
+              if (similarity < minCosine) continue;
+              bucket.push(other);
+              if (similarity < weakest) weakest = similarity;
+            }
+            if (bucket.length < 2) continue;
+            for (const member of bucket) assigned.add(String(member.id));
+            const [survivor, ...absorbed] = bucket;
+            const richest = richestMemoryText(bucket.map((record) => record.text));
+            groups.push({
+              ns: label,
+              kept: String(survivor.id),
+              retired: absorbed.map((record) => String(record.id)),
+              kind: "semantic",
+              cosine: Number(weakest.toFixed(4)),
+            });
+            if (!apply) continue;
+            survivor.text = richest;
+            retiredTotal += absorb(survivor, bucket, new Date().toISOString());
+            namespaceChanged = true;
+          }
+          if (namespaceChanged) writeFileAtomic(recordsFileFor(root, ns), records);
+        }
+      }
+
+      const byMeaning = groups.filter((group) => group.kind === "semantic").length;
       const detail = apply
-        ? `${groups.length} group(s) collapsed, ${retiredTotal} record(s) retired`
-        : `${groups.length} group(s) found, nothing written (pass { apply: true } to collapse)`;
+        ? `${groups.length} group(s) collapsed (${byMeaning} by meaning), ${retiredTotal} record(s) retired`
+        : `${groups.length} group(s) found (${byMeaning} by meaning), nothing written (pass { apply: true } to collapse)`;
       return { ok: true, action: "dedupe", detail, groups };
     }
 
+    // --- dream-memories: the pairs the dream judged, and the verdict an agent writes (2026-11-20) --
+    // The dream never rewrites a memory on its own judgement alone: every pair it joined is a row
+    // here, and an agent that wakes after the pass either writes the single memory or skips it.
+    if (action === "dream-memories") return dreamMemoriesReport(args);
+    if (action === "dream-memory") return dreamMemoryVerdict(args);
+    if (action === "dreams") return dreamsReport(args);
+
     throw new Error(
       `core-brain admin: unknown action '${action}' ` +
-        `(expected purge|reindex|export|import|compact|dedupe)`,
+        `(expected purge|reindex|export|import|compact|dedupe|dreams|dream-memories|dream-memory)`,
     );
   }
 

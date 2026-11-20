@@ -13,9 +13,10 @@ true). The judgement is yours; the store guarantees the rest.
 **How help is asked:** `@sleep help`, "sleep help", **or simply `@sleep` with nothing else after it**
 — calling the skill without an instruction means the manual, nothing more.
 
-**The help is what the SCRIPT prints.** Run `scripts/sleep.sh help` and relay its output,
-translated to the USER's language, with the same sections in the same order. **Add nothing, remove
-nothing, advise nothing** — the text is the manual.
+**The help is what the SCRIPT prints.** Run `scripts/sleep.sh help` — the path is INSIDE this skill's
+own folder, shipped with the skill (USER, 2026-11-20), so it resolves wherever the skill is installed —
+and relay its output, translated to the USER's language, with the same sections in the same order.
+**Add nothing, remove nothing, advise nothing** — the text is the manual.
 
 That is what makes it deterministic: the content comes from the program, not from the agent, so
 every agent answers the same thing; only the translation varies, and it stays with whoever delivers.
@@ -89,7 +90,30 @@ core_memory {
 - The store writes `dreams.json`, marks every episode with `dreamedAt`, and puts the dream id and its
   date in each memory's `meta.dreams`. **Never write those fields yourself.**
 
-## 5. Close with the numbers
+## 5. The pairs the dream joined — the review comes after (USER, 2026-11-20)
+
+A memory that says the same thing in other words is not a second memory: the store joins the two and
+puts the pair in **`dream_memories`** — both texts, the cosine, and `status: "pending"`. The machine
+picks the richest text and sums the score; **it does not rewrite a memory on its own judgement.**
+
+The review is the step that follows:
+
+1. **Wake the reviewer** — `scripts/sleep.sh inspect` opens a session with its prompt (the same way
+   `now` wakes the dream). Run it at the end of every dream; the manual prompt already says so.
+2. **Read the queue** — `core_memory { op: "admin", action: "dream-memories" }` returns the pending
+   rows: `survivorText`, `absorbedText`, `cosine`, `namespace`, the two ids.
+3. **Decide, row by row** — do they really say the same thing? Then write **ONE** memory with
+   `store` (≤ 600 characters, **in the namespace the row belongs to**) and settle the row with
+   `admin { action: "dream-memory", args: { id, mergedText, mergedMemoryId } }`.
+   If they do not, settle it with `{ id, skipped: true }` and say why in the report.
+4. **Never cross a namespace** (USER, 2026-11-20): one agent's memories become that agent's memory,
+   two globals become one global, and a global beside an agent memory is **not** duplication — both
+   stay. A row is always inside one namespace; never move a fact out of it.
+
+The passes are also recorded in the **`dreams`** table (start, end, counts, `running`/`done`), so the
+USER can analyse them: `core_memory { op: "admin", action: "dreams" }`.
+
+## 6. Close with the numbers
 
 Report to the caller, in two or three lines:
 

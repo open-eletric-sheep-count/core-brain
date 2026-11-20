@@ -149,6 +149,36 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
+# --- 10b. Suite F2: memories that say the same thing in DIFFERENT words ------
+# USER design (2026-11-20, item 6.1): the DREAM looks among the memories that already exist and
+# JOINS the two into one, summing the score; the admin sweep applies the same rule to the records
+# already on disk. The exact-text suite above cannot see a paraphrase — this one pins the vector path.
+DEDUPE_SEMANTIC_LOG="$CORE_BRAIN_HOME/dedupe-semantic.log"
+if ! run_script "$DIR/test/dedupe-semantic.selftest.mjs" "$DEDUPE_SEMANTIC_LOG"; then
+  status=1
+fi
+cat "$DEDUPE_SEMANTIC_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: dedupe-semantic FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
+# --- 10c. Suite F3: a merge NEVER crosses a namespace ------------------------
+# USER rule (2026-11-20): one agent's memories become that agent's memory; two globals become one
+# global; and a global beside an agent memory is NOT duplication — both stay. Pinned so a refactor
+# cannot quietly mix the spaces.
+DEDUPE_NS_LOG="$CORE_BRAIN_HOME/dedupe-ns.log"
+if ! run_script "$DIR/test/dedupe-namespaces.selftest.mjs" "$DEDUPE_NS_LOG"; then
+  status=1
+fi
+cat "$DEDUPE_NS_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: dedupe-namespaces FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
 # --- 11. Suite G: the embedding-model profiles ------------------------------
 # `CORE_BRAIN_EMBED_MODEL` picks the model; silence keeps bge-small; a typo is refused.
 PROFILE_LOG="$CORE_BRAIN_HOME/profile.log"
@@ -188,4 +218,4 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
-echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + profile + dream + insertions (CORE_BRAIN_HOME cleaned up)"
+echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + dedupe-semantic + profile + dream + insertions (CORE_BRAIN_HOME cleaned up)"
