@@ -27,6 +27,10 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- 1. disposable data root + guaranteed cleanup -------------------------
+# The suite still asserts the JSON contract (files on disk, STALE_INDEX by header, `reindex` writing an
+# index file). The SQLite backend is the runtime default from 2026-11-20; the probes that speak JSON set
+# CORE_BRAIN_STORE=json so both worlds stay honest until the SQLite suite exists (item 6.1.2.2.2).
+export CORE_BRAIN_STORE=json
 CORE_BRAIN_HOME="$(mktemp -d "${TMPDIR:-/tmp}/core-brain-selftest.XXXXXX")"
 export CORE_BRAIN_HOME
 cleanup() {

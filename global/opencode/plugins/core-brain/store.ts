@@ -37,6 +37,13 @@ import type {
 } from "./types.ts";
 
 import { createConfiguredEmbedder, type Embedder } from "./engine/embedder.ts";
+import {
+  readRecordsFromDb,
+  readVectorsFromDb,
+  sqliteEnabled,
+  writeRecordsToDb,
+  writeVectorsToDb,
+} from "./engine/persistence.ts";
 import { createMsMarcoReranker, resolveRerankerName, type Reranker } from "./engine/reranker.ts";
 import { searchHybrid, type SearchRecord } from "./engine/search.ts";
 
@@ -253,6 +260,12 @@ function readJsonOrNull(file: string): unknown {
 }
 
 function readRecords(file: string): MemoryRecord[] {
+  // SQLite backend (USER, 2026-11-20): the database answers first; JSON stays as the fallback so a
+  // half-migrated root still works and a rollback is one word in config.json.
+  if (sqliteEnabled()) {
+    const rows = readRecordsFromDb(file);
+    if (rows !== null) return rows as MemoryRecord[];
+  }
   const parsed = readJsonOrNull(file);
   return Array.isArray(parsed) ? (parsed as MemoryRecord[]) : [];
 }
@@ -319,6 +332,17 @@ function importedEpisodeFrom(row: Record<string, unknown>): Episode {
 }
 
 function writeFileAtomic(file: string, data: unknown): void {
+  if (sqliteEnabled()) {
+    if (Array.isArray(data) && file.endsWith("memories.json")) {
+      writeRecordsToDb(file, data);
+      return;
+    }
+    const asIndex = data as { vectors?: unknown } | null;
+    if (file.endsWith("index.json") && asIndex && typeof asIndex === "object" && "vectors" in asIndex) {
+      writeVectorsToDb(file, (asIndex.vectors ?? {}) as Record<string, number[]>);
+      return;
+    }
+  }
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
@@ -413,6 +437,10 @@ function readIndexFile(file: string): { header: IndexHeader | null; vectors: Rec
  * refuses it with `STALE_INDEX` separately, D5/AC6).
  */
 function readVectors(file: string, active: IndexEmbedder): Record<string, number[]> {
+  if (sqliteEnabled()) {
+    const fromDb = readVectorsFromDb(file);
+    if (fromDb !== null) return fromDb;
+  }
   const { header, vectors } = readIndexFile(file);
   if (!header) return {};
   if (header.embedder !== active.id || header.dim !== active.dim || header.revision !== active.revision) {
@@ -923,12 +951,20 @@ export function createEngine(options: EngineOptions = {}): Engine {
     for (const ns of requested) {
       const label = nsLabel(ns);
       const records = readRecords(recordsFileFor(root, ns));
-      const { header, vectors } = readIndexFile(vectorsFileFor(root, ns));
       buckets.set(label, { ns, records });
 
-      // D5/AC6: records + an index that is not the active engine's = stale.
-      if (records.length > 0 && !indexMatches(header, active)) {
-        throw new StaleIndexError(staleIndexMessage(label, header, active));
+      // SQLite backend (USER, 2026-11-20): the vectors come from the database, cached in memory —
+      // no header to compare, because the table has no embedder stamp. The JSON path keeps the D5
+      // staleness rule unchanged.
+      let vectors: Record<string, number[]>;
+      if (sqliteEnabled()) {
+        vectors = readVectorsFromDb(vectorsFileFor(root, ns)) ?? {};
+      } else {
+        const { header, vectors: fromJson } = readIndexFile(vectorsFileFor(root, ns));
+        if (records.length > 0 && !indexMatches(header, active)) {
+          throw new StaleIndexError(staleIndexMessage(label, header, active));
+        }
+        vectors = fromJson;
       }
 
       for (const record of records) {

@@ -69,3 +69,23 @@ So there are two distinct defects, and they are worth keeping apart:
 - Changing the embedder or the reranker.
 - Moving the store to a real database: the files work; they are simply read and recomputed without
   care. If the cache proves insufficient, that discussion comes later, with numbers.
+
+## 7. Baseline for the re-measurement (2026-11-20)
+
+`scripts/bench/bench-memory.mjs` runs against a **copy** of the store (never the official one) and
+is the test to repeat after the database change.
+
+Run on a copy of the live store (`/tmp/opencode/corebrain-bench`, 23 MB, 635 global memories,
+2 vectors in the global index), 10 rounds:
+
+| phase | average | median |
+|---|---|---|
+| embed the query | 163 ms (first call 1 593 ms: model load; then ~4 ms) | 4 ms |
+| scan the global vectors (2) | 0 ms | 0 ms |
+| **full hybrid recall on global** | **18 180 ms** | 16 866 ms |
+| embed *per memory* | 9.7 ms → 6 160 ms for 635 records | — |
+
+The 17 s reproduces on the copy, so the benchmark is representative. Note that re-embedding the whole
+namespace explains ~6 s of it; the rest is inside the recall itself (BM25 over 635 records, fusion and
+the reranker), which the phase table of §2 does not separate yet — the database change must bring the
+whole recall under the 500 ms of §5, whatever the split.
