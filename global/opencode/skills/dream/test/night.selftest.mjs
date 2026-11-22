@@ -22,10 +22,10 @@ const group = (ns, ...texts) => ({
 
 // --- 1: every group enters the prompt -------------------------------------------------------
 const prompt = fill("{{count}} grupos\n{{groups}}\nFIM", [group("a", "um", "dois"), group("b", "três", "quatro")]);
-check("o número de grupos é o real", prompt.startsWith("2 grupos"), prompt.split("\n")[0]);
-check("os dois grupos aparecem, numerados", prompt.includes("UNIÃO 1") && prompt.includes("UNIÃO 2"), prompt.slice(0, 80));
-check("todas as memórias entram", ["um", "dois", "três", "quatro"].every((text) => prompt.includes(text)), prompt);
-check("nenhum marcador ficou por preencher", !prompt.includes("{{"), prompt);
+check("the group count is the real one", prompt.startsWith("2 grupos"), prompt.split("\n")[0]);
+check("both groups appear, numbered", prompt.includes("UNIÃO 1") && prompt.includes("UNIÃO 2"), prompt.slice(0, 80));
+check("every memory goes in", ["um", "dois", "três", "quatro"].every((text) => prompt.includes(text)), prompt);
+check("no marker is left unfilled", !prompt.includes("{{"), prompt);
 
 // --- 2 + 3: one answer, one union per group -------------------------------------------------
 const answer = `## 1
@@ -34,17 +34,17 @@ Primeira união.
 ## 2
 Segunda união.`;
 const two = parseUnions(answer, 2);
-check("duas uniões lidas", two[0] === "Primeira união." && two[1] === "Segunda união.", JSON.stringify(two));
+check("two unions read", two[0] === "Primeira união." && two[1] === "Segunda união.", JSON.stringify(two));
 
 const missing = parseUnions("## 1\nSó a primeira.", 3);
-check("o grupo sem bloco fica nulo", missing[0] === "Só a primeira." && missing[1] === null && missing[2] === null, JSON.stringify(missing));
+check("a group without a block stays null", missing[0] === "Só a primeira." && missing[1] === null && missing[2] === null, JSON.stringify(missing));
 
 // --- 4: the marker shapes the model actually writes -----------------------------------------
 const shapes = parseUnions("### 1\nalfa\n\n**2**\nbeta", 2);
-check("aceita ### e **n**", shapes[0] === "alfa" && shapes[1] === "beta", JSON.stringify(shapes));
+check("accepts ### and **n**", shapes[0] === "alfa" && shapes[1] === "beta", JSON.stringify(shapes));
 
 const extra = parseUnions("## 1\num\n\n## 7\nfora do intervalo", 1);
-check("um bloco fora do intervalo não estraga o resto", extra[0] === "um" && extra[1] === undefined, JSON.stringify(extra));
+check("a block out of range does not spoil the rest", extra[0] === "um" && extra[1] === undefined, JSON.stringify(extra));
 
-console.log(failures === 0 ? "TODOS OS CHECKS PASSARAM" : `${failures} CHECK(S) FALHARAM`);
+console.log(failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

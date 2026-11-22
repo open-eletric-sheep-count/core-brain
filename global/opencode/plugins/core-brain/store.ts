@@ -607,15 +607,22 @@ const AGENT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * `embedModel` from `config.json` — the model choice as DATA, so the running plugin picks it up on
  * its next start without an environment change. Absent or unreadable = undefined (env/default wins).
  */
-function readEmbedModel(configPath: string | null): string | undefined {
-  if (configPath === null || !existsSync(configPath)) return undefined;
+/** The config document, or `null` when it is absent or unreadable — ONE home for the read every
+ *  `read*` policy below needs, so a broken file is handled the same way everywhere. */
+function readConfigDocument(configPath: string | null): Record<string, unknown> | null {
+  if (configPath === null || !existsSync(configPath)) return null;
   try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { embedModel?: unknown };
-    const value = parsed.embedModel;
-    return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
+    return JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
   } catch {
-    return undefined;
+    return null;
   }
+}
+
+function readEmbedModel(configPath: string | null): string | undefined {
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return undefined;
+  const value = parsed.embedModel;
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
 /**
@@ -623,15 +630,11 @@ function readEmbedModel(configPath: string | null): string | undefined {
  * single dream reads. It is a POLICY, not a call argument — the skill respects it. 0 = no ceiling.
  */
 function readDreamEpisodesPerPass(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return 5;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamEpisodesPerPass?: unknown };
-    const value = parsed.dreamEpisodesPerPass;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
-    return Math.floor(value);
-  } catch {
-    return 5;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return 5;
+  const value = parsed.dreamEpisodesPerPass;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
+  return Math.floor(value);
 }
 
 /**
@@ -639,15 +642,11 @@ function readDreamEpisodesPerPass(configPath: string | null): number {
  * a dream. Default 4; the skill compares it with the idle time the scheduler passes.
  */
 function readDreamIdleHours(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return 4;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamIdleHours?: unknown };
-    const value = parsed.dreamIdleHours;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 4;
-    return value;
-  } catch {
-    return 4;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return 4;
+  const value = parsed.dreamIdleHours;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 4;
+  return value;
 }
 
 /**
@@ -655,15 +654,11 @@ function readDreamIdleHours(configPath: string | null): number {
  * turns consolidation into a factory. `0` disables dreaming entirely; a manual `force` still works.
  */
 function readDreamPerDay(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return 1;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { dreamPerDay?: unknown };
-    const value = parsed.dreamPerDay;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 1;
-    return Math.floor(value);
-  } catch {
-    return 1;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return 1;
+  const value = parsed.dreamPerDay;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 1;
+  return Math.floor(value);
 }
 
 /**
@@ -688,15 +683,11 @@ function readDreamsEnabled(configPath: string | null): boolean {
  * which is why the value is a dial and not a constant.
  */
 function readSynthesisMinCosine(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return SYNTHESIS_MIN_COSINE;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { synthesisMinCosine?: unknown };
-    const value = parsed.synthesisMinCosine;
-    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value >= 1) return SYNTHESIS_MIN_COSINE;
-    return value;
-  } catch {
-    return SYNTHESIS_MIN_COSINE;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return SYNTHESIS_MIN_COSINE;
+  const value = parsed.synthesisMinCosine;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value >= 1) return SYNTHESIS_MIN_COSINE;
+  return value;
 }
 
 /**
@@ -705,15 +696,11 @@ function readSynthesisMinCosine(configPath: string | null): number {
  * so a new memory still finds an old duplicate. 0 = the whole living base.
  */
 function readSynthesisWindowHours(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return 48;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { synthesisWindowHours?: unknown };
-    const value = parsed.synthesisWindowHours;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 48;
-    return Math.floor(value);
-  } catch {
-    return 48;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return 48;
+  const value = parsed.synthesisWindowHours;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 48;
+  return Math.floor(value);
 }
 
 /**
@@ -722,15 +709,11 @@ function readSynthesisWindowHours(configPath: string | null): number {
  * so the limit cannot differ between them. Values below 50 are treated as a typo.
  */
 function readMemoryMaxChars(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return DEFAULT_MEMORY_MAX_CHARS;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { memoryMaxChars?: unknown };
-    const value = parsed.memoryMaxChars;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 50) return DEFAULT_MEMORY_MAX_CHARS;
-    return Math.floor(value);
-  } catch {
-    return DEFAULT_MEMORY_MAX_CHARS;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return DEFAULT_MEMORY_MAX_CHARS;
+  const value = parsed.memoryMaxChars;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 50) return DEFAULT_MEMORY_MAX_CHARS;
+  return Math.floor(value);
 }
 
 /**
@@ -739,15 +722,11 @@ function readMemoryMaxChars(configPath: string | null): number {
  * number that used to be hard-coded in the hook. `0` = the block carries none.
  */
 function readMemoriesPerContext(configPath: string | null): number {
-  if (configPath === null || !existsSync(configPath)) return 5;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { memoriesPerContext?: unknown };
-    const value = parsed.memoriesPerContext;
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
-    return Math.floor(value);
-  } catch {
-    return 5;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return 5;
+  const value = parsed.memoriesPerContext;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return 5;
+  return Math.floor(value);
 }
 
 /**
@@ -756,15 +735,11 @@ function readMemoriesPerContext(configPath: string | null): number {
  * is the community default — a personal path must never be baked into the plugin.
  */
 function readMemoryTestSet(configPath: string | null): string | null {
-  if (configPath === null || !existsSync(configPath)) return null;
-  try {
-    const parsed = JSON.parse(readFileSync(configPath, "utf8")) as { memoryTestSet?: unknown };
-    const value = parsed.memoryTestSet;
-    if (typeof value !== "string" || value.trim() === "") return null;
-    return value.trim();
-  } catch {
-    return null;
-  }
+  const parsed = readConfigDocument(configPath);
+  if (parsed === null) return null;
+  const value = parsed.memoryTestSet;
+  if (typeof value !== "string" || value.trim() === "") return null;
+  return value.trim();
 }
 
 function loadPolicies(configPath: string | null): AgentPolicy[] {
@@ -2560,6 +2535,7 @@ export function createEngine(options: EngineOptions = {}): Engine {
         );
         const isRecent = (record: { createdAt?: unknown }): boolean =>
           sinceMs === null || Date.parse(String(record.createdAt ?? "")) >= sinceMs;
+        const createdAtById = new Map(records.map((record) => [String(record.id), record.createdAt]));
         const vectors = readVectors(vectorsFileFor(root, ns), active);
         if (records.length < 2) continue;
 
@@ -2584,7 +2560,8 @@ export function createEngine(options: EngineOptions = {}): Engine {
           }
           if (!best) continue;
           // At least one side inside the window, otherwise the pair is not tonight's business.
-          if (sinceMs !== null && !isRecent(entry.record) && !isRecent(records.find((record) => String(record.id) === best.id) ?? {})) {
+          // The date is looked up in a Map built once — a scan here made the election O(n^3).
+          if (sinceMs !== null && !isRecent(entry.record) && !(createdAtById.get(best.id) !== undefined && isRecent({ createdAt: createdAtById.get(best.id) }))) {
             continue;
           }
           const key = [idA, best.id].sort().join("|");

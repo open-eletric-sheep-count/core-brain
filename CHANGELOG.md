@@ -5,6 +5,14 @@ Newest on top.
 
 ## [Unreleased]
 
+_No changes pending._
+
+## [1.2.0] — 2026-11-22
+
+**File version 1.2.0** — the single number is [`global/opencode/plugins/core-brain/VERSION`](global/opencode/plugins/core-brain/VERSION),
+installed as `~/.config/opencode/plugins/core-brain/VERSION`. Anything below 1.2 must follow
+[UPDATE.md](UPDATE.md) before it is used (the JSON store became `memory.db`).
+
 ### Changed — 2026-11-22 (the synthesis floor is 0.90 for everyone)
 
 - **`synthesisMinCosine` is 0.90 by default — the community default, not a local override** (USER,

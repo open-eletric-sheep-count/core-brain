@@ -5,7 +5,7 @@
 // creates a session through the OpenCode API and sends that prompt. Nothing else.
 //
 // v2 (same day) adds three things the USER asked for:
-//   - session names are standardised: `sessão-YYYYMMDD-HHMM` (configurable template);
+//   - session names are standardised: `session-YYYYMMDD-HHMM` (configurable template);
 //   - `{idleHours}` and `{timestamp}` are substituted in the prompt at fire time;
 //   - idle is measured from the USER's own sessions — the scheduler's sessions are excluded, so a
 //     dream session does not reset the clock it was triggered by.
@@ -26,7 +26,7 @@ export interface Schedule {
   prompt: string;
   /** Off unless true — a schedule without this flag never runs. */
   enabled?: boolean;
-  /** Session title; the default template is `sessão-{timestamp}`. */
+  /** Session title; the default template is `session-{timestamp}`. */
   title?: string;
 }
 
@@ -47,7 +47,10 @@ const SERVICE_FILE = process.env.OPENCODE_SERVICE_FILE
   ?? path.join(os.homedir(), ".local", "state", "opencode", "service.json");
 const LOG = "[crontab]";
 const TIMER_KEY = Symbol.for("opencode.crontab.timer");
-const DEFAULT_PREFIXES = ["sessão-", "session-", "crontab:"];
+/** Titles this scheduler produced. The Portuguese prefix is the one older versions wrote: a
+ *  session already in the database must still be recognised as the scheduler's own, so it stays
+ *  here as a legacy marker — never as a default. */
+const DEFAULT_PREFIXES = ["session-", "sessão-", "crontab:"];
 
 /** `YYYYMMDD-HHMM` in local time — the standard name the USER asked for. */
 export function formatTimestamp(date: Date): string {
@@ -57,7 +60,7 @@ export function formatTimestamp(date: Date): string {
 
 /** The session title for one firing: the template with `{timestamp}` filled in. */
 export function titleFor(schedule: Schedule, date: Date): string {
-  const template = schedule.title && schedule.title.trim() !== "" ? schedule.title : "sessão-{timestamp}";
+  const template = schedule.title && schedule.title.trim() !== "" ? schedule.title : "session-{timestamp}";
   return template.replaceAll("{timestamp}", formatTimestamp(date));
 }
 

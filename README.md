@@ -1,5 +1,10 @@
 # OESC — Open Electric Sheep Count
 
+> **Version 1.2.0.** The number lives in one line: `global/opencode/plugins/core-brain/VERSION`,
+> which the installer copies to `~/.config/opencode/plugins/core-brain/VERSION` — so an agent reads
+> the running version with `cat ~/.config/opencode/plugins/core-brain/VERSION`.
+> **An install older than 1.2 must migrate before it is used: see [UPDATE.md](UPDATE.md).**
+
 > **Name.** OESC = **O**pen **E**lectric **S**heep **C**ount. "Open" = open source;
 > "Electric Sheep" = the Philip K. Dick reference (*Do Androids Dream of Electric
 > Sheep?*) — the agent/artificial-mind imagery; "Count" = counting sheep to fall

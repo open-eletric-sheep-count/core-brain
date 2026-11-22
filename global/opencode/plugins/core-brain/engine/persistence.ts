@@ -11,7 +11,7 @@
 // until the USER flips it, so a regression is one word away from a rollback.
 
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 import { writeJsonFileAtomic } from "./atomic-json.ts";
@@ -91,6 +91,37 @@ function ensureScoreColumn(db: Db): void {
   }
 }
 
+/**
+ * After the first seeding the JSON files stop being read (USER, 2026-11-22: they go to `legacy/`).
+ * Only what the DATABASE replaced is moved: `memories.json` per space and the `vectors/` tree.
+ * `episodes.json` and `dreams.json` stay where they are — they are still the live store for those.
+ * A rename keeps the bytes, so a rollback is a move back.
+ */
+function moveJsonStoreToLegacy(root: string): number {
+  const legacy = join(root, "legacy");
+  let moved = 0;
+  const moveFile = (from: string, to: string): void => {
+    if (!existsSync(from)) return;
+    mkdirSync(dirname(to), { recursive: true });
+    renameSync(from, to);
+    moved += 1;
+  };
+  const agentsDir = join(root, "agents");
+  if (existsSync(agentsDir)) {
+    for (const name of readdirSync(agentsDir)) {
+      moveFile(join(agentsDir, name, "memories.json"), join(legacy, "agents", name, "memories.json"));
+    }
+  }
+  moveFile(join(root, "global", "memories.json"), join(legacy, "global", "memories.json"));
+  const vectorsDir = join(root, "vectors");
+  if (existsSync(vectorsDir) && !existsSync(join(legacy, "vectors"))) {
+    mkdirSync(legacy, { recursive: true });
+    renameSync(vectorsDir, join(legacy, "vectors"));
+    moved += 1;
+  }
+  return moved;
+}
+
 export function databaseFor(root: string): Db {
   const file = join(root, "memory.db");
   const found = open.get(file);
@@ -110,6 +141,8 @@ export function databaseFor(root: string): Db {
       const seeded = seedFromJson(root);
       if (seeded.memories > 0) {
         console.log(`[core-brain][store] seeded ${seeded.memories} memories and ${seeded.vectors} vectors from JSON`);
+        const moved = moveJsonStoreToLegacy(root);
+        if (moved > 0) console.log(`[core-brain][store] moved ${moved} JSON file(s) to legacy/`);
       }
     }
   } catch {

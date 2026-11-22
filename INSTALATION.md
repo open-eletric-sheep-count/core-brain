@@ -5,6 +5,10 @@ For guided installation, give an agent the prompt in [README.md](README.md#getti
 
 ## 1. Choose the host
 
+**Coming from an install older than 1.2? Read [UPDATE.md](UPDATE.md) first** — the JSON store became
+`memory.db`, and the migration has to happen before the new code reads the data. The running version
+is one line: `cat ~/.config/opencode/plugins/core-brain/VERSION`.
+
 | Host        | Source            |
 | ----------- | ----------------- |
 | OpenCode V2 | `global/opencode` |

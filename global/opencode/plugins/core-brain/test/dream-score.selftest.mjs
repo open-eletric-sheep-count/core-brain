@@ -44,14 +44,14 @@ const landed = await engine.invoke("SYSTEM", {
   args: { ns: "agent:CB_ALPHA", text: "The parser walks the tokens in the order they appear.", sourceIds: [idOne, idTwo] },
 });
 const dreamId = String(landed.detail ?? "").match(/dream ([0-9a-f-]{36})/)?.[1] ?? "";
-check("o sonho foi gravado", dreamId !== "", String(landed.detail));
+check("the dream was written", dreamId !== "", String(landed.detail));
 check(
-  `o score da união é a soma das fontes (${scoreOf(idOne)} + ${scoreOf(idTwo)} = ${before})`,
+  `the union's score is the sum of the sources (${scoreOf(idOne)} + ${scoreOf(idTwo)} = ${before})`,
   scoreOf(dreamId) === before,
   `ficou ${scoreOf(dreamId)}`,
 );
-check("as fontes foram retiradas", db.prepare("SELECT retired_at FROM memories WHERE id = ?").get(idOne)?.retired_at !== null, "fonte ainda viva");
-check("o sonho nasce real = 0", Number(db.prepare("SELECT real FROM memories WHERE id = ?").get(dreamId)?.real) === 0, "real != 0");
+check("the sources were retired", db.prepare("SELECT retired_at FROM memories WHERE id = ?").get(idOne)?.retired_at !== null, "fonte ainda viva");
+check("the dream is real = 0", Number(db.prepare("SELECT real FROM memories WHERE id = ?").get(dreamId)?.real) === 0, "real != 0");
 
 // A dream that names no source still starts like any other memory.
 const alone = await engine.invoke("SYSTEM", {
@@ -60,7 +60,7 @@ const alone = await engine.invoke("SYSTEM", {
   args: { ns: "agent:CB_ALPHA", text: "A dream with no source names nothing.", sourceIds: [] },
 });
 const aloneId = String(alone.detail ?? "").match(/dream ([0-9a-f-]{36})/)?.[1] ?? "";
-check("sem fontes, nasce a 10", scoreOf(aloneId) === 10, `ficou ${scoreOf(aloneId)}`);
+check("with no sources it starts at 10", scoreOf(aloneId) === 10, `ficou ${scoreOf(aloneId)}`);
 
 // The sum is over ALL sources, not just two: a group of three carries three.
 const three = [];
@@ -75,8 +75,8 @@ const merged = await engine.invoke("SYSTEM", {
   args: { ns: "agent:CB_ALPHA", text: "The queue has one rule, kept in three places.", sourceIds: three },
 });
 const mergedId = String(merged.detail ?? "").match(/dream ([0-9a-f-]{36})/)?.[1] ?? "";
-check(`três fontes somam as três (${groupSum})`, scoreOf(mergedId) === groupSum, `ficou ${scoreOf(mergedId)}`);
-check("as três fontes foram retiradas", three.every((id) => db.prepare("SELECT retired_at FROM memories WHERE id = ?").get(id)?.retired_at !== null), "alguma fonte ficou viva");
+check(`three sources sum the three (${groupSum})`, scoreOf(mergedId) === groupSum, `ficou ${scoreOf(mergedId)}`);
+check("the three sources were retired", three.every((id) => db.prepare("SELECT retired_at FROM memories WHERE id = ?").get(id)?.retired_at !== null), "alguma fonte ficou viva");
 
-console.log(failures === 0 ? "TODOS OS CHECKS PASSARAM" : `${failures} CHECK(S) FALHARAM`);
+console.log(failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

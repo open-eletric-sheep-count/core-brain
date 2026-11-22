@@ -7,7 +7,7 @@
 //   4. the interval is counted from the LAST RUN, not from boot;
 //   5. invalid rows are dropped, never guessed;
 //   6. `tickSeconds` has a floor of 5;
-//   7. session titles are standardised (`sessão-YYYYMMDD-HHMM`);
+//   7. session titles are standardised (`session-YYYYMMDD-HHMM`);
 //   8. idle ignores the scheduler's own sessions (a dream session must not reset the clock);
 //   9. `{idleHours}` and `{timestamp}` are substituted in the prompt.
 
@@ -76,26 +76,26 @@ check("tickSeconds floor is 5", tiny.tickSeconds === 5, String(tiny.tickSeconds)
 const stamp = formatTimestamp(new Date(2026, 10, 18, 16, 32)); // local time, month is 0-based
 check("timestamp format YYYYMMDD-HHMM", stamp === "20261118-1632", stamp);
 check("default title uses the template",
-  titleFor(schedule(), new Date(2026, 10, 18, 16, 32)) === "sessão-20261118-1632",
+  titleFor(schedule(), new Date(2026, 10, 18, 16, 32)) === "session-20261118-1632",
   titleFor(schedule(), new Date(2026, 10, 18, 16, 32)));
 check("a custom title still gets the timestamp",
   titleFor(schedule({ title: "crontab: {timestamp}" }), new Date(2026, 10, 18, 16, 32)) === "crontab: 20261118-1632",
   "template not filled");
 
 // 8. idle ignores the scheduler's own sessions
-const prefixes = ["sessão-", "session-", "crontab:"];
+const prefixes = ["session-", "sessão-", "crontab:"]; // the second one is a legacy title
 const base = Date.parse("2026-11-18T16:00:00.000Z");
 const sessions = [
-  { title: "sessão-20261118-1600", time: { updated: base } },        // scheduler's own
+  { title: "session-20261118-1600", time: { updated: base } },       // scheduler's own
   { title: "crontab: test-ok", time: { updated: base } },            // scheduler's own
-  { title: "Minha sessão", time: { updated: base - 5 * 3_600_000 } }, // USER activity, 5 h old
+  { title: "My session", time: { updated: base - 5 * 3_600_000 } },  // USER activity, 5 h old
 ];
 const idle = idleHours(sessions, base, prefixes);
 check("idle counts the USER's last activity, not the scheduler's", Math.abs(idle - 5) < 0.01, String(idle));
 check("an empty list reports zero", idleHours([], base, prefixes) === 0, "not zero");
 check("isSchedulerSession matches the prefixes",
-  isSchedulerSession("sessão-20261118-1600", prefixes) && isSchedulerSession("crontab: x", prefixes) &&
-  !isSchedulerSession("Minha sessão", prefixes), "prefix match wrong");
+  isSchedulerSession("session-20261118-1600", prefixes) && isSchedulerSession("crontab: x", prefixes) &&
+  !isSchedulerSession("My session", prefixes), "prefix match wrong");
 
 // 9. placeholders
 const filled = fillPrompt("idle {idleHours} h at {timestamp}", { idleHours: 4.37, timestamp: "20261118-1632" });

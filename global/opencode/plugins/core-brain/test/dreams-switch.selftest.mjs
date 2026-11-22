@@ -49,8 +49,8 @@ const episodeIds = [one.id ?? one.data?.id, two.id ?? two.data?.id];
 
 // --- 1 + 2: off, listing still honest -------------------------------------------------------
 const listing = await engine.invoke("CB_ALPHA", { op: "dream" });
-check("sem a chave, o sonho está OFF", listing.dreamsEnabled === false, String(listing.dreamsEnabled));
-check("a listagem mostra os episódios à espera", (listing.episodes ?? []).length === 2, String((listing.episodes ?? []).length));
+check("without the key, dreaming is OFF", listing.dreamsEnabled === false, String(listing.dreamsEnabled));
+check("the listing shows the waiting episodes", (listing.episodes ?? []).length === 2, String((listing.episodes ?? []).length));
 
 // --- 3: off, the write is refused and changes nothing ---------------------------------------
 let refused = null;
@@ -64,9 +64,9 @@ try {
 } catch (error) {
   refused = String(error?.message ?? error);
 }
-check("com dreams OFF o sonho é recusado", refused !== null && /dreaming is disabled/.test(refused), String(refused));
-check("nada foi marcado: os dois episódios continuam à espera", waiting().length === 2, String(waiting().length));
-check("nenhum registo de sonho foi criado", readJson(DREAMS).length === 0, String(readJson(DREAMS).length));
+check("with dreams OFF the pass is refused", refused !== null && /dreaming is disabled/.test(refused), String(refused));
+check("nothing was marked: both episodes stay waiting", waiting().length === 2, String(waiting().length));
+check("no dream record was created", readJson(DREAMS).length === 0, String(readJson(DREAMS).length));
 
 // --- 4: the script refuses too ---------------------------------------------------------------
 for (const command of ["now", "synthesize"]) {
@@ -78,7 +78,7 @@ for (const command of ["now", "synthesize"]) {
 // --- 5: on, everything works -----------------------------------------------------------------
 writeConfig(true);
 const listingOn = await engine.invoke("CB_ALPHA", { op: "dream" });
-check("com dreams ON a listagem diz que está ligado", listingOn.dreamsEnabled === true, String(listingOn.dreamsEnabled));
+check("with dreams ON the listing says it is on", listingOn.dreamsEnabled === true, String(listingOn.dreamsEnabled));
 
 const dreamed = await engine.invoke("CB_ALPHA", {
   op: "dream",
@@ -86,8 +86,8 @@ const dreamed = await engine.invoke("CB_ALPHA", {
   memories: [{ text: "The dream switch is a config key named dreams." }],
   force: true,
 });
-check("com dreams ON o sonho escreve", Boolean(dreamed.dreamId), JSON.stringify(dreamed).slice(0, 160));
-check("os episódios ficaram marcados", waiting().length === 0, String(waiting().length));
+check("with dreams ON the pass writes", Boolean(dreamed.dreamId), JSON.stringify(dreamed).slice(0, 160));
+check("the episodes are marked", waiting().length === 0, String(waiting().length));
 
-console.log(failures === 0 ? "TODOS OS CHECKS PASSARAM" : `${failures} CHECK(S) FALHARAM`);
+console.log(failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
