@@ -156,14 +156,14 @@ function shortId(id: string): string {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id.slice(0, 8) : id;
 }
 
-/** The night's groups as the prompt shows them: `UNIÃO n` then each memory of that group. */
+/** The night's groups as the prompt shows them: `GROUP n` then each memory of that group. */
 function groupsBlock(groups: Group[]): string {
   return groups
     .map((group, index) => {
       const body = membersOf(group)
         .map((member) => `Memória:\n${member.text}`)
         .join("\n\n");
-      return `UNIÃO ${index + 1}\n${body}`;
+      return `GROUP ${index + 1}\n${body}`;
     })
     .join("\n\n");
 }

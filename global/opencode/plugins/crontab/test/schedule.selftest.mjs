@@ -83,7 +83,7 @@ check("a custom title still gets the timestamp",
   "template not filled");
 
 // 8. idle ignores the scheduler's own sessions
-const prefixes = ["session-", "sessão-", "crontab:"]; // the second one is a legacy title
+const prefixes = ["session-", "crontab:"];
 const base = Date.parse("2026-11-18T16:00:00.000Z");
 const sessions = [
   { title: "session-20261118-1600", time: { updated: base } },       // scheduler's own

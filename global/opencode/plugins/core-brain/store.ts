@@ -254,7 +254,7 @@ const SYNTHESIS_PAIRS_MAX = 50;
  * the first words, that the story did not happen — it was a dream. The cap applies to the dream
  * itself; this marker is added on top.
  */
-const DREAM_MEMORY_PREFIX = "Esta memória não aconteceu de verdade, foi um sonho: ";
+const DREAM_MEMORY_PREFIX = "This memory never actually happened, it was a dream: ";
 
 /** The text a duplicate check compares: trimmed, whitespace collapsed, case folded. */
 export function normalizeMemoryTextKey(text: string): string {

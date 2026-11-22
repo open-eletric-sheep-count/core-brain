@@ -47,7 +47,7 @@ try {
   );
   appendRecord(
     file,
-    buildFinalizationLine({ id, session: "ses_a", written: [{ id: "m1", text: "uma memória" }] }),
+    buildFinalizationLine({ id, session: "ses_a", written: [{ id: "m1", text: "a memory" }] }),
   );
 
   // A second case that produced nothing — the negative case must survive too.
@@ -81,7 +81,7 @@ try {
   );
   check(
     "I7 the finalization half carries the memories",
-    complete?.finalization?.written[0]?.text === "uma memória",
+    complete?.finalization?.written[0]?.text === "a memory",
   );
   check("I8 the prompt is stored as given", complete?.initialization?.prompt === "continua");
   check(

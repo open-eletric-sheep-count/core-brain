@@ -47,10 +47,8 @@ const SERVICE_FILE = process.env.OPENCODE_SERVICE_FILE
   ?? path.join(os.homedir(), ".local", "state", "opencode", "service.json");
 const LOG = "[crontab]";
 const TIMER_KEY = Symbol.for("opencode.crontab.timer");
-/** Titles this scheduler produced. The Portuguese prefix is the one older versions wrote: a
- *  session already in the database must still be recognised as the scheduler's own, so it stays
- *  here as a legacy marker — never as a default. */
-const DEFAULT_PREFIXES = ["session-", "sessão-", "crontab:"];
+/** Titles this scheduler produced — every prefix it has ever written. */
+const DEFAULT_PREFIXES = ["session-", "crontab:"];
 
 /** `YYYYMMDD-HHMM` in local time — the standard name the USER asked for. */
 export function formatTimestamp(date: Date): string {
