@@ -152,6 +152,83 @@ to 5 from the agent's own space). With **no query** — session start, when ther
 history and no speech — none of them runs: the block is ordered by strength (usefulness votes, then
 retrievals, then date).
 
+#### The dream switch (`dreams`) — experimental, off by default
+
+Consolidation is **experimental and spends tokens**: a night opens **one session** to write the
+unions of the whole night, and every pass also ages the whole base by one point. So `dreams` in
+`config.json` is a master switch, and it is **off unless it is literally `true`**:
+
+- **`"dreams": false`** (the default shipped here) — the scheduler does nothing, the `dream` op is
+  refused, and `dream.sh now` / `dream.sh synthesize` exit 3 with the reason. Episodes keep waiting;
+  nothing is marked, nothing is written.
+- **`"dreams": true`** — the feature is on, still bounded by `dreamPerDay` (default 1),
+  `dreamIdleHours` (default 4) and `dreamEpisodesPerPass`.
+
+The community default in this repository is `false`; the taulukko install overrides it to `true` in
+its own copy of `plugins/core-brain/config.json`.
+
+**The dream's model** is `dream.model` in the same file, and **a blank entry (`{}`) means the
+OpenCode default** (USER, 2026-11-22): the dream session is created without a model and inherits the
+default agent's. That is what this repository ships; an install that wants a specific model fills
+`providerID`, `id` and optionally `variant` (taulukko points it at `deepseek/deepseek-flash#low`).
+
+#### The memory ceiling (`memoryMaxChars`)
+
+One key governs how long a memory's text may be: **`memoryMaxChars` in `config.json` — 650 by
+default**. It is enforced at every door that writes a memory (`store`, the dream pass and the
+synthesis), and the refusal names the number and the key, so the writer summarises and sends again.
+The same value travels in the dream's prompt (`{{max}}`), so a union is written inside the ceiling
+instead of being refused after the fact. Values below 50 are treated as a typo.
+
+A memory above the ceiling that predates the key is not rewritten: it is **retired** (`retired_at`)
+and moves to the history with the next dream pass — the text is kept, never cut.
+
+#### The synthesis band (`synthesisMinCosine`, `synthesisWindowHours`)
+
+Two memories that say the same thing in other words are united by a writer — one union per night —
+when their cosine sits between **`synthesisMinCosine`** and the mechanical union at 0.97. The floor
+is **0.90 by default, the same for every install**: the same fact written in Portuguese and in
+English lands near 0.90, and a floor of 0.95 leaves those twins apart. A pair below the floor may
+share a style and say different things.
+
+**`synthesisWindowHours`** (48 by default) keeps the election linear as the base grows: only **one
+side** of the pair must be younger than the window, so a new memory still finds an old duplicate;
+`0` reads the whole living base. The night takes the highest cosine — one group — and `--limit N` is
+a deliberate pen, never the rule.
+
+#### Every key in `config.json`
+
+| key | default | what it does |
+|---|---|---|
+| `memoryMaxChars` | `650` | ceiling for one memory's text — `store`, the dream pass and the synthesis all refuse above it |
+| `dreams` | `false` | master switch for the dream pass (experimental, spends tokens) |
+| `dreamPerDay` | `1` | how many dream passes a day; `0` = never automatic |
+| `dreamIdleHours` | `4` | hours of rest before an automatic pass |
+| `dreamEpisodesPerPass` | `5` | how many episodes one pass may read; `0` = no ceiling |
+| `dream.model` | `{}` | model for the dream's session; `{}` = the OpenCode default |
+| `synthesisMinCosine` | `0.9` | floor of the synthesis band; 0.97 and above is the mechanical union |
+| `synthesisWindowHours` | `48` | only **one side** of a pair must be younger than this; `0` = the whole living base |
+| `embedModel` | `multilingual-minilm` | the local encoder behind the vector leg (see below) |
+| `memoriesPerContext` | `5` | how many memories the automatic block carries per half |
+| `agents[]` | — | one row per agent: `name`, `private`, `hasGlobalAccess`, `inject` |
+
+**`embedModel`** is the local model that turns text into a vector (384 dimensions), and it is the
+*meaning* leg of every search: `recall` compares the question's vector with the memories' vectors and
+fuses that with the BM25 word search (RRF). **Changing it invalidates every stored vector** — the old
+ones are not comparable with the new ones — so a change is always followed by a reindex of the whole
+store.
+
+**`agents[]`** is the policy of each agent in the store:
+
+- `private: true` — that agent's own space is **closed to the others** (with `false` it can be read by
+  them);
+- `hasGlobalAccess: true` — it may read **and write** the shared global space;
+- `inject: true` — it receives the automatic memory block at the start of a session (without it the
+  agent still has `recall`).
+- Absent keys take the defaults `private:false`, `hasGlobalAccess:true`, `inject:false`; a row with
+  `private:false` **and** `hasGlobalAccess:false` is invalid and **aborts the engine** — it would have
+  nowhere to read or write.
+
 ### 4. Agents — the OESC team
 
 The suite also ships the **agent definitions** (`global/opencode/agent/`) — the

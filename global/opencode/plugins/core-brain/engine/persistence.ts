@@ -19,7 +19,8 @@ import { writeJsonFileAtomic } from "./atomic-json.ts";
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS memories (
     id TEXT PRIMARY KEY, namespace TEXT NOT NULL, agent TEXT, scope TEXT, text TEXT NOT NULL,
-    meta TEXT, created_at TEXT, updated_at TEXT, retrievals INTEGER DEFAULT 0, retired_at TEXT
+    meta TEXT, created_at TEXT, updated_at TEXT, score INTEGER DEFAULT 10, retired_at TEXT,
+    real INTEGER DEFAULT 1
   );
   CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
     memory_id UNINDEXED, text, tokenize = 'unicode61 remove_diacritics 2'
@@ -39,9 +40,16 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS dreams (
     id TEXT PRIMARY KEY, namespace TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT,
     status TEXT NOT NULL DEFAULT 'running', episodes INTEGER DEFAULT 0, created INTEGER DEFAULT 0,
-    reinforced INTEGER DEFAULT 0, merged INTEGER DEFAULT 0, pending INTEGER DEFAULT 0
+    reinforced INTEGER DEFAULT 0, merged INTEGER DEFAULT 0, pending INTEGER DEFAULT 0,
+    similar TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_dreams_started ON dreams(started_at);
+  CREATE TABLE IF NOT EXISTS memories_history (
+    id TEXT PRIMARY KEY, namespace TEXT NOT NULL, agent TEXT, scope TEXT, text TEXT NOT NULL,
+    meta TEXT, created_at TEXT, updated_at TEXT, score INTEGER DEFAULT 0, retired_at TEXT,
+    real INTEGER DEFAULT 1, archived_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_memories_history_ns ON memories_history(namespace);
 `;
 
 type Db = DatabaseSync;
@@ -52,11 +60,35 @@ const seeding = new Set<string>();
 const cache = new Map<string, { stamp: string; vectors: Record<string, number[]> }>();
 
 /**
- * SQLite is the store now (USER, 2026-11-20: «pode fazer a mudança»). `CORE_BRAIN_STORE=json` is the
+ * SQLite is the store now (USER, 2026-11-20: he approved the move). `CORE_BRAIN_STORE=json` is the
  * escape hatch while the JSON files still exist beside the database; nothing else chooses the engine.
  */
 export function sqliteEnabled(): boolean {
   return process.env.CORE_BRAIN_STORE !== "json";
+}
+
+/**
+ * The counter is `score` since 2026-11-20 (it was `retrievals`). A database created before the
+ * rename is migrated the first time this build opens it — code and data travel together, so an
+ * install never leaves the plugin reading a column that no longer exists.
+ */
+function ensureScoreColumn(db: Db): void {
+  for (const table of ["memories", "memories_history"]) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((column) => String(column.name));
+    if (columns.includes("retrievals") && !columns.includes("score")) {
+      db.exec(`ALTER TABLE ${table} RENAME COLUMN retrievals TO score`);
+    }
+    // `real` (USER, 2026-11-20): a memory born from a dream is NOT reality; default is real.
+    if (!columns.includes("real")) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN real INTEGER DEFAULT 1`);
+    }
+  }
+
+  // `dreams.similar` (USER, 2026-11-20): the memories the night worked on, as a JSON array of ids.
+  const dreamColumns = db.prepare("PRAGMA table_info(dreams)").all().map((column) => String(column.name));
+  if (!dreamColumns.includes("similar")) {
+    db.exec("ALTER TABLE dreams ADD COLUMN similar TEXT");
+  }
 }
 
 export function databaseFor(root: string): Db {
@@ -67,6 +99,7 @@ export function databaseFor(root: string): Db {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA synchronous = NORMAL;");
   db.exec(SCHEMA);
+  ensureScoreColumn(db);
   open.set(file, db);
   // First open: the database is EMPTY and the JSON files are still there -> fill it once.
   if (seeding.has(file)) return db;
@@ -121,6 +154,13 @@ const stampOf = (file: string): string => {
   }
 };
 
+/** Every namespace the DATABASE holds — the SQLite backend has no directories to walk. */
+export function namespacesInDb(root: string): string[] {
+  if (!sqliteEnabled() || !existsSync(join(root, "memory.db"))) return [];
+  const rows = databaseFor(root).prepare("SELECT DISTINCT namespace FROM memories").all();
+  return rows.map((row) => String(row.namespace));
+}
+
 export function readRecordsFromDb(file: string): unknown[] | null {
   const root = rootOf(file);
   const db = databaseFor(root);
@@ -135,7 +175,8 @@ export function readRecordsFromDb(file: string): unknown[] | null {
     meta: row.meta ? JSON.parse(row.meta) : {},
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,
-    retrievals: Number(row.retrievals ?? 0),
+    score: Number(row.score ?? 0),
+    real: Number(row.real ?? 1) !== 0,
     ...(row.retired_at ? { retiredAt: row.retired_at } : {}),
   }));
 }
@@ -149,7 +190,7 @@ export function writeRecordsToDb(file: string, records: unknown[]): void {
     db.prepare("DELETE FROM memories WHERE namespace = ?").run(ns);
     db.prepare("DELETE FROM memories_fts WHERE memory_id NOT IN (SELECT id FROM memories)").run();
     const insert = db.prepare(
-      "INSERT OR REPLACE INTO memories(id, namespace, agent, scope, text, meta, created_at, updated_at, retrievals, retired_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "INSERT OR REPLACE INTO memories(id, namespace, agent, scope, text, meta, created_at, updated_at, score, retired_at, real) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
     );
     const fts = db.prepare("INSERT INTO memories_fts(memory_id, text) VALUES (?, ?)");
     for (const raw of records) {
@@ -164,8 +205,9 @@ export function writeRecordsToDb(file: string, records: unknown[]): void {
         JSON.stringify(record.meta ?? {}),
         (record.createdAt as string) ?? null,
         (record.updatedAt as string) ?? null,
-        Number(record.retrievals ?? 0),
+        Number((record as { score?: number }).score ?? 0),
         (record.retiredAt as string) ?? null,
+        (record.real as boolean) === false ? 0 : 1,
       );
       fts.run(id, String(record.text ?? ""));
     }
@@ -219,7 +261,7 @@ export function writeVectorsToDb(file: string, vectors: Record<string, number[]>
 export function seedFromJson(root: string): { memories: number; vectors: number } {
   const db = databaseFor(root);
   const insert = db.prepare(
-    "INSERT OR REPLACE INTO memories(id, namespace, agent, scope, text, meta, created_at, updated_at, retrievals, retired_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    "INSERT OR REPLACE INTO memories(id, namespace, agent, scope, text, meta, created_at, updated_at, score, retired_at, real) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
   );
   const fts = db.prepare("INSERT INTO memories_fts(memory_id, text) VALUES (?, ?)");
   const insertVector = db.prepare("INSERT OR REPLACE INTO vectors(memory_id, namespace, dim, vec) VALUES (?,?,?,?)");
@@ -252,8 +294,9 @@ export function seedFromJson(root: string): { memories: number; vectors: number 
         JSON.stringify(record.meta ?? {}),
         (record.createdAt as string) ?? null,
         (record.updatedAt as string) ?? null,
-        Number(record.retrievals ?? 0),
+        Number((record as { score?: number }).score ?? 0),
         (record.retiredAt as string) ?? null,
+        (record.real as boolean) === false ? 0 : 1,
       );
       fts.run(String(record.id), String(record.text ?? ""));
       memories += 1;
@@ -340,6 +383,8 @@ export interface DreamRunRow {
   reinforced: number;
   merged: number;
   pending: number;
+  /** The ids of the memories the night worked on (the similar pairs). */
+  similar?: string[];
 }
 
 /** One pair the dream judged: the survivor, the memory it absorbed, and the verdict. */
@@ -401,6 +446,17 @@ function toDreamMemoryRow(raw: Record<string, unknown>): DreamMemoryRow {
     mergedText: asText(raw.merged_text),
     mergedMemoryId: asText(raw.merged_memory_id),
   };
+}
+
+/** A JSON array of ids stored in a text column; empty when absent or unreadable. */
+function parseIds(value: unknown): string[] {
+  if (typeof value !== "string" || value === "") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map((id) => String(id)) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** A nullable column: absent and null both mean "no value". */
@@ -483,6 +539,47 @@ export function resolveDreamMemory(root: string, id: string, verdict: DreamMemor
   return true;
 }
 
+/**
+ * Settles EVERY pending row that points at one survivor — the verdict of a group, not of a pair
+ * (USER, 2026-11-20). A cluster of near-identical memories is ONE decision: asking the reviewer to
+ * repeat it per pair would make the queue unworkable. Returns how many rows were settled.
+ */
+export function resolveDreamMemoriesBySurvivor(
+  root: string,
+  survivorId: string,
+  verdict: DreamMemoryVerdict,
+): number {
+  if (sqliteEnabled()) {
+    const db = databaseFor(root);
+    const found = db
+      .prepare("SELECT COUNT(*) AS n FROM dream_memories WHERE survivor_id = ? AND status = ?")
+      .get(survivorId, DREAM_MEMORY_STATUS.pending);
+    const pending = Number(found?.n ?? 0);
+    if (pending === 0) return 0;
+    db.prepare(
+      "UPDATE dream_memories SET status = ?, processed_at = ?, merged_text = ?, merged_memory_id = ? " +
+        "WHERE survivor_id = ? AND status = ?",
+    ).run(
+      verdict.status,
+      verdict.processedAt,
+      verdict.mergedText,
+      verdict.mergedMemoryId,
+      survivorId,
+      DREAM_MEMORY_STATUS.pending,
+    );
+    return pending;
+  }
+  const rows = readDreamMemoriesFile(root);
+  let settled = 0;
+  for (const row of rows) {
+    if (row.survivorId !== survivorId || row.status !== DREAM_MEMORY_STATUS.pending) continue;
+    Object.assign(row, verdict);
+    settled += 1;
+  }
+  if (settled > 0) writeDreamMemoriesFile(root, rows);
+  return settled;
+}
+
 /** Opens a pass. Called once, before anything is written to the memories. */
 export function startDreamRun(root: string, pass: { id: string; namespace: string; startedAt: string }): void {
   if (!sqliteEnabled()) return; // the JSON backend keeps the pass in dreams.json alone
@@ -502,6 +599,8 @@ export interface DreamRunSummary {
   reinforced: number;
   merged: number;
   pending: number;
+  /** The ids of the memories the night worked on (the similar pairs). */
+  similar?: string[];
 }
 
 export function finishDreamRun(root: string, id: string, summary: DreamRunSummary): void {
@@ -509,7 +608,7 @@ export function finishDreamRun(root: string, id: string, summary: DreamRunSummar
   const db = databaseFor(root);
   db.prepare(
     "UPDATE dreams SET status = ?, finished_at = ?, episodes = ?, created = ?, reinforced = ?, " +
-      "merged = ?, pending = ? WHERE id = ?",
+      "merged = ?, pending = ?, similar = ? WHERE id = ?",
   ).run(
     summary.status,
     summary.finishedAt,
@@ -518,6 +617,7 @@ export function finishDreamRun(root: string, id: string, summary: DreamRunSummar
     summary.reinforced,
     summary.merged,
     summary.pending,
+    JSON.stringify(summary.similar ?? []),
     id,
   );
 }
@@ -568,8 +668,7 @@ function dreamRunsFromJson(root: string): DreamRunRow[] {
   return rows;
 }
 
-/** The passes, newest first — what the USER reads to analyse the dreams. */
-export function listDreamRuns(root: string, limit: number): DreamRunRow[] {
+/** The passes, newest first — what the USER reads to analyse the dreams. */export function listDreamRuns(root: string, limit: number): DreamRunRow[] {
   const rows = sqliteEnabled()
     ? databaseFor(root)
         .prepare("SELECT * FROM dreams ORDER BY started_at DESC LIMIT ?")
@@ -585,8 +684,86 @@ export function listDreamRuns(root: string, limit: number): DreamRunRow[] {
           reinforced: Number(raw.reinforced ?? 0),
           merged: Number(raw.merged ?? 0),
           pending: Number(raw.pending ?? 0),
+          similar: parseIds(raw.similar),
         }))
     : dreamRunsFromJson(root);
   rows.sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
   return rows.slice(0, limit);
+}
+
+// ---------------------------------------------------------------------------
+// Memories history (USER, 2026-11-20)
+// ---------------------------------------------------------------------------
+//
+// The live table is what an agent reads on every call; a RETIRED record is audit material and must
+// not keep inflating it. At the end of each dream the retired rows move to `memories_history` — same
+// columns plus `archived_at` — with their FTS entry and vector dropped, because a retired memory is
+// never recalled again. The history is the USER's: he may delete it whenever he likes.
+
+/**
+ * Moves every RETIRED memory of the database into `memories_history` and returns how many moved.
+ * Idempotent: a row already moved is no longer in `memories`. JSON backend: no-op (nothing to move —
+ * the JSON files are the history).
+ */
+export function archiveRetiredMemories(root: string): number {
+  if (!sqliteEnabled()) return 0;
+  const db = databaseFor(root);
+  const pending = Number(db.prepare("SELECT COUNT(*) AS n FROM memories WHERE retired_at IS NOT NULL").get()?.n ?? 0);
+  if (pending === 0) return 0;
+
+  const now = new Date().toISOString();
+  const retiredCondition = "retired_at IS NOT NULL";
+  db.exec("BEGIN");
+  try {
+    // REPLACE, not IGNORE (USER, 2026-11-21): a memory retired, restored and retired again found
+    // its old row still in the history, the INSERT was ignored, and the row was then deleted from
+    // `memories` — the newer retirement vanished. The history keeps one row per memory, always its
+    // latest state, and no column is ever lost on the way in.
+    db.prepare(
+      "INSERT OR REPLACE INTO memories_history (id, namespace, agent, scope, text, meta, created_at, " +
+        "updated_at, score, retired_at, real, archived_at) SELECT id, namespace, agent, scope, text, " +
+        `meta, created_at, updated_at, score, retired_at, real, ? FROM memories WHERE ${retiredCondition}`,
+    ).run(now);
+    db.prepare(`DELETE FROM memories_fts WHERE memory_id IN (SELECT id FROM memories WHERE ${retiredCondition})`).run();
+    db.prepare(`DELETE FROM vectors WHERE memory_id IN (SELECT id FROM memories WHERE ${retiredCondition})`).run();
+    db.prepare(`DELETE FROM memories WHERE ${retiredCondition}`).run();
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+  return pending;
+}
+
+/** How many memories the history holds — the number the USER reads before deciding to prune it. */
+export function countArchivedMemories(root: string): number {
+  if (!sqliteEnabled()) return 0;
+  return Number(databaseFor(root).prepare("SELECT COUNT(*) AS n FROM memories_history").get()?.n ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// The nightly score (USER, 2026-11-20)
+// ---------------------------------------------------------------------------
+//
+// Applied at the END of a dream, never at its start: a night that fails changes nothing. Order:
+// forget one point from every memory, then stamp `retired_at` on everything at or below zero, then
+// archive. The archive sweep is what makes room; these two only decide who leaves.
+
+/** Every memory loses one point. Returns how many rows changed. */
+export function decayScores(root: string, amount = 1): number {
+  if (!sqliteEnabled()) return 0;
+  const db = databaseFor(root);
+  const changed = db.prepare("UPDATE memories SET score = score - ? WHERE retired_at IS NULL").run(amount);
+  return Number(changed.changes ?? 0);
+}
+
+/** Everything at or below zero is retired (a negative left by a bug retires too). Returns the count. */
+export function retireExhausted(root: string): number {
+  if (!sqliteEnabled()) return 0;
+  const db = databaseFor(root);
+  const now = new Date().toISOString();
+  const changed = db
+    .prepare("UPDATE memories SET retired_at = ? WHERE retired_at IS NULL AND score <= 0")
+    .run(now);
+  return Number(changed.changes ?? 0);
 }

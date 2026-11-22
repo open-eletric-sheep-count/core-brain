@@ -50,7 +50,7 @@ export interface MemoryRecord {
   meta?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  retrievals: number;
+  score: number;
   /** Soft retire (M8): set when the record is forgotten; empty = active. */
   retiredAt?: string;
   /** `core_feedback` signal; absent = neutral (useful = useless = 0). */
@@ -106,12 +106,16 @@ export interface DreamResult {
   ok: true;
   /** Present when the call listed the episodes to dream (no payload). */
   episodes?: Episode[];
+  /** The master switch, as the listing reports it: false = the feature is off in the config. */
+  dreamsEnabled?: boolean;
   /** The idle threshold the scheduler must respect, read from the config (default 4 hours). */
   idleHoursRequired?: number;
   /** How many episodes one dream may read, read from the config (0 = no ceiling). */
   episodesPerPass?: number;
   /** Present when the call performed the dream. */
   dreamId?: string;
+  /** Retired records moved to `memories_history` when the pass closed. */
+  archived?: number;
   /** Ids of the memories the dream CREATED. */
   memories?: string[];
   /**
@@ -170,7 +174,7 @@ export interface RecallHit {
    * so the default shape is unchanged.
    */
   legs?: { bm25: number | null; vector: number | null };
-  retrievals: number;
+  score: number;
   /**
    * The record's metadata, when it has any — this is where a dreamed memory says it was dreamed
    * (`meta.dreams` with the dream id and DATE, USER 2026-11-19).
@@ -226,7 +230,7 @@ export interface StatusNamespaceCount {
   ns: string;
   records: number;
   retired: number;
-  retrievals: number;
+  score: number;
 }
 
 /** `core_memory({ op: "status" })` result — counts only, no memory text. */
@@ -236,7 +240,7 @@ export interface StatusResult {
   embedder: string;
   dim: number;
   namespaces: StatusNamespaceCount[];
-  totals: { records: number; retired: number; retrievals: number };
+  totals: { records: number; retired: number; score: number };
 }
 
 /** One `doctor` check (AC6 shape). */
@@ -295,6 +299,19 @@ export interface AdminResult {
   dreamMemories?: DreamMemoryRow[];
   /** `dreams` only: the passes, newest first. */
   dreams?: DreamRunRow[];
+  /**
+   * `synthesis-pairs` only: the dreams the night should write. Each entry is a GROUP — two or more
+   * memories that say the same thing in other words, joined when the pairs share a memory — with
+   * the strongest cosine that brought them in (USER, 2026-11-21).
+   */
+  synthesisPairs?: Array<{
+    ns: string;
+    members: Array<{ id: string; text: string; score: number }>;
+    cosine: number;
+    /** The first two members under the old keys: kept so an older reader still has something. */
+    a: { id: string; text: string; score: number };
+    b: { id: string; text: string; score: number };
+  }>;
 }
 
 export type CoreMemoryResult =
@@ -370,7 +387,18 @@ export type CoreMemoryRequest =
   | { op: "receipt"; ns?: string; days?: number }
   | {
       op: "admin";
-      action: "purge" | "reindex" | "export" | "import" | "compact";
+      action:
+        | "purge"
+        | "reindex"
+        | "export"
+        | "import"
+        | "compact"
+        | "dedupe"
+        | "dreams"
+        | "dream-memories"
+        | "dream-memory"
+        | "archive"
+        | "history";
       args?: Record<string, unknown>;
     };
 
@@ -403,7 +431,7 @@ export interface Engine {
   /**
    * How many memories the automatic block carries, read from `config.json`
    * (`memoriesPerContext`, default 5) — ONE setting for every agent (USER,
-   * 2026-11-19: «deixa só uma configuração global»). `0` means no block.
+   * 2026-11-19: one global setting is enough). `0` means no block.
    */
   memoriesPerContext(): number;
   /**

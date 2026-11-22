@@ -164,6 +164,21 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
+# --- 10d. Suite F4: retired memories leave the live table --------------------
+# USER design (2026-11-20): at the end of a dream the retired rows move to memories_history — with
+# their FTS entry and vector — so the table agents read on every call stops accumulating audit data.
+# SQLite-only suite: it deletes CORE_BRAIN_STORE itself to force the production backend.
+HISTORY_LOG="$CORE_BRAIN_HOME/history.log"
+if ! run_script "$DIR/test/history-archive.selftest.mjs" "$HISTORY_LOG"; then
+  status=1
+fi
+cat "$HISTORY_LOG"
+
+if [ "$status" -ne 0 ]; then
+  echo "core-brain check.sh: history-archive FAILED (see the log above)" >&2
+  exit "$status"
+fi
+
 # --- 10c. Suite F3: a merge NEVER crosses a namespace ------------------------
 # USER rule (2026-11-20): one agent's memories become that agent's memory; two globals become one
 # global; and a global beside an agent memory is NOT duplication — both stay. Pinned so a refactor
@@ -218,4 +233,4 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 
-echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + dedupe-semantic + profile + dream + insertions (CORE_BRAIN_HOME cleaned up)"
+echo "core-brain check.sh: matrix 13/13 + probes + hooks + timeline + dedupe + dedupe-semantic + dedupe-namespaces + history + profile + dream + insertions (CORE_BRAIN_HOME cleaned up)"

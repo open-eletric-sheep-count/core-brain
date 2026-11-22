@@ -164,7 +164,7 @@ Results — the tool returns this JSON as its content:
 // recall
 { "results": [ { "id": "<uuid>", "text": "…", "agent": "agent_beta",
                  "scope": "agent", "score": 0.0325, "rrf": 0.0325,
-                 "legs": { "bm25": 5.269, "vector": 0.997 }, "retrievals": 3 } ],
+                 "legs": { "bm25": 5.269, "vector": 0.997 }, "score": 3 } ],
   "scanned": ["agent:agent_beta", "global"],
   "mode": "hybrid", "reranked": 0 }
 ```
@@ -177,10 +177,10 @@ ERROR: core_memory store: agent 'CB_GAMMA' cannot write to 'global': no global a
 
 `recall` ranks by the fused RRF score; the final tie-break is
 `rrf desc → feedback.useful desc → raw cosine desc → id asc`. A recall **without
-a query** keeps the v1 behaviour (`feedback.useful desc → retrievals desc →
+a query** keeps the v1 behaviour (`feedback.useful desc → score desc →
 updatedAt desc`) and reports `mode: "hybrid"` with
 `legs: { bm25: null, vector: null }` and `reranked: 0`. `recall` increments
-`retrievals` on every returned hit, and always reports `scanned` so the caller
+`score` on every returned hit, and always reports `scanned` so the caller
 can see which namespaces were consulted.
 
 ## Storage
@@ -212,7 +212,7 @@ YAML, no external dependency.
 ```jsonc
 // record shape
 { "id": "<uuid>", "agent": "agent_beta", "scope": "agent", "text": "…",
-  "meta": {}, "createdAt": "ISO-8601", "updatedAt": "ISO-8601", "retrievals": 0,
+  "meta": {}, "createdAt": "ISO-8601", "updatedAt": "ISO-8601", "score": 0,
   "retiredAt": "ISO-8601",                  // OPTIONAL — soft retire (forget)
   "feedback": { "useful": 0, "useless": 0 } // OPTIONAL — usefulness (feedback)
 }
@@ -361,7 +361,7 @@ dependencies**: the newline-delimited JSON-RPC 2.0 transport lives in the repo
 | Tool | What it returns |
 |---|---|
 | `core_recall` | reads the **global namespace only** — *"global namespace only — this is not an agent view; per-agent recall goes through the `core_memory` tool."* |
-| `core_status` | per-namespace counts (records / retired / retrievals), storage root, config path, embedder and dim — **counts only, never memory text** |
+| `core_status` | per-namespace counts (records / retired / score), storage root, config path, embedder and dim — **counts only, never memory text** |
 | `core_doctor` | the five health checks, each with an id, an ok flag and a detail |
 | `core_receipt` | counted report of what was stored and retrieved |
 
@@ -375,7 +375,7 @@ capability for it.
 
 `dedupe` collapses records that say the same thing (USER, 2026-11-18): within each namespace, the
 records whose **normalised text** is equal form one group; the most-retrieved survives, absorbs the
-others' `retrievals`/`feedback` counters, and the copies are **retired** with `meta.absorbedInto` —
+others' `score`/`feedback` counters, and the copies are **retired** with `meta.absorbedInto` —
 the text stays on disk. It is a **dry-run unless `--apply`** is passed, and idempotent: a retired
 record is never a candidate again.
 ### Choosing the embedding model
@@ -411,7 +411,7 @@ single read it offers, and it is explicitly a global-namespace view.
 ### New plugin operations (this slice)
 
 - **`forget`** — retires a record without deleting it (by `id`, or by `query` above the match threshold). A retired record is excluded from recall; its text stays on disk.
-- **`feedback`** — records whether a record the caller may read was useful. It feeds the ranking tie-break: `score desc → feedback.useful desc → retrievals desc → updatedAt desc`.
+- **`feedback`** — records whether a record the caller may read was useful. It feeds the ranking tie-break: `score desc → feedback.useful desc → score desc → updatedAt desc`.
 
 ## v1 vs roadmap
 

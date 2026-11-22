@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# sleep.sh — the manual for the dream pass, a setup gate, and the manual trigger.
+# dream.sh — the manual for the dream pass, a setup gate, and the manual trigger.
 #
-#   ./sleep.sh help                 this text
-#   ./sleep.sh setup                a gate over every dream setting, one question at a time
-#   ./sleep.sh setup --dry-run      shows what would be written, writes nothing
-#   ./sleep.sh status               current config, last dream and how many memories it wrote
-#   ./sleep.sh now                  dream everything that is waiting, right now
-#   ./sleep.sh now --dry-run        print the session title and the prompt, send nothing
+#   ./dream.sh help                 this text
+#   ./dream.sh setup                a gate over every dream setting, one question at a time
+#   ./dream.sh setup --dry-run      shows what would be written, writes nothing
+#   ./dream.sh status               current config, last dream and how many memories it wrote
+#   ./dream.sh now                  dream everything that is waiting, right now
+#   ./dream.sh now --dry-run        print the session title and the prompt, send nothing
 #
 # The scheduled path waits for 4 h of idle; `now` is the deliberate override.
 set -euo pipefail
@@ -28,6 +28,19 @@ except Exception:
 print(d.get(sys.argv[1], sys.argv[2]))" "$1" "$2"
 }
 
+# The master switch (USER, 2026-11-22): `dreams` must be literally true. Off by default — the
+# feature is experimental and spends tokens, so nothing dreams unless the store was configured to.
+dreams_enabled() {
+  python3 -c "
+import json, os
+p = os.path.expanduser('$CORE_CONFIG')
+try:
+    d = json.load(open(p))
+except Exception:
+    d = {}
+print('y' if d.get('dreams') is True else 'n')"
+}
+
 read_schedule_state() {
   python3 -c "
 import json, os
@@ -36,9 +49,9 @@ try:
     d = json.load(open(p))
 except Exception:
     d = {}
-rows = [s for s in d.get('schedules', []) if s.get('id') == 'sleep']
+rows = [s for s in d.get('schedules', []) if s.get('id') == 'dream']
 if not rows:
-    print('off (no sleep entry)')
+    print('off (no dream entry)')
 elif rows[0].get('enabled'):
     print('on, every %s min' % rows[0].get('everyMinutes', '?'))
 else:
@@ -47,7 +60,7 @@ else:
 
 help() {
   cat <<'EOF'
-SLEEP — reads the episodes that never became memories and writes the memories
+DREAM — reads the episodes that never became memories and writes the memories
 
 What it does
   Reads the episodes that never became memories and writes the memories.
@@ -58,6 +71,7 @@ When it runs
 
 Configured now
 EOF
+  printf '  %-22s %s\n' "dreams" "$([ "$(dreams_enabled)" = "y" ] && echo 'ON (experimental)' || echo 'OFF')"
   printf '  %-22s %s\n' "dreams per day" "$(read_core dreamPerDay 1)"
   printf '  %-22s %s\n' "idle hours" "$(read_core dreamIdleHours 4)"
   printf '  %-22s %s\n' "episodes per dream" "$(read_core dreamEpisodesPerPass 5)"
@@ -65,13 +79,12 @@ EOF
   cat <<'EOF'
 
 Accepted commands
-  sleep.sh now            dream what is waiting, up to the configured episodes per dream
-  sleep.sh now --dry-run  show the prompt, send nothing
-  sleep.sh inspect        wake an agent to review the pairs the last dream joined
-  sleep.sh inspect --dry-run  show the prompt, send nothing
-  sleep.sh status         the current state
-  sleep.sh setup          change the settings
-  sleep.sh help           this text
+  dream.sh now            dream what is waiting, up to the configured episodes per dream
+  dream.sh now --dry-run  show the prompt, send nothing
+  dream.sh synthesize     launch the second half DETACHED (one session writes the night); flags pass through
+  dream.sh status         the current state
+  dream.sh setup          change the settings
+  dream.sh help           this text
 
 Where it is configured
   ~/.config/core-brain/config.json — dreamPerDay · dreamIdleHours · dreamEpisodesPerPass.
@@ -79,16 +92,18 @@ Where it is configured
 
 Where to look
   ~/.config/core-brain/logs/dream.log — START / END / ERROR.
+  ~/.config/core-brain/logs/dream-synthesize.log — the detached second half.
   dream_memories — the pairs a dream joined, waiting for an agent's verdict.
 
 When it is refused
-  Unknown episode · already dreamed · more episodes than the config allows · not enough rest
-  (a pause, not an error). A refusal writes nothing.
+  Dreams off ("dreams": false in the config — the default: the feature is experimental and spends
+  tokens) · unknown episode · already dreamed · more episodes than the config allows · not enough
+  rest (a pause, not an error). A refusal writes nothing.
 EOF
 }
 
 # Wakes one agent with `prompt`: opens a session on the local service and sends it.
-# ONE home for that call — `now` (the dream) and `inspect` (the review after it) both use it.
+# ONE home for that call — the dream is woken here, and nothing else needs it.
 wake_agent() { # <title-prefix> <prompt> <dry 0|1>
   local prefix="$1" prompt="$2" dry="$3"
 
@@ -126,27 +141,42 @@ now() {
   done
 
   local prompt
-  prompt="Load the skill \`sleep\` with the skill tool and execute it now. MANUAL dream: the idle threshold does not apply — the USER asked for it. Follow the skill exactly: list the episodes waiting, respect dreamEpisodesPerPass from the config, decide what is worth keeping, write the memories in one call (with force:true, a manual run), and close with the numbers. Then run the inspection the skill describes: wake the reviewer with scripts/sleep.sh inspect."
-  wake_agent "sleep" "$prompt" "$dry"
+  if [ "$(dreams_enabled)" != "y" ] && [ "$dry" -eq 0 ]; then
+    echo "ERROR: dreaming is disabled — set \"dreams\": true in $CORE_CONFIG to enable it" >&2
+    echo "       (the feature is experimental and spends tokens)" >&2
+    return 3
+  fi
+  prompt="Load the skill \`dream\` with the skill tool and execute it now. MANUAL dream: the idle threshold does not apply — the USER asked for it. Follow the skill exactly: list the episodes waiting, respect dreamEpisodesPerPass from the config, decide what is worth keeping, write the memories in one call (with force:true, a manual run), and close with the numbers. Then do the review the skill describes: work the queue of joined pairs before you close."
+  wake_agent "dream" "$prompt" "$dry"
+}
+
+# The second half, ALWAYS detached (USER, 2026-11-21): ONE session writes the whole night's unions
+# (USER, 2026-11-22) and may need up to 30 minutes; a foreground shell command is cut at 5 minutes by
+# the anti-loop guard, so the worker is launched with nohup and writes its own log. One running
+# worker at a time — a second call is refused with the running pid, never stacked.
+synthesize() {
+  if [ "$(dreams_enabled)" != "y" ]; then
+    echo "ERROR: dreaming is disabled — set \"dreams\": true in $CORE_CONFIG to enable it" >&2
+    echo "       (the feature is experimental and spends tokens)" >&2
+    return 3
+  fi
+  local running
+  running="$(pgrep -f 'node .*dream-synthesize\.mts' || true)"
+  if [ -n "$running" ]; then
+    echo "ERROR: the synthesizer is already running (pid $running) — not starting a second night" >&2
+    return 3
+  fi
+  mkdir -p "$DATA_ROOT/logs"
+  local log="$DATA_ROOT/logs/dream-synthesize.log"
+  nohup node --experimental-strip-types "$ROOT/scripts/dream-synthesize.mts" "$@" >>"$log" 2>&1 &
+  local pid=$!
+  echo "synthesizer launched detached — pid $pid"
+  echo "log: $log"
 }
 
 # The review the dream hands over (USER, 2026-11-20): the pairs the pass joined are NOT settled by
 # the machine — an agent wakes, reads them, writes the single memory (or skips with a reason) and
 # settles each row of `dream_memories`.
-inspect() {
-  local dry=0
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --dry-run) dry=1; shift ;;
-      *) echo "unknown argument: $1" >&2; exit 2 ;;
-    esac
-  done
-
-  local prompt
-  prompt="Load the skill \`sleep\` with the skill tool and run ONLY the inspection step. The dream has just joined memories that say the same thing. Ask core_memory with op admin, action dream-memories for the pending rows. For each row read BOTH texts, decide whether they really say the same thing, and then: write ONE memory (core_memory store, at most 600 characters, in the namespace the row belongs to) with the merged content and settle the row with admin dream-memory (mergedText plus mergedMemoryId), or settle it with { skipped: true } naming why in your report. Never merge across namespaces: a global and an agent memory are not duplicates. Close with the counts."
-  wake_agent "dream-memories" "$prompt" "$dry"
-}
-
 setup() {
   local dry=0
   [ "${1:-}" = "--dry-run" ] && dry=1
@@ -183,7 +213,7 @@ try:
     d = json.load(open(p))
 except Exception:
     d = {}
-rows = [s for s in d.get('schedules', []) if s.get('id') == 'sleep']
+rows = [s for s in d.get('schedules', []) if s.get('id') == 'dream']
 print('y' if rows and rows[0].get('enabled') else 'n')")"
   current_every="$(python3 -c "
 import json, os
@@ -192,10 +222,10 @@ try:
     d = json.load(open(p))
 except Exception:
     d = {}
-rows = [s for s in d.get('schedules', []) if s.get('id') == 'sleep']
+rows = [s for s in d.get('schedules', []) if s.get('id') == 'dream']
 print(rows[0].get('everyMinutes', 60) if rows else 60)")"
 
-  echo "sleep setup — Enter keeps the value in brackets"
+  echo "dream setup — Enter keeps the value in brackets"
   echo
 
   local limit enabled every
@@ -227,9 +257,9 @@ print(rows[0].get('everyMinutes', 60) if rows else 60)")"
   echo "will write:"
   echo "  $CORE_CONFIG           dreamPerDay = $limit, dreamIdleHours = $idle, dreamEpisodesPerPass = $perpass"
   if [ "$enabled" = "y" ]; then
-    echo "  $CRONTAB_CONFIG   sleep.enabled = true, everyMinutes = $every"
+    echo "  $CRONTAB_CONFIG   dream.enabled = true, everyMinutes = $every"
   else
-    echo "  $CRONTAB_CONFIG   sleep.enabled = false"
+    echo "  $CRONTAB_CONFIG   dream.enabled = false"
   fi
 
   if [ "$dry" -eq 1 ]; then echo "(dry-run: nothing was written)"; return 0; fi
@@ -256,12 +286,12 @@ try:
 except Exception:
     crontab = {"enabled": True, "schedules": []}
 crontab.setdefault("schedules", [])
-row = next((s for s in crontab["schedules"] if s.get("id") == "sleep"), None)
+row = next((s for s in crontab["schedules"] if s.get("id") == "dream"), None)
 if row is None:
     row = {
-        "id": "sleep",
-        "title": "sleep-{timestamp}",
-        "prompt": "Load the skill `sleep` with the skill tool and follow it. The machine has been idle for {idleHours} hours. If that is below 4, do nothing and end. Do not touch anything else.",
+        "id": "dream",
+        "title": "dream-{timestamp}",
+        "prompt": "Load the skill `dream` with the skill tool and follow it. The machine has been idle for {idleHours} hours. If that is below 4, do nothing and end. Do not touch anything else. Before you close, do the review the skill describes on the queue of joined pairs.",
     }
     crontab["schedules"].append(row)
 row["enabled"] = enabled == "y"
@@ -292,7 +322,7 @@ def load(path, fallback):
 
 core = load(core_path, {})
 crontab = load(crontab_path, {})
-rows = [s for s in crontab.get("schedules", []) if s.get("id") == "sleep"]
+rows = [s for s in crontab.get("schedules", []) if s.get("id") == "dream"]
 schedule = rows[0] if rows else {}
 
 spaces = []
@@ -306,7 +336,8 @@ for label, path in candidates:
     if dreams:
         spaces.append((label, path, dreams))
 
-print("SLEEP STATUS")
+print("DREAM STATUS")
+print(f"  switch      {'ON (experimental)' if core.get('dreams') is True else 'OFF'}")
 print(
     "  config      "
     f"dreams per day {core.get('dreamPerDay', 1)} · "
@@ -320,7 +351,7 @@ if schedule:
     else:
         print(f"  schedule    OFF — nothing automatic; if switched on it would call the skill every {every} min")
 else:
-    print("  schedule    no 'sleep' entry in the crontab config — nothing automatic")
+    print("  schedule    no 'dream' entry in the crontab config — nothing automatic")
 
 if not spaces:
     print("  last dream  none yet")
@@ -343,8 +374,8 @@ PY
 case "${1:-help}" in
   help|-h|--help) help ;;
   now) shift; now "$@" ;;
-  inspect) shift; inspect "$@" ;;
+  synthesize) shift; synthesize "$@" ;;
   setup) shift; setup "$@" ;;
   status) shift; status "$@" ;;
-  *) echo "unknown command: $1 (try: ./sleep.sh help)" >&2; exit 2 ;;
+  *) echo "unknown command: $1 (try: ./dream.sh help)" >&2; exit 2 ;;
 esac

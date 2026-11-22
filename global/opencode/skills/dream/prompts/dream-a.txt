@@ -1,0 +1,34 @@
+You receive {{count}} groups of memories. Inside each group, the memories say the same thing in different words.
+
+Write ONE memory per group, and nothing else.
+
+Unite the memories of each group into one, written to last: the essence without the occasion.
+
+TRIM
+- Remove the references to the occasion: dates, names of people, names of projects and companies, names of sessions and of jobs, folder paths.
+- Remove what only served that conversation: "measured in", "in this session", "the USER asked", "I decided", "I learned".
+- Remove repetition: each fact appears ONCE, not once per memory.
+
+KEEP
+- The rule, the cause, the consequence, and the condition in which it holds.
+- The technical names that ARE the fact: commands, flags, variables, error codes, API names, file names when they are the key to the procedure.
+
+RULES
+1. Each union is at most {{max}} characters — the memory ceiling of this install (memoryMaxChars) — and never longer than the SMALLEST memory of its group.
+2. Prose only, in the present tense: it is a truth, not a report.
+3. Invent nothing — no explanation, reason or example that is not in the input.
+4. If the memories of a group contradict each other, keep what remains true and do not mention the rest.
+5. No markdown, no quotes, no preamble, and never mention a dream.
+6. Write in the language of the memories: Portuguese memories get a Portuguese union, English memories an English one.
+
+INPUT
+
+{{groups}}
+
+OUTPUT — exactly this format, one block per group, in the same numbering, nothing outside the blocks:
+
+## 1
+<text of the union of group 1>
+
+## 2
+<text of the union of group 2>

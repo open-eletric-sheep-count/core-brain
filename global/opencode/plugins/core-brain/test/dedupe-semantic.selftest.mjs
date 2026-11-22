@@ -34,6 +34,7 @@ process.env.CORE_BRAIN_HOME = ROOT;
 writeFileSync(
   join(ROOT, "config.json"),
   JSON.stringify({
+    dreams: true,
     dreamPerDay: 5,
     agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }],
   }),
@@ -84,7 +85,10 @@ const check = (name, ok, detail) => {
 // 1. The DREAM joins the same meaning into the memory that already exists
 // ---------------------------------------------------------------------------
 const OLD = "The Jarvis voice service needs a display, so the unit waits for the graphical session.";
-const TWIN = "The Jarvis voice service needs a display, so its unit waits for the graphical session.";
+// ≥0.97 on the fixture: the MECHANICAL union regime (normalised texts differ only by the full stop).
+const TWIN = "The Jarvis voice service needs a display, so the unit waits for the graphical session";
+// ≈0.94: the SYNTHESIS band — similar, not identical, and the mechanical union must NOT take it.
+const NEAR = "The Jarvis voice service needs a display, so its unit waits for the graphical session.";
 const FRESH = "The Grafana dashboard refresh interval is thirty seconds.";
 
 const old = await engine.invoke("CB_BETA", { op: "store", text: OLD });
@@ -107,9 +111,10 @@ const joined = betaRecords.find((record) => String(record.id) === String(old.id)
 check("the dream returns a dreamId", typeof dreamed.dreamId === "string", JSON.stringify(dreamed));
 check("2 memories stay ACTIVE (the twin was joined, the new one was added)", betaActive.length === 2,
   `active=${betaActive.length} ${JSON.stringify(betaActive.map((record) => record.text))}`);
-check("the existing memory keeps the richest text", joined?.text === OLD, JSON.stringify(joined?.text));
-check("the score is summed", joined?.retrievals === 1, `retrievals=${joined?.retrievals}`);
-check("the feedback is summed", joined?.feedback?.useful === 3, JSON.stringify(joined?.feedback));
+check("the existing memory keeps its identity and its own text (the tie keeps the survivor)",
+  joined?.id === old.id && joined?.text === OLD, JSON.stringify({ id: joined?.id, text: joined?.text }));
+check("the score is the sum of both", joined?.score === 20, `score=${joined?.score}`);
+check("the feedback is the sum of both", joined?.feedback?.useful === 2, JSON.stringify(joined?.feedback));
 
 const absorbedTwin = betaRecords.find((record) => record.text === TWIN);
 check("the twin retired pointing at the survivor",
@@ -120,6 +125,13 @@ check("the dream reports the reinforced memory", dreamed.reinforced?.includes(ol
 check("the dream reports only the genuinely new memory", dreamed.memories?.length === 1,
   JSON.stringify(dreamed.memories));
 check("the unrelated memory was NOT joined", betaActive.some((record) => record.text === FRESH), "missing");
+
+// The band between the two regimes: similar, not identical — the mechanical union must leave it alone
+// (it belongs to the synthesis step, USER 2026-11-20).
+await engine.invoke("CB_BETA", { op: "store", text: NEAR });
+const band = await engine.invoke("CB_ALPHA", { op: "admin", action: "dedupe", args: { ns: "agent:CB_BETA" } });
+check("a 0.94 pair is NOT taken by the mechanical union", (band.groups ?? []).length === 0,
+  JSON.stringify(band.groups));
 
 // ---------------------------------------------------------------------------
 // 1b. The pair went to the queue the USER inspects after the dream
@@ -162,7 +174,8 @@ check("an unknown row is refused", missingRow !== null && missingRow.includes("u
 // 2. admin sweep — CB_ALPHA: dry-run, apply, idempotence
 // ---------------------------------------------------------------------------
 const RICH = "The Jarvis voice service needs a display, so the unit waits for the graphical session.";
-const POOR = "The Jarvis voice service needs a display; the unit waits for the graphical session.";
+// ≥0.97: only the trailing full stop differs, so the MECHANICAL union takes it (2026-11-20).
+const POOR = "The Jarvis voice service needs a display, so the unit waits for the graphical session";
 const DISTINCT = "The Ravenloft glossary lists seventeen terms from the campaign.";
 
 const rich = await engine.invoke("CB_ALPHA", { op: "store", text: RICH });

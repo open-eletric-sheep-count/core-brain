@@ -74,7 +74,7 @@ function writeJson(file, data) {
 }
 function record(id, agent, scope, text) {
   const now = new Date().toISOString();
-  return { id, agent, scope, text, meta: {}, createdAt: now, updatedAt: now, retrievals: 0 };
+  return { id, agent, scope, text, meta: {}, createdAt: now, updatedAt: now, score: 0 };
 }
 const memoriesPath = (home, name) =>
   name === "global" ? join(home, "global", "memories.json") : join(home, "agents", name, "memories.json");
@@ -176,7 +176,7 @@ async function fusion({ verbose = VERBOSE } = {}) {
     for (const hit of r.results) {
       log(
         `hit:${hit.text.slice(0, 24)}`,
-        { rrf: hit.rrf, score: hit.score, retrievals: hit.retrievals, legs: hit.legs ?? "absent" },
+        { rrf: hit.rrf, score: hit.score, score: hit.score, legs: hit.legs ?? "absent" },
       );
     }
     if (r.results.some((hit) => !Number.isFinite(hit.rrf))) {

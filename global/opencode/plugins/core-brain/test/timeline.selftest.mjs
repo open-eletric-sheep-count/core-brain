@@ -63,7 +63,7 @@ const AGENTS = [
   { name: "CB_BETA", hasGlobalAccess: true, private: true },
   { name: "CB_GAMMA", hasGlobalAccess: false, private: true },
 ];
-writeFileSync(CONFIG, `${JSON.stringify({ agents: AGENTS }, null, 2)}\n`);
+writeFileSync(CONFIG, `${JSON.stringify({ dreams: true, agents: AGENTS }, null, 2)}\n`);
 
 let cleaned = false;
 function cleanup() {

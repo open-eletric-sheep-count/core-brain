@@ -252,10 +252,10 @@ await scenario(
       recalled.results.length === 1,
       `expected the single seeded record, got ${recalled.results.length}`,
     );
-    const retrievals = recalled.results[0].retrievals;
+    const score = recalled.results[0].score;
     assert(
-      retrievals === 1,
-      `opt-in OFF must not call recall; one observation recall must yield retrievals=1, got ${retrievals}`,
+      score === 11, // born at 10 (2026-11-20) + one recall
+      `opt-in OFF must not call recall; one observation recall must yield 11 (10 + 1), got ${score}`,
     );
   },
 );
@@ -478,7 +478,7 @@ await scenario(
 // one extra record, and the contexts above rank a fixed number of them).
 // The read happens on the model's behalf, not for the model; counting it made
 // the same five memories win every session forever (measured 2026-11-19: the
-// injected records gained +5 retrievals across a handful of reads).
+// injected records gained +5 score across a handful of reads).
 // ===========================================================================
 
 await scenario(
@@ -505,8 +505,8 @@ await scenario(
     const hit = recalled.results.find((result) => result.text === M);
     assert(hit !== undefined, "the seeded record must still be returned");
     assert(
-      hit.retrievals === 1,
-      `the hook read must not count: one observation recall must yield retrievals=1, got ${hit.retrievals}`,
+      hit.score === 11, // born at 10 + one recall
+      `the hook read must not count: one observation recall must yield 11, got ${hit.score}`,
     );
   },
 );

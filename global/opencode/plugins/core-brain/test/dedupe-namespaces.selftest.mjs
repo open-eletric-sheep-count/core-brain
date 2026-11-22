@@ -22,6 +22,7 @@ process.env.CORE_BRAIN_HOME = ROOT;
 writeFileSync(
   join(ROOT, "config.json"),
   JSON.stringify({
+    dreams: true,
     dreamPerDay: 5,
     agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }],
   }),
@@ -61,7 +62,7 @@ const dedupe = (args) => engine.invoke("CB_ALPHA", { op: "admin", action: "dedup
 // 1. Two memories of ONE agent become one memory OF THAT AGENT
 // ---------------------------------------------------------------------------
 const AGENT_A = "The deploy script rebuilds the client bundle, so the release page stays current.";
-const AGENT_B = "The deploy script rebuilds the client bundle; the release page stays current.";
+const AGENT_B = "The deploy script rebuilds the client bundle, so the release page stays current";
 await engine.invoke("CB_ALPHA", { op: "store", text: AGENT_A });
 await engine.invoke("CB_ALPHA", { op: "store", text: AGENT_B });
 
@@ -78,7 +79,7 @@ check("the surviving memory is the agent's", agentActive()[0]?.scope === "agent"
 // 2. Two GLOBAL memories become one GLOBAL memory
 // ---------------------------------------------------------------------------
 const GLOBAL_A = "The vault export writes Obsidian callouts, so the notes keep their shape.";
-const GLOBAL_B = "The vault export writes Obsidian callouts; the notes keep their shape.";
+const GLOBAL_B = "The vault export writes Obsidian callouts, so the notes keep their shape";
 await engine.invoke("CB_ALPHA", { op: "store", target: "global", text: GLOBAL_A });
 await engine.invoke("CB_ALPHA", { op: "store", target: "global", text: GLOBAL_B });
 
@@ -126,10 +127,31 @@ check("the global copy was left alone",
   globalActive().filter((record) => record.text === SHARED).length === 1, "global changed");
 check("the dream did not report a join across spaces", (dreamed.reinforced ?? []).length === 0,
   JSON.stringify(dreamed.reinforced));
-check("the queue row (if any) belongs to the agent space",
-  (await engine.invoke("CB_ALPHA", { op: "admin", action: "dream-memories", args: { status: "all" } }))
-    .dreamMemories?.every((row) => row.namespace === "agent:CB_ALPHA") !== false,
-  "a queue row carries another namespace");
+const queueRows = (await engine.invoke("CB_ALPHA", {
+  op: "admin", action: "dream-memories", args: { status: "all" },
+})).dreamMemories ?? [];
+check("every queue row the DREAM produced belongs to the agent space",
+  queueRows.filter((row) => row.dreamId === dreamed.dreamId).every((row) => row.namespace === "agent:CB_ALPHA"),
+  JSON.stringify(queueRows.map((row) => [row.namespace, row.dreamId])));
+
+// ---------------------------------------------------------------------------
+// 5. A whole group settles with ONE verdict (`survivorId`, not one row at a time)
+// ---------------------------------------------------------------------------
+const keptId = agentRun.groups?.[0]?.kept;
+const keptText = agentActive().find((record) => String(record.id) === String(keptId))?.text ?? "";
+const bulk = await engine.invoke("CB_ALPHA", {
+  op: "admin",
+  action: "dream-memory",
+  args: { survivorId: keptId, mergedText: keptText, mergedMemoryId: keptId },
+});
+check("a group settles in one call", String(bulk.detail).includes("row(s) processed"), bulk.detail);
+
+const remaining = await engine.invoke("CB_ALPHA", {
+  op: "admin", action: "dream-memories", args: { limit: 100 },
+});
+check("no pending row is left pointing at that survivor",
+  (remaining.dreamMemories ?? []).every((row) => String(row.survivorId) !== String(keptId)),
+  JSON.stringify((remaining.dreamMemories ?? []).map((row) => row.survivorId)));
 
 console.log(failures === 0 ? "DEDUPE NAMESPACES OK" : `DEDUPE NAMESPACES FAILED (${failures})`);
 process.exitCode = failures === 0 ? 0 : 1;

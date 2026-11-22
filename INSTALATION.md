@@ -20,6 +20,23 @@ Confirm the actual executable and version before continuing. The Codex adapter
 was originally validated against CLI **0.163.0**; native checkpoint formats and
 hook support must be checked when using another version.
 
+### The embedding model (downloaded on first use)
+
+The store's “meaning” search needs a local encoder — `embedModel` in the memory
+config, `multilingual-minilm` by default. **The installer does not ship it**: the
+first `core_memory` call that needs a vector fetches it from **Hugging Face** and
+caches it under `<memory-home>/models/` (`~/.config/core-brain/models/` unless
+`CORE_BRAIN_MODELS_DIR` says otherwise, or `--models-dir PATH` at install time).
+
+- **Online machine, nothing to do:** the download happens by itself, once.
+- **Offline or air-gapped:** fetch the model once on a machine that has network,
+  copy `<org>/<name>/` (for example `Xenova/…`) into `<memory-home>/models/`, and
+  run with `CORE_BRAIN_OFFLINE=1` — remote fetching is then refused, so a missing
+  cache fails loudly instead of hanging.
+- **Changing `embedModel` invalidates every stored vector:** the old ones are not
+  comparable with the new ones, so a change is always followed by a full reindex
+  of the store.
+
 ```bash
 git clone https://github.com/open-eletric-sheep-count/core-brain.git
 cd core-brain

@@ -1,7 +1,12 @@
 {
+  "memoryMaxChars": 650,
+  "dreams": false,
   "dreamEpisodesPerPass": 5,
   "dreamIdleHours": 4,
   "dreamPerDay": 1,
+  "dream": {
+    "model": {}
+  },
   "embedModel": "multilingual-minilm",
   "agents": [
     {
@@ -20,5 +25,7 @@
       "private": true
     }
   ],
-  "memoriesPerContext": 5
+  "memoriesPerContext": 5,
+  "synthesisMinCosine": 0.9,
+  "synthesisWindowHours": 48
 }

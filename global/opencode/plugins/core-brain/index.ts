@@ -129,7 +129,15 @@ const OPS: readonly CoreMemoryOp[] = [
   "episode",
   "timeline",
   "dream",
+  "admin",
 ];
+
+/**
+ * The admin actions an AGENT may call through the tool (USER, 2026-11-20): the dream's review queue
+ * and its analysis tables. Everything else `admin` can do — purge, import, export, reindex — stays
+ * engine-only: maintenance that rewrites the store is not a tool an agent reaches for mid-session.
+ */
+const AGENT_ADMIN_ACTIONS: readonly string[] = ["dreams", "dream-memories", "dream-memory"];
 
 const DEBUG_ENV = "CORE_BRAIN_DEBUG";
 const HOME_ENV = "CORE_BRAIN_HOME";
@@ -267,7 +275,10 @@ const TOOL_DESCRIPTION =
   "REINFORCED, never duplicated — the original stays and gains this dream. The calling " +
   "agent's identity is " +
   "taken from the running session — it is NOT an input field and cannot " +
-  "be supplied or impersonated.";
+  "be supplied or impersonated. ONE RULE SHAPES WHAT FITS: a memory's text has a " +
+  "ceiling — `memoryMaxChars` in the config (650 by default) — and `store` refuses " +
+  "past it, naming the number; summarise and send again. Write to that ceiling: keep " +
+  "the limit in mind as the config sets it, never as a number you remember.";
 
 const TOOL_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -386,6 +397,20 @@ const TOOL_SCHEMA: Record<string, unknown> = {
       type: "string",
       description: "timeline: optional ISO timestamp — keep episodes at/before it.",
     },
+    action: {
+      type: "string",
+      description:
+        "admin: 'dreams' (the passes, newest first), 'dream-memories' (the pairs the dream joined, " +
+        "waiting for a verdict) or 'dream-memory' (settle one row). Any other maintenance action is " +
+        "refused here — it is engine-only.",
+    },
+    args: {
+      type: "object",
+      description:
+        "admin: the action's arguments — dream-memories: { status?: 'pending'|'processed'|'skipped'|'all', limit? }; " +
+        "dream-memory: { id, mergedText, mergedMemoryId? } for ONE pair, { survivorId, mergedText, mergedMemoryId? } " +
+        "for the whole group, or either with { skipped: true }; dreams: { limit? }.",
+    },
   },
   required: ["op"],
   additionalProperties: false,
@@ -413,6 +438,29 @@ function buildRequest(input: unknown): RequestParse {
     };
   }
   if (op === "who") return { ok: true, request: { op: "who" } };
+
+  // `admin` through the tool is the dream's queue and its tables only (see AGENT_ADMIN_ACTIONS):
+  // the gate lives HERE, beside the validation, so no caller can reach maintenance by accident.
+  if (op === "admin") {
+    const action = record.action;
+    if (typeof action !== "string" || !AGENT_ADMIN_ACTIONS.includes(action)) {
+      return {
+        ok: false,
+        error:
+          `admin action ${JSON.stringify(record.action)} is not available through the tool ` +
+          `(expected one of: ${AGENT_ADMIN_ACTIONS.join(", ")}).`,
+      };
+    }
+    const args = asRecord(record.args) ?? undefined;
+    return {
+      ok: true,
+      request: {
+        op: "admin",
+        action: action as Extract<CoreMemoryRequest, { op: "admin" }>["action"],
+        ...(args ? { args } : {}),
+      },
+    };
+  }
 
   if (op === "store") {
     const text = record.text;
@@ -1022,8 +1070,8 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return; // gate BEFORE the recall
-        // Duas metades + pergunta (USER, 2026-11-20: religado — com a base SQLite o bloco custa
-        // 70 ms, não os 17,5 s que tinham motivado o desligamento).
+        // Two halves plus the question (USER, 2026-11-20: switched back on — with the SQLite store
+        // the block costs 70 ms, not the 17.5 s that had justified switching it off).
         const hookStartedAt = Date.now();
         const perHalf = engine ? engine.memoriesPerContext() : 5;
         if (perHalf <= 0) return;
@@ -1078,9 +1126,9 @@ export default {
         const agentName = await resolveSessionAgent(ctx, sessionID);
         if (!agentName) return;
         if (!isOptedIn(agentName)) return;
-        // O MESMO que na abertura da sessão (USER, 2026-11-20): as mesmas duas metades, o mesmo
-        // `memoriesPerContext`, e a MESMA pergunta — a última mensagem do USER — para o bloco
-        // transportado descrever o assunto em curso, não um retrato antigo.
+        // The SAME shape as the session start (USER, 2026-11-20): the same two halves, the same
+        // `memoriesPerContext`, and the SAME question — the USER's last message — so the carried
+        // block describes the live subject and not an old snapshot.
         const carryPerHalf = engine ? engine.memoriesPerContext() : 5;
         if (carryPerHalf <= 0) return;
         const carryStartedAt = Date.now();

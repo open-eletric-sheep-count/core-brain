@@ -29,14 +29,14 @@ function seed() {
   writeFileSync(
     join(root, "global", "memories.json"),
     JSON.stringify(
-      [{ id: "seed-g1", agent: "global", scope: "global", text: "CLI SEED global memory", meta: {}, createdAt: now, updatedAt: now, retrievals: 0 }],
+      [{ id: "seed-g1", agent: "global", scope: "global", text: "CLI SEED global memory", meta: {}, createdAt: now, updatedAt: now, score: 0 }],
       null, 2,
     ),
   );
   writeFileSync(
     join(root, "agents", "victim", "memories.json"),
     JSON.stringify(
-      [{ id: "seed-v1", agent: "victim", scope: "agent", text: "CLI SEED victim memory", meta: {}, createdAt: now, updatedAt: now, retrievals: 0 }],
+      [{ id: "seed-v1", agent: "victim", scope: "agent", text: "CLI SEED victim memory", meta: {}, createdAt: now, updatedAt: now, score: 0 }],
       null, 2,
     ),
   );
@@ -85,7 +85,7 @@ try {
       version: 1,
       namespaces: [{
         ns: "global",
-        records: [{ id: "forged-cli", agent: "global", scope: "global", text: "CLI FORGED record", meta: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), retrievals: 0 }],
+        records: [{ id: "forged-cli", agent: "global", scope: "global", text: "CLI FORGED record", meta: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), score: 0 }],
         vectors: {},
       }],
     }, null, 2),

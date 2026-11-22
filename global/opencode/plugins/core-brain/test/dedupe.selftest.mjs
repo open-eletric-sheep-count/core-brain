@@ -7,7 +7,7 @@
 // What is pinned:
 //   1. dry-run reports the groups and writes NOTHING;
 //   2. apply keeps ONE record per normalised text, retires the rest with `meta.absorbedInto`;
-//   3. the survivor is REINFORCED: retrievals and feedback counters are summed;
+//   3. the survivor is REINFORCED: score and feedback counters are summed;
 //   4. a second run is a no-op (idempotent) and the active count only shrinks (convergence);
 //   5. `--ns` restricts the scan to one namespace.
 //

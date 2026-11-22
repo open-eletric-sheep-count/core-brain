@@ -12,10 +12,10 @@ without memory, dreams or any other feature attached (USER, 2026-11-18).
 {
   "enabled": false,
   "tickSeconds": 30,
-  "schedulerPrefixes": ["sleep-", "session-", "crontab:"],
+  "schedulerPrefixes": ["dream-", "session-", "crontab:"],
   "schedules": [
     { "id": "test-ok", "everyMinutes": 1, "enabled": false,
-      "title": "sleep-{timestamp}",
+      "title": "dream-{timestamp}",
       "prompt": "Answer with the single word OK. Do not use tools." }
   ]
 }
@@ -29,7 +29,7 @@ without memory, dreams or any other feature attached (USER, 2026-11-18).
 - **`schedulerPrefixes`** — titles that mark a session as the scheduler's own. They are **excluded
   from the idle measurement**, otherwise a dream session would reset the clock it was triggered by.
 - **`title`** — template; `{timestamp}` becomes `YYYYMMDD-HHMM`, so the default name is
-  `sleep-20261118-1632`.
+  `dream-20261118-1632`.
 - **`prompt`** — the text handed to the session. Placeholders: **`{idleHours}`** (hours since the
   USER's last activity, one decimal) and **`{timestamp}`**.
 

@@ -5,6 +5,210 @@ Newest on top.
 
 ## [Unreleased]
 
+### Changed — 2026-11-22 (the synthesis floor is 0.90 for everyone)
+
+- **`synthesisMinCosine` is 0.90 by default — the community default, not a local override** (USER,
+  2026-11-22): the same fact written in Portuguese and in English lands near 0.90, so a 0.95 floor
+  left every PT/EN twin apart. Measured on the live base with a 48 h window: 0 pairs at 0.95, **9
+  genuine duplicate groups at 0.90** (one of them with three memories). The constant, the shipped
+  config, the skill, the diagram and the README now say 0.90; `synthesisWindowHours` stays 48, and
+  only **one side** of a pair has to be inside the window.
+
+### Fixed — 2026-11-22 (a union inherits the sum of its sources' scores)
+
+- **`dream-store` sets the dream's score to the SUM of its sources'** (USER, 2026-11-22) instead of
+  the newborn 10: uniting two memories of 9 used to produce one of 10 and lose 8 points of strength,
+  and the sources were retired in the same write. With no source (or none found in the namespace) the
+  dream still starts at `MEMORY_START_SCORE`. Proved by `test/dream-score.selftest.mjs`: two sources
+  of 10 give a union of 20, the sources are retired, the dream is `real = 0`, and a dream without
+  sources starts at 10 (5/5 checks).
+
+### Changed — 2026-11-22 (the memory ceiling is one config key, 650 by default)
+
+- **`memoryMaxChars`** (USER, 2026-11-22) replaces the two hard-coded numbers: `store`, the dream
+  pass, `dream-store` and the merge verdict all read it from `config.json`, default **650**, and
+  every refusal names the number AND the key. The dream's prompt carries it as `{{max}}`, so a union
+  is written inside the ceiling instead of being refused afterwards; the worker checks it before
+  writing and the store checks again. The tool description the agent reads now says the ceiling
+  exists and follows the config.
+- **485 memories above the ceiling were retired** (USER, 2026-11-22): 1727 active became 1242 —
+  385 of them `origin: "prompt"` (dispatch briefs stored as memories) and 100 with no origin. Nothing
+  was cut or deleted: they carry `retired_at` and keep their text.
+- **Only living memories are elected for a dream** (USER, 2026-11-22), proved after the retirement:
+  the chosen group has 2 memories, **0 retired and 0 above 650**, and the pair is now the global
+  Tico & Teco duplicate at 0.968 instead of a brief. `store` with 700 characters is refused with
+  «the limit is 650 ('memoryMaxChars' in the config)».
+
+### Changed — 2026-11-22 (one session, one group: the band decides, not a count)
+
+- **The synthesis band is now 0.95–0.97, and the night dreams ONE group — the highest cosine**
+  (USER, 2026-11-22). Below 0.95 the texts only share a style, and uniting them invents facts; the
+  old cap of ten pairs was a number nobody asked for. Measured on the live base: 42 groups fall
+  inside the band today, and the store hands the night exactly one — the pair at 0.9694.
+  `--limit N` stays as a deliberate pen (ceiling 50), never as the rule.
+- **The synthesis opens ONE session for the night** (USER, 2026-11-22): every group goes into a
+  single prompt (`{{count}}` and `{{groups}}` — each group numbered, each memory inside it) and the
+  single answer comes back as numbered blocks (`## 1`, `## 2`, …), one union per group. Ten groups
+  used to mean ten sessions at 20 minutes; now it is one session with a 30-minute deadline.
+  `parseUnions` reads the blocks (tolerating `### n` and `**n**`); a group whose block is missing,
+  over 550 characters or refused by the store is **ignored** and the night goes on; a session that
+  does not answer leaves every group intact in one log line. An edited `prompts/dream-a.txt` is only
+  honoured when it carries `{{groups}}`.
+- **The prompt itself shrank the memory instead of narrating it**: the output is a plain present-tense
+  statement — no dates, people, project names, session references or paths, no invented explanation —
+  never longer than the smallest memory of its group, with the technical names that ARE the fact kept
+  (commands, flags, error codes). Proved by `skills/dream/test/night.selftest.mjs`: every group enters
+  the prompt, one union per group is read, a missing block stays `null`, and the three marker shapes
+  the model writes are all accepted (8/8 checks). The dry-run against the live base lists 8 groups and
+  says «uma sessão para a noite».
+
+### Added — 2026-11-22 (the `dreams` switch: experimental, off by default)
+
+- **The dream's model is blank in the community default** (USER, 2026-11-22): `dream.model` ships as
+  `{}` and a blank (or half-filled) entry means **the OpenCode default** — the session is created
+  without a model and inherits the default agent's, which is what an install that configures nothing
+  should get. `dream-synthesize.mts` reads it as `null` and logs «modelo do sonho: padrão do
+  OpenCode». Measured: the core-brain tree's dry-run prints exactly that, and the taulukko install,
+  which fills `providerID`/`id`, prints `deepseek/deepseek-flash#low`.
+- **`dreams` in `config.json` is the master switch** (USER, 2026-11-22): off **unless it is literally
+  `true`**, because consolidation is experimental and spends tokens (a night can open ten sessions,
+  and every pass ages the whole base by one point). With it off the `dream` op is refused whole —
+  episodes keep waiting, nothing is marked — and the listing reports `dreamsEnabled: false`;
+  `dream.sh now` and `dream.sh synthesize` exit 3 with the reason, and `help`/`status` show the
+  switch. The community default here is `false`; the taulukko install overrides it to `true`.
+- **`test/dreams-switch.selftest.mjs`** pins both sides: without the key nothing dreams, the listing
+  stays honest, the write is refused and changes nothing, both script commands exit 3; with
+  `"dreams": true` the same database dreams and marks the episodes (10/10 checks).
+- The four selftests that dream now declare `dreams: true` in their fixture config.
+
+### Fixed — 2026-11-21 (a memory retired twice no longer vanishes from the history)
+
+- **`engine/persistence.ts` — `archiveRetiredMemories` uses `INSERT OR REPLACE`** (USER, 2026-11-21):
+  the history is a copy of `memories` (its 11 columns, plus `archived_at`). A memory retired,
+  restored and retired again found its old row still there, the `INSERT OR IGNORE` dropped the new
+  retirement, and the row was then deleted from `memories` — data gone with no trace. Now the newest
+  state wins and the row survives. Proved on a fixture: all 10 compared columns arrive identical,
+  `archived_at` is added, and a second retirement of the same id keeps the new text with one row per
+  memory (7/7 checks).
+
+### Changed — 2026-11-21 (the night's pairs are the ten most similar, and the night never asks)
+
+- **A memory is dreamed only once per night** (USER, 2026-11-21): two chosen pairs that share a
+  memory are merged into **one group**, and the prompt receives every memory of the group
+  (`{{memories}}`, one numbered block each). The first dream would otherwise absorb that memory and
+  the second would dream about something already gone. On live data ten pairs became eight dreams,
+  two of them with three memories. Proved on a fixture: a shared memory yields one group of three
+  plus the untouched pair, each id once.
+- **`admin synthesis-pairs` selects by cosine, not by score bands** (USER, 2026-11-21): every memory
+  proposes its nearest neighbour inside the 0.50–0.97 band, the candidates are ordered by cosine
+  (highest first) and the night takes the **ten closest to the 0.97 ceiling** — a 0.95 and two 0.96
+  pairs enter ahead of a 0.80 pair whatever their scores. **A tie is settled at random.** The old
+  walk over score bands (10% of the highest score) is gone. Proved on a fixture with crafted vectors:
+  pairs come out `0.9659 > 0.9511 > 0.7071`, a low-score strong pair beats a 5000-score weak one, and
+  two equal cosines split 40 draws between them (5/5 checks).
+- **`skills/dream/SKILL.md`**: the rule above is written in §7, and §1 and the Rules now state that
+  the pass **never asks the USER anything** — it runs at night with nobody to answer, so the written
+  rules decide (how many episodes, which pairs, what becomes a memory) and the report carries what
+  was left out; a question would stall the night.
+
+### Changed — 2026-11-21 (a dream is told to the sessions used last, not to all)
+
+- **`scripts/dream-synthesize.mts`**: PROMPT B no longer goes to every session the service lists —
+  it goes to the **10 most recently used TOP-LEVEL sessions** (USER, 2026-11-21), ordered by the
+  listing's `time.updated`. Subagent sessions (a `parentID`) are left out — they would eat the slots
+  and their agent does not need the news. The sessions the dream machinery creates (title `dream-…`)
+  are left out too: a night of 10 pairs would otherwise fill every slot with its own sessions. The
+  choice is a pure function (`selectTellTargets`) and `main()` now runs only when the script is
+  executed directly, so the selection can be checked on its own.
+- **The worker's answer timeout went from 3 to 20 minutes** (`ANSWER_TIMEOUT_MS`, overridable by
+  `DREAM_ANSWER_TIMEOUT_MS`): measured on a busy local engine (7 requests queued, ~350k pending
+  tokens, 38 tok/s), 3 minutes ended every pair as «ignored». Ten pairs at 20 minutes is roughly one
+  night's sleep after the 4 h of rest (USER, 2026-11-21).
+- **`dream.sh synthesize` is the only way to run the second half** (USER, 2026-11-21): it launches
+  the worker detached (`nohup`), writes `<data root>/logs/dream-synthesize.log`, and refuses a
+  second run while one is alive. A foreground command would be cut at 5 minutes by the anti-loop
+  guard, and a night may take ~200 minutes; the skill points only at this command.
+- **The dream's model is a layered setting** (USER, 2026-11-21): `dream.model` in
+  `plugins/core-brain/config.json` — the same file the taulukko layer already overrides. The
+  community default points at the local engine (`SGLang/qwen3.8-27b-nvfp4#low`); the taulukko install
+  overrides it with `deepseek/deepseek-flash#low`. `dream-synthesize.mts` reads the key from its own
+  tree (`../../plugins/core-brain/config.json`) and passes the model on session creation; without the
+  key the session keeps the default agent's model. Measured: a session created with
+  `{providerID:"deepseek", id:"deepseek-flash", variant:"low"}` reads back exactly that model.
+- **The answer reading and the abandonment are fixed** (USER, 2026-11-21): the V2 API carries the
+  assistant text in `content` text parts, and the old code only looked at `text`/`parts` — so every
+  pair ended as «no answer within …» even when the session answered. The extraction now accepts all
+  three shapes (`answerText`). An abandoned pair **interrupts its session** before moving on —
+  orphan sessions were holding the engine and queuing every later pair behind them (4 orphans, 24–84
+  min, were measured). Every HTTP call has a 15 s limit, so a hung request cannot freeze the
+  deadline. `dream.sh synthesize` matches only the node worker (`node .*dream-synthesize\.mts`),
+  never a shell that merely mentions the name.
+
+### Added — 2026-11-20 (the dream's second half: synthesis in the band)
+
+- **`admin synthesis-pairs`** names the pairs one night should dream about, without writing anything:
+  the band is **0.50 – 0.97**, the walk starts at the highest score and descends in **bands of 10%**
+  (5000 → 4500-5000 → 4000-4500 …), each memory offers its **nearest neighbour**, the second leg may
+  carry a low score, and a night takes at most **10** (USER, 2026-11-20).
+- **`admin dream-store`** lands one dream: writes the text into the namespace the pair belongs to
+  (a system write no agent could make on its behalf), marks it **`real = false`** with
+  `meta.dreamedFrom`, caps it at **550 characters**, and retires the sources in the same write.
+- **`scripts/dream-synthesize.mts`** is the worker: takes the pairs, opens a NEW session with
+  **PROMPT A**, waits for the assistant's text, lands it. **If the session does not answer or errors,
+  the pair is IGNORED — nothing is removed** — and it moves to the next dream. Prompts are read from
+  `<data root>/prompts/dream-a.txt` when present, falling back to the built-in text.
+- **The score lifecycle is in place**: born at **10**, `−1` for the whole table **at the END of the
+  night** (so a night that fails changes nothing), everything at **≤ 0** retired, then archived.
+- **`dreams.similar`** keeps the ids of every memory the night compared — a memory may have more than
+  one neighbour, so it is a list (USER, 2026-11-20).
+- **The dreamed memory carries its own confession** in the first words, before the story:
+  «Esta memória não aconteceu de verdade, foi um sonho:» — the agent reading it knows at once that it
+  did not happen. The 550-character cap applies to the story; the marker goes on top.
+- **PROMPT B**: when the night ends, the worker tells every open session what was dreamed, with the
+  line `Você dormiu e sonhou com isto: …` (a session that refuses the prompt is skipped — telling is a
+  courtesy, never a failure of the night).
+- **Prompts are files the USER owns**: `<data root>/prompts/dream-a.txt` and `dream-b.txt` win over the
+  copies shipped with the skill, which win over the built-in text. The skill now runs
+  `scripts/dream-synthesize.mts` after the dream.
+
+### Changed — 2026-11-20 (`retrievals` becomes `score`)
+
+- **The counter is `score`** — in the database column, in the records, in the recall hits and in the
+  status totals (USER, 2026-11-20). One name for one idea; the old one described only half of it (a
+  recall was the only thing that moved the number, and from now on a dream moves it too).
+- **The rename migrates itself**: `ensureScoreColumn` renames the column on the first open of a
+  database created before this build, so code and data travel together and an install never leaves
+  the plugin reading a column that no longer exists.
+- **Old JSON still reads**: a record written with `retrievals` is read as `score` (the value means the
+  same), so the JSON fallback keeps working on a half-migrated root.
+- **The baseline was raised on the live store**: `scripts/migrate-score-baseline.mjs` added **+10** to
+  all 2 185 memories (min 0 → 10), because the coming design starts every memory at 10. The nightly
+  `−1`, the "born at 10" rule and the retire-at-zero are **not implemented yet** (todo 6.1.4).
+
+### Added — 2026-11-20 (`memories_history`: retired rows leave the live table)
+
+- **`memories_history`** (SQLite): every record with `retired_at` moves there when the dream closes —
+  same columns plus `archived_at` — and its FTS entry and vector go with it, because a retired memory
+  is never recalled again. `memories` is what an agent reads on every call; the history is the USER's
+  audit trail, to delete whenever he likes (USER, 2026-11-20).
+- **`admin archive`** moves the retired rows on demand and **`admin history`** reports how many the
+  history holds; the dream reports `archived` in its closing line and in its result.
+- **Fixed a real defect the new suite exposed**: `activeNamespaces()` walked the directories, so a
+  SQLite-only store — no JSON beside it — saw only `global` and every per-agent pass found nothing.
+  The database now answers first (`namespacesInDb`) and the directories are the fallback.
+
+### Changed — 2026-11-20 (the skill is `dream`, not `sleep`)
+
+- **`global/opencode/skills/dream/`** (was `skills/sleep/`): the pass does not sleep — it dreams
+  (USER, 2026-11-20). The folder, the `SKILL.md` frontmatter (`name: dream`), the script
+  (`scripts/dream.sh`) and every reference inside them carry the new name.
+- **The schedule entry renamed with it**: `plugins/crontab/config.json` now has the schedule `dream`
+  (title `dream-{timestamp}`) and `schedulerPrefixes` starts with `dream-`; the prompt loads the
+  skill `dream`. The installed home keeps the old names until the next install — and until then the
+  script reports "no 'dream' entry in the crontab config", which is the honest state.
+- `DEVELOPERS.md` keeps the word "sleep-time agent" where it quotes the reference paper; the
+  product's own name is `dream`.
+
 ### Added — 2026-11-20 (the dream's review queue: `dreams` + `dream_memories`)
 
 - **`dream_memories`** (SQLite table, JSON fallback `dream-memories.json`): every pair the dream
@@ -15,8 +219,10 @@ Newest on top.
   merged, pending — so the USER can analyse the dreams.
 - **`admin` actions `dreams`, `dream-memories`, `dream-memory`**: list the passes, list the pairs
   waiting for a verdict, and settle one (the merged text ≤ 600 characters, or `{ skipped: true }`).
-- **`scripts/sleep.sh inspect`** (inside the skill): at the end of a dream the reviewer wakes in its
-  own session and works the queue; `now` now asks for that step. One `wake_agent` call serves both.
+- **`scripts/sleep.sh` grows ONE job and loses another** (USER, 2026-11-20): the dream was the only
+  call it made, and `wake_agent` is the one home for it. There is **no `inspect` command**: the review
+  of the joined pairs belongs to the dream itself — the agent reads `dream_memories` and settles each
+  row before it closes, the way the skill describes. A separate verb would turn one pass into two.
 - **The rule that no merge crosses a namespace** (USER, 2026-11-20) is pinned by
   `test/dedupe-namespaces.selftest.mjs`: one agent's pair → that agent's memory; two globals → one
   global; a global beside an agent copy → **not** duplication, both stay (identical text included).

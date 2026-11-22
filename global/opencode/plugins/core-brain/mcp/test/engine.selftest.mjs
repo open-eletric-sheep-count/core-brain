@@ -116,7 +116,7 @@ function vectorsFile(root, name) {
 /** One MemoryRecord as persisted (types.ts §4). */
 function record(id, agent, scope, text, extra = {}) {
   const now = new Date().toISOString();
-  return { id, agent, scope, text, meta: {}, createdAt: now, updatedAt: now, retrievals: 0, ...extra };
+  return { id, agent, scope, text, meta: {}, createdAt: now, updatedAt: now, score: 0, ...extra };
 }
 
 /** The requested doctor check, by id, from a full `doctor` run. */
@@ -178,7 +178,7 @@ await scenario("AC5", () =>
       "AC5 feedback records useful=1 on the target record",
     );
 
-    // The FIRST recall is the decisive one (recall mutates `retrievals`).
+    // The FIRST recall is the decisive one (recall mutates `score`).
     const ranked = await engine.invoke("CB_ALPHA", { op: "recall", query: "identical ranking text", from: "self" });
     line(
       ranked.results.length >= 2 &&

@@ -25,7 +25,7 @@ const ROOT = mkdtempSync(join(tmpdir(), "corebrain-dream-"));
 process.env.CORE_BRAIN_HOME = ROOT;
 writeFileSync(
   join(ROOT, "config.json"),
-  JSON.stringify({ dreamPerDay: 5, agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }] }),
+  JSON.stringify({ dreams: true, dreamPerDay: 5, agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }] }),
 );
 
 const { createEngine } = await import("../store.ts");
@@ -68,7 +68,7 @@ check("listing carries the summary", typeof listing.episodes?.[0]?.summary === "
 // 1b. the threshold is configurable: config.json is read on every listing
 writeFileSync(
   join(ROOT, "config.json"),
-  JSON.stringify({ dreamPerDay: 5, dreamIdleHours: 7, agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }] }),
+  JSON.stringify({ dreams: true, dreamPerDay: 5, dreamIdleHours: 7, agents: [{ name: "CB_ALPHA", hasGlobalAccess: true, private: false }] }),
 );
 const listing2 = await engine.invoke("CB_ALPHA", { op: "dream" });
 check("listing carries the configured threshold", listing2.idleHoursRequired === 7, String(listing2.idleHoursRequired));
@@ -121,7 +121,7 @@ check("re-dreaming a dreamed episode is refused", reDream !== null, "no error wa
 // 7. a duplicate REINFORCES the memory that already exists (USER, 2026-11-19)
 const dreamsBefore = readJson(DREAMS).length;
 const original = active().find((r) => String(r.text).startsWith("The Prisma calculator"));
-const retrievalsBefore = original.retrievals;
+const scoreBefore = original.score;
 const reinforcedRun = await engine.invoke("CB_ALPHA", {
   op: "dream",
   episodeIds: [three.id],
@@ -130,7 +130,7 @@ const reinforcedRun = await engine.invoke("CB_ALPHA", {
 check("a duplicate no longer refuses the pass", typeof reinforcedRun.dreamId === "string", JSON.stringify(reinforcedRun));
 const originalAfter = active().find((r) => r.id === original.id);
 check("the existing memory gained this dream", (originalAfter?.meta?.dreams ?? []).length === 2, JSON.stringify(originalAfter?.meta?.dreams));
-check("its retrievals went up by one", originalAfter?.retrievals === retrievalsBefore + 1, `${originalAfter?.retrievals} vs ${retrievalsBefore}`);
+check("its score went up by one", originalAfter?.score === scoreBefore + 1, `${originalAfter?.score} vs ${scoreBefore}`);
 check("its feedback gained a useful mark", (originalAfter?.feedback?.useful ?? 0) >= 1, JSON.stringify(originalAfter?.feedback));
 const lastRecord = readJson(DREAMS).at(-1);
 check("the dream record lists it under reinforced", Array.isArray(lastRecord?.reinforced) && lastRecord.reinforced.includes(original.id), JSON.stringify(lastRecord?.reinforced));
